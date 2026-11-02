@@ -186,14 +186,13 @@ pub async fn sftp_download(
     Ok(())
 }
 
-// -------------------------------------------------------------------- local
-
+/// Metadata for one remote path.
 #[tauri::command]
-pub fn local_home() -> String {
-    sftp::local_home().to_string_lossy().replace('\\', "/")
-}
-
-#[tauri::command]
-pub fn local_list(path: String) -> Result<Vec<FileEntry>, AppError> {
-    sftp::local_list(std::path::Path::new(&path))
+pub async fn sftp_stat(
+    state: State<'_, AppState>,
+    terminal_id: String,
+    path: String,
+) -> Result<FileEntry, AppError> {
+    let session = state.sftp(&terminal_id).await?;
+    sftp::stat(&session, &path).await
 }

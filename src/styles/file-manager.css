@@ -242,6 +242,10 @@
   color: var(--text-faint);
 }
 
+.fm-pane__foot-end {
+  margin-left: auto;
+}
+
 /* --------------------------------------------------------- placeholder */
 
 .fm-placeholder {

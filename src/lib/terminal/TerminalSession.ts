@@ -95,8 +95,10 @@ export class TerminalSession {
       this.options.onStatus?.({
         terminalId: result.terminalId,
         state: "ready",
-        cols: this.terminal.cols,
-        rows: this.terminal.rows,
+        // Report what the backend actually got, not the unclamped fit result
+        // (the terminal may still be hidden behind the file manager view).
+        cols: Math.max(MIN_COLS, this.terminal.cols),
+        rows: Math.max(MIN_ROWS, this.terminal.rows),
         endpoint: result.endpoint,
         fingerprint: result.fingerprint,
       });

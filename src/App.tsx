@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SessionForm } from "./components/SessionForm";
 import { Sidebar } from "./components/Sidebar";
@@ -106,6 +106,27 @@ export default function App() {
     },
     [tabs],
   );
+
+  // Deep link: `?connect=<session id>` opens (and therefore connects) a session
+  // on startup. Used by scripts/smoke tests; harmless in normal launches.
+  const autoConnectId = useMemo(() => {
+    const raw = new URLSearchParams(window.location.search).get("connect");
+    const parsed = raw === null ? Number.NaN : Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, []);
+  const autoConnectedRef = useRef(false);
+
+  useEffect(() => {
+    if (autoConnectedRef.current || autoConnectId === null) {
+      return;
+    }
+    const session = sessions.find((item) => item.id === autoConnectId);
+    if (session === undefined) {
+      return;
+    }
+    autoConnectedRef.current = true;
+    openTab(session);
+  }, [autoConnectId, sessions, openTab]);
 
   const closeTab = useCallback(
     (key: string) => {

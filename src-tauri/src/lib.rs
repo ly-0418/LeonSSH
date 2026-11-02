@@ -110,20 +110,29 @@ pub fn run() {
             // tauri.conf.json) purely so `data_directory` can be set.
             // `LEONSSH_START_VIEW=files` deep-links straight into the file
             // manager (handy for smoke tests / scripted screenshots).
-            let start_url = if std::env::var("LEONSSH_START_VIEW")
+            // Optional deep links (see README): `LEONSSH_START_VIEW=files`,
+            // `LEONSSH_START_LOCAL=<path>`, `LEONSSH_AUTO_SESSION=<session id>`.
+            let mut params: Vec<String> = Vec::new();
+            if std::env::var("LEONSSH_START_VIEW")
                 .map(|value| value.eq_ignore_ascii_case("files"))
                 .unwrap_or(false)
             {
+                params.push("view=files".to_string());
                 let local = std::env::var("LEONSSH_START_LOCAL").unwrap_or_default();
-                if local.is_empty() {
-                    tauri::WebviewUrl::App("index.html?view=files".into())
-                } else {
-                    tauri::WebviewUrl::App(
-                        format!("index.html?view=files&local={}", urlencode(&local)).into(),
-                    )
+                if !local.is_empty() {
+                    params.push(format!("local={}", urlencode(&local)));
                 }
-            } else {
+            }
+            if let Ok(session_id) = std::env::var("LEONSSH_AUTO_SESSION") {
+                let session_id = session_id.trim();
+                if !session_id.is_empty() {
+                    params.push(format!("connect={}", urlencode(session_id)));
+                }
+            }
+            let start_url = if params.is_empty() {
                 tauri::WebviewUrl::App("index.html".into())
+            } else {
+                tauri::WebviewUrl::App(format!("index.html?{}", params.join("&")).into())
             };
             let window = tauri::WebviewWindowBuilder::new(app, "main", start_url)
             .title("LeonSSH")
@@ -179,8 +188,7 @@ pub fn run() {
             commands::sftp::sftp_chmod,
             commands::sftp::sftp_upload,
             commands::sftp::sftp_download,
-            commands::sftp::local_home,
-            commands::sftp::local_list,
+            commands::sftp::sftp_stat,
             commands::forward::forward_list,
             commands::forward::forward_create,
             commands::forward::forward_delete,

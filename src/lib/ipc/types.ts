@@ -12,7 +12,13 @@ export interface OpenSessionResult {
   title: string;
   cols: number;
   rows: number;
+  /** `ssh` for a real connection, `fake` for the built-in demo source. */
   transport: string;
+  endpoint: string;
+  username: string;
+  fingerprint: string;
+  /** `match` | `first-use` | `fake` */
+  hostKey: string;
 }
 
 export interface AppInfo {
@@ -34,4 +40,6 @@ export interface TerminalStatus {
   rows: number;
   state: SessionState;
   message?: string;
+  endpoint?: string;
+  fingerprint?: string;
 }

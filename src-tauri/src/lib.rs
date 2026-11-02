@@ -8,8 +8,12 @@
 mod commands;
 mod error;
 mod paths;
+mod ssh;
 mod state;
 mod terminal;
+
+#[cfg(feature = "test-server")]
+pub use ssh::test_server as ssh_test_server;
 
 use tauri::Manager;
 

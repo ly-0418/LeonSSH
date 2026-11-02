@@ -171,6 +171,12 @@ body {
   color: var(--text-faint);
 }
 
+.chip--host {
+  color: #7dd3fc;
+  border-color: #1e3a5f;
+  background: #0b1b2a;
+}
+
 .status-bar__spacer {
   flex: 1 1 auto;
 }

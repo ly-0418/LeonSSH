@@ -94,6 +94,8 @@ export class TerminalSession {
         state: "ready",
         cols: this.terminal.cols,
         rows: this.terminal.rows,
+        endpoint: result.endpoint,
+        fingerprint: result.fingerprint,
       });
       // The initial fit may have happened before the session existed; make
       // sure the backend starts with the real size.

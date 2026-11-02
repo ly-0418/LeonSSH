@@ -12,6 +12,17 @@ rust-version = "1.89"
 name = "leonssh_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[features]
+# Builds the bundled russh test server used for phase-2 acceptance:
+#   cargo run --features test-server --bin ssh-test-server
+# It is *not* part of the shipped application.
+test-server = []
+
+[[bin]]
+name = "ssh-test-server"
+path = "src/bin/ssh_test_server.rs"
+required-features = ["test-server"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -19,12 +30,16 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "macros", "net", "io-util"] }
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 tracing-appender = "0.2"
 bytes = "1"
+# Pure-Rust SSH. `ring` is used instead of the default `aws-lc-rs` backend:
+# aws-lc-rs needs CMake/NASM on Windows, ring builds with the MSVC toolchain
+# that Tauri already requires.
+russh = { version = "0.65", default-features = false, features = ["ring", "rsa"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }

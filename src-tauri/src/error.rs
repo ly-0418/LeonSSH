@@ -18,6 +18,12 @@ pub enum AppError {
     #[error("参数非法: {0}")]
     InvalidArgument(String),
 
+    #[error("主机密钥校验失败: {0}")]
+    HostKeyMismatch(String),
+
+    #[error("SSH 错误: {0}")]
+    Ssh(String),
+
     #[error("内部错误: {0}")]
     Internal(String),
 }
@@ -29,6 +35,8 @@ impl AppError {
             Self::SessionNotFound(_) => "session_not_found",
             Self::SessionClosed(_) => "session_closed",
             Self::InvalidArgument(_) => "invalid_argument",
+            Self::HostKeyMismatch(_) => "host_key_mismatch",
+            Self::Ssh(_) => "ssh_error",
             Self::Internal(_) => "internal",
         }
     }
@@ -65,6 +73,8 @@ mod tests {
     fn codes_are_stable() {
         assert_eq!(AppError::InvalidArgument("x".into()).code(), "invalid_argument");
         assert_eq!(AppError::SessionClosed("x".into()).code(), "session_closed");
+        assert_eq!(AppError::HostKeyMismatch("x".into()).code(), "host_key_mismatch");
+        assert_eq!(AppError::Ssh("x".into()).code(), "ssh_error");
         assert_eq!(AppError::Internal("x".into()).code(), "internal");
     }
 }

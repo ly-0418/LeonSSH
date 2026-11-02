@@ -29,6 +29,11 @@ export function StatusBar({ status, info }: StatusBarProps) {
         PTY {status.cols || "—"}×{status.rows || "—"}
       </span>
       <span className="chip chip--muted">session {status.sessionId ?? "—"}</span>
+      {status.endpoint !== undefined && (
+        <span className="chip chip--host" title={`主机密钥指纹：${status.fingerprint ?? "—"}`}>
+          {status.endpoint}
+        </span>
+      )}
 
       <span className="status-bar__spacer" />
 

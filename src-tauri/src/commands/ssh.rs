@@ -1,17 +1,18 @@
 //! Terminal IPC commands.
 //!
-//! Contract with the frontend (phase 1, unchanged in later phases):
+//! Contract with the frontend (unchanged since phase 1):
 //!
-//! | command        | direction        | payload                          |
-//! |----------------|------------------|----------------------------------|
-//! | `ssh_open`     | JS -> Rust       | `Channel<ArrayBuffer>` + size    |
-//! | `ssh_write`    | JS -> Rust       | `sessionId`, `data: number[]`    |
-//! | `ssh_resize`   | JS -> Rust       | `sessionId`, `cols`, `rows`      |
-//! | `ssh_close`    | JS -> Rust       | `sessionId`                      |
+//! | command        | direction  | payload                       |
+//! |----------------|------------|-------------------------------|
+//! | `ssh_open`     | JS -> Rust | `Channel<ArrayBuffer>` + size |
+//! | `ssh_write`    | JS -> Rust | `sessionId`, `data: number[]` |
+//! | `ssh_resize`   | JS -> Rust | `sessionId`, `cols`, `rows`   |
+//! | `ssh_close`    | JS -> Rust | `sessionId`                   |
 //!
 //! Output never travels through `invoke`: it is written to the `Channel` with
 //! `InvokeResponseBody::Raw`, so the webview receives an `ArrayBuffer`.
 
+use std::env;
 use std::sync::Arc;
 
 use tauri::ipc::{Channel, InvokeResponseBody};
@@ -19,6 +20,9 @@ use tauri::State;
 use tokio::sync::{mpsc, watch};
 
 use crate::error::AppError;
+use crate::ssh::config::SshConfig;
+use crate::ssh::hostkey::{HostKeyVerdict, KnownHosts};
+use crate::ssh::session;
 use crate::state::{AppState, SessionId};
 use crate::terminal::fake_source::{self, FakeSourceConfig};
 use crate::terminal::input::escape_preview;
@@ -42,7 +46,13 @@ pub struct OpenSessionResult {
     pub title: String,
     pub cols: u16,
     pub rows: u16,
+    /// `ssh` for a real connection, `fake` for the built-in demo source.
     pub transport: &'static str,
+    pub endpoint: String,
+    pub username: String,
+    pub fingerprint: String,
+    /// `match` | `first-use` | `fake`
+    pub host_key: &'static str,
 }
 
 #[derive(serde::Serialize)]
@@ -95,8 +105,15 @@ fn resolve_size(
     Ok(value)
 }
 
-/// Opens a terminal session. Phase 1 backs it with the fake byte source;
-/// phase 2 swaps in `ssh::session::spawn` without changing this signature.
+/// `LEONSSH_TRANSPORT=fake` keeps the phase-1 demo source available for UI work
+/// when no SSH server is reachable. Default is a real SSH connection.
+fn use_fake_transport() -> bool {
+    env::var("LEONSSH_TRANSPORT")
+        .map(|value| value.eq_ignore_ascii_case("fake"))
+        .unwrap_or(false)
+}
+
+/// Opens a terminal session: a real SSH shell, or the built-in fake source.
 #[tauri::command]
 pub async fn ssh_open(
     state: State<'_, AppState>,
@@ -107,9 +124,11 @@ pub async fn ssh_open(
 ) -> Result<OpenSessionResult, AppError> {
     let cols = resolve_size(cols, DEFAULT_COLS, MIN_COLS, MAX_COLS, "cols")?;
     let rows = resolve_size(rows, DEFAULT_ROWS, MIN_ROWS, MAX_ROWS, "rows")?;
+
     let session_id = state.allocate_session_id();
-    let title = title.unwrap_or_else(|| "LeonSSH 会话".to_string());
-    let data_dir = state.paths().data_dir.display().to_string();
+    let cfg = SshConfig::fixed();
+    let endpoint = cfg.endpoint();
+    let username = cfg.username.clone();
 
     let sink: Arc<dyn OutputSink> = Arc::new(ChannelSink::new(channel));
     let (input_tx, input_rx) = mpsc::channel::<Vec<u8>>(INPUT_QUEUE_CAPACITY);
@@ -117,28 +136,52 @@ pub async fn ssh_open(
     let (close_tx, close_rx) = watch::channel(false);
     let (out_tx, out_rx) = mpsc::channel::<bytes::Bytes>(OUTPUT_QUEUE_CAPACITY);
 
-    let pump_close = close_rx.clone();
-    let source_close = close_rx.clone();
-    let source_session = session_id.clone();
+    let (transport, fingerprint, host_key, join) = if use_fake_transport() {
+        let data_dir = state.paths().data_dir.display().to_string();
+        let task_session = session_id.clone();
+        let task_close = close_rx.clone();
 
-    // A single task owns the producer *and* the pump: aborting it cancels both,
-    // so `SessionHandle::close` can never leak a zombie task.
-    let join = tokio::spawn(async move {
-        let pump_fut = pump::run(out_rx, sink, pump_close);
-        let source_fut = fake_source::run(
-            FakeSourceConfig {
-                session_id: source_session,
-                data_dir,
-                cols,
-                rows,
-            },
-            input_rx,
-            resize_rx,
-            source_close,
-            out_tx,
-        );
-        tokio::join!(source_fut, pump_fut);
-    });
+        let join = tokio::spawn(async move {
+            let pump_fut = pump::run(out_rx, sink, task_close.clone());
+            let source_fut = fake_source::run(
+                FakeSourceConfig {
+                    session_id: task_session,
+                    data_dir,
+                    cols,
+                    rows,
+                },
+                input_rx,
+                resize_rx,
+                task_close,
+                out_tx,
+            );
+            tokio::join!(source_fut, pump_fut);
+        });
+
+        ("fake", String::new(), "fake", join)
+    } else {
+        // Connect *before* spawning so authentication errors surface as a
+        // command error instead of a mysterious empty terminal.
+        let opened = session::open(&cfg, KnownHosts::load(&state.paths().data_dir).into(), cols, rows).await?;
+        let fingerprint = opened.fingerprint.clone();
+        let host_key = match opened.verdict {
+            HostKeyVerdict::Match => "match",
+            HostKeyVerdict::FirstUse => "first-use",
+            HostKeyVerdict::Mismatch { .. } => "mismatch",
+        };
+
+        let task_session = session_id.clone();
+        let task_close = close_rx.clone();
+
+        let join = tokio::spawn(async move {
+            let pump_fut = pump::run(out_rx, sink, task_close.clone());
+            let io_fut = session::run_io(opened, input_rx, resize_rx, task_close, out_tx);
+            tokio::join!(io_fut, pump_fut);
+            tracing::debug!(session = %task_session, "ssh terminal task finished");
+        });
+
+        ("ssh", fingerprint, host_key, join)
+    };
 
     state
         .insert_session(
@@ -147,14 +190,28 @@ pub async fn ssh_open(
         )
         .await;
 
-    tracing::info!(session = %session_id, cols, rows, "terminal session opened (fake transport)");
+    tracing::info!(
+        session = %session_id,
+        transport,
+        endpoint = %endpoint,
+        user = %username,
+        fingerprint = %fingerprint,
+        host_key,
+        cols,
+        rows,
+        "terminal session opened"
+    );
 
     Ok(OpenSessionResult {
         session_id,
-        title,
+        title: title.unwrap_or_else(|| format!("{username}@{endpoint}")),
         cols,
         rows,
-        transport: "fake",
+        transport,
+        endpoint,
+        username,
+        fingerprint,
+        host_key,
     })
 }
 

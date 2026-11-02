@@ -5,10 +5,10 @@
  *  - bind the Tauri binary `Channel` to `term.write`
  *  - forward `term.onData` to the `ssh_write` command
  *  - debounce container resizes, fit, then report cols/rows via `ssh_resize`
- *  - dispose in the right order (stop input -> close session -> dispose terminal)
+ *  - dispose in the right order (stop input -> close terminal -> dispose xterm)
  *
  * It is framework-agnostic on purpose: the React hook is a thin lifecycle
- * wrapper so this logic stays testable and future tabs can share it.
+ * wrapper so this logic stays testable and multiple tabs share it.
  */
 
 import { Channel } from "@tauri-apps/api/core";
@@ -16,8 +16,8 @@ import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 
 import { toUserMessage } from "../ipc/errors";
-import { closeSession, openSession, resizeSession, writeSession } from "../ipc/session";
-import type { RendererKind, SessionId, TerminalStatus } from "../ipc/types";
+import { closeTerminal, openTerminal, resizeTerminal, writeTerminal } from "../ipc/session";
+import type { RendererKind, TerminalId, TerminalStatus } from "../ipc/types";
 import { installRenderer, type RendererController } from "./renderer";
 import { TERMINAL_OPTIONS } from "./theme";
 
@@ -27,7 +27,9 @@ const MIN_ROWS = 5;
 
 export interface TerminalSessionOptions {
   container: HTMLElement;
-  title?: string;
+  /** SQLite row id of the connection profile. */
+  sessionId: number;
+  title: string;
   onStatus?: (patch: Partial<TerminalStatus>) => void;
   onNotice?: (message: string) => void;
 }
@@ -40,8 +42,9 @@ export class TerminalSession {
   private renderer: RendererController | null = null;
   private observer: ResizeObserver | null = null;
   private fitTimer: number | null = null;
-  private sessionId: SessionId | null = null;
+  private terminalId: TerminalId | null = null;
   private disposed = false;
+  private visible = true;
   private lastCols = 0;
   private lastRows = 0;
   private readonly bytesIn = { value: 0 };
@@ -76,21 +79,21 @@ export class TerminalSession {
     this.channel.onmessage = (payload: ArrayBuffer) => this.handleOutput(payload);
 
     try {
-      const result = await openSession({
+      const result = await openTerminal({
+        sessionId: this.options.sessionId,
         channel: this.channel,
         cols: Math.max(MIN_COLS, this.terminal.cols),
         rows: Math.max(MIN_ROWS, this.terminal.rows),
-        title: this.options.title,
       });
 
       if (this.disposed) {
-        void closeSession(result.sessionId).catch(() => undefined);
+        void closeTerminal(result.terminalId).catch(() => undefined);
         return;
       }
 
-      this.sessionId = result.sessionId;
+      this.terminalId = result.terminalId;
       this.options.onStatus?.({
-        sessionId: result.sessionId,
+        terminalId: result.terminalId,
         state: "ready",
         cols: this.terminal.cols,
         rows: this.terminal.rows,
@@ -100,13 +103,15 @@ export class TerminalSession {
       // The initial fit may have happened before the session existed; make
       // sure the backend starts with the real size.
       this.pushSize(true);
-      this.terminal.focus();
+      if (this.visible) {
+        this.terminal.focus();
+      }
     } catch (error) {
       if (this.disposed) {
         return;
       }
       this.options.onStatus?.({ state: "error", message: toUserMessage(error) });
-      this.terminal.writeln(`\r\n\x1b[31m启动会话失败：${toUserMessage(error)}\x1b[0m`);
+      this.terminal.writeln(`\r\n\x1b[31m连接失败：${toUserMessage(error)}\x1b[0m`);
     }
   }
 
@@ -125,21 +130,35 @@ export class TerminalSession {
 
     this.channel.onmessage = () => undefined;
 
-    const sessionId = this.sessionId;
-    this.sessionId = null;
+    const terminalId = this.terminalId;
+    this.terminalId = null;
 
     this.renderer?.dispose();
     this.renderer = null;
 
-    if (sessionId !== null) {
+    if (terminalId !== null) {
       try {
-        await closeSession(sessionId);
+        await closeTerminal(terminalId);
       } catch {
-        // The backend may already have dropped the session (window closing).
+        // The backend may already have dropped the terminal (window closing).
       }
     }
 
     this.terminal.dispose();
+  }
+
+  // ----------------------------------------------------------- visibility
+
+  /** Hidden tabs stay mounted (scrollback preserved) but must not measure. */
+  setVisible(visible: boolean): void {
+    this.visible = visible;
+    if (!visible || this.disposed) {
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      this.fitNow();
+      this.terminal.focus();
+    });
   }
 
   // ----------------------------------------------------------- I/O plumbing
@@ -153,13 +172,13 @@ export class TerminalSession {
   }
 
   private async handleInput(data: string): Promise<void> {
-    if (this.disposed || this.sessionId === null) {
+    if (this.disposed || this.terminalId === null) {
       return;
     }
     const bytes = this.encoder.encode(data);
     this.bytesOut += bytes.byteLength;
     try {
-      await writeSession(this.sessionId, bytes);
+      await writeTerminal(this.terminalId, bytes);
     } catch (error) {
       this.options.onNotice?.(toUserMessage(error));
     }
@@ -176,7 +195,7 @@ export class TerminalSession {
   }
 
   private scheduleFit(): void {
-    if (this.disposed) {
+    if (this.disposed || !this.visible) {
       return;
     }
     if (this.fitTimer !== null) {
@@ -195,8 +214,8 @@ export class TerminalSession {
     try {
       this.fitAddon.fit();
     } catch {
-      // The container can briefly report a zero size while the window is being
-      // created; the ResizeObserver will fire again.
+      // A zero-sized container (hidden tab) makes fit throw; the next visible
+      // transition or resize will retry.
       return;
     }
     this.pushSize(false);
@@ -215,8 +234,8 @@ export class TerminalSession {
     this.lastRows = rows;
     this.options.onStatus?.({ cols, rows });
 
-    if (this.sessionId !== null) {
-      void resizeSession(this.sessionId, cols, rows).catch((error) => {
+    if (this.terminalId !== null) {
+      void resizeTerminal(this.terminalId, cols, rows).catch((error) => {
         this.options.onNotice?.(toUserMessage(error));
       });
     }

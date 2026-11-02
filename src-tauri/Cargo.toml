@@ -30,7 +30,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "macros", "net", "io-util"] }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "macros", "net", "io-util", "fs"] }
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
@@ -39,7 +39,15 @@ bytes = "1"
 # Pure-Rust SSH. `ring` is used instead of the default `aws-lc-rs` backend:
 # aws-lc-rs needs CMake/NASM on Windows, ring builds with the MSVC toolchain
 # that Tauri already requires.
-russh = { version = "0.65", default-features = false, features = ["ring", "rsa"] }
+russh = { version = "0.63.3", default-features = false, features = ["ring", "rsa"] }
+# Phase 4: SFTP over the same SSH connection (works with russh 0.63.x).
+russh-sftp = "3"
+# Phase 3: local persistence. tauri-plugin-sql wraps sqlx/SQLite.
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+# Same sqlx version the plugin links, so both share one connection type.
+sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio", "macros"] }
+# Phase 3: passwords live in the Windows Credential Manager, never in SQLite.
+keyring = "4"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
@@ -55,3 +63,5 @@ strip = true
 [profile.dev]
 # Keep debug builds reasonably fast to link (Tauri is a large dependency graph).
 debug = 1
+
+

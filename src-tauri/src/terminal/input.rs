@@ -36,22 +36,6 @@ pub fn escape_preview(data: &[u8]) -> String {
     out
 }
 
-/// Human readable echo for the phase-1 fake terminal (control keys are shown
-/// as visible glyphs instead of moving the cursor).
-pub fn echo_text(data: &[u8]) -> String {
-    let mut out = String::with_capacity(data.len());
-    for ch in String::from_utf8_lossy(data).chars() {
-        match ch {
-            '\r' => out.push('↵'),
-            '\n' => out.push('⏎'),
-            '\t' => out.push('→'),
-            c if (c as u32) < 0x20 || c as u32 == 0x7f => out.push('·'),
-            c => out.push(c),
-        }
-    }
-    out
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -74,11 +58,5 @@ mod tests {
         let preview = escape_preview(&long);
         assert!(preview.ends_with('…'));
         assert_eq!(preview.chars().count(), PREVIEW_CHARS + 1);
-    }
-
-    #[test]
-    fn echo_maps_control_keys_to_glyphs() {
-        assert_eq!(echo_text(b"hi\r"), "hi↵");
-        assert_eq!(echo_text(b"\x1b"), "·");
     }
 }

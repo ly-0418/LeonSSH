@@ -4,12 +4,18 @@ use std::sync::{Arc, Mutex};
 
 use russh::client::{self, Handle};
 use russh::keys::PublicKeyOrCertificate;
+use russh::Channel;
+use tokio::net::TcpStream;
 
 use super::config::{AuthMethod, SshConfig};
 use super::hostkey::{fingerprint, HostKeyVerdict, KnownHosts};
 use super::SshError;
+use crate::forward::RemoteRoutes;
 
 pub type ClientHandle = Handle<ClientHandler>;
+/// `russh::client::Handle` is not `Clone`, so sharing one connection between
+/// the terminal task, SFTP and port forwarding goes through an `Arc`.
+pub type SharedHandle = Arc<ClientHandle>;
 
 /// Verifies the server key against the TOFU store. The verdict is published
 /// through a shared slot because `client::connect` consumes the handler and
@@ -19,12 +25,15 @@ pub struct ClientHandler {
     known: Arc<KnownHosts>,
     verdict: Arc<Mutex<Option<HostKeyVerdict>>>,
     actual: Arc<Mutex<String>>,
+    /// `-R` routes: incoming forwarded-tcpip channels are bridged to these.
+    routes: RemoteRoutes,
 }
 
 impl ClientHandler {
     fn new(
         endpoint: String,
         known: Arc<KnownHosts>,
+        routes: RemoteRoutes,
     ) -> (Self, Arc<Mutex<Option<HostKeyVerdict>>>, Arc<Mutex<String>>) {
         let verdict = Arc::new(Mutex::new(None));
         let actual = Arc::new(Mutex::new(String::new()));
@@ -34,6 +43,7 @@ impl ClientHandler {
                 known,
                 verdict: verdict.clone(),
                 actual: actual.clone(),
+                routes,
             },
             verdict,
             actual,
@@ -64,10 +74,53 @@ impl client::Handler for ClientHandler {
         *self.verdict.lock().expect("host key slot poisoned") = Some(verdict);
         Ok(accept)
     }
+
+    /// `-R`: the server accepted a connection on its forwarding port and hands
+    /// us the matching channel.
+    async fn server_channel_open_forwarded_tcpip(
+        &mut self,
+        channel: Channel<russh::client::Msg>,
+        connected_address: &str,
+        connected_port: u32,
+        _originator_address: &str,
+        _originator_port: u32,
+        reply: russh::ChannelOpenHandleInner<russh::client::Msg>,
+        _session: &mut russh::client::Session,
+    ) -> Result<(), Self::Error> {
+        let target = {
+            let routes = self.routes.lock().await;
+            routes
+                .get(&(connected_address.to_string(), connected_port as u16))
+                .cloned()
+        };
+
+        let Some((host, port)) = target else {
+            tracing::warn!(%connected_address, connected_port, "no route for forwarded channel");
+            drop(reply);
+            return Ok(());
+        };
+
+        reply.accept().await;
+        tracing::debug!(%host, port, "remote forward accepted");
+
+        tokio::spawn(async move {
+            match TcpStream::connect((host.as_str(), port)).await {
+                Ok(mut tcp) => {
+                    let mut stream = channel.into_stream();
+                    let _ = tokio::io::copy_bidirectional(&mut tcp, &mut stream).await;
+                }
+                Err(err) => {
+                    tracing::warn!(%err, "remote forward target unreachable");
+                    let _ = channel.close().await;
+                }
+            }
+        });
+        Ok(())
+    }
 }
 
 pub struct Connection {
-    pub handle: ClientHandle,
+    pub handle: SharedHandle,
     pub fingerprint: String,
     pub verdict: HostKeyVerdict,
 }
@@ -75,13 +128,18 @@ pub struct Connection {
 /// Connects and authenticates. Host-key pinning happens *after* a successful
 /// authentication, which is the TOFU semantic we want: only a server we really
 /// talked to gets remembered.
-pub async fn connect(cfg: &SshConfig, known: Arc<KnownHosts>) -> Result<Connection, SshError> {
+pub async fn connect(
+    cfg: &SshConfig,
+    known: Arc<KnownHosts>,
+    routes: RemoteRoutes,
+) -> Result<Connection, SshError> {
     let client_config = Arc::new(client::Config {
         inactivity_timeout: None,
         ..Default::default()
     });
 
-    let (handler, verdict_slot, actual_slot) = ClientHandler::new(cfg.endpoint(), known.clone());
+    let (handler, verdict_slot, actual_slot) =
+        ClientHandler::new(cfg.endpoint(), known.clone(), routes);
 
     let attempt = tokio::time::timeout(
         cfg.connect_timeout,
@@ -128,16 +186,16 @@ pub async fn connect(cfg: &SshConfig, known: Arc<KnownHosts>) -> Result<Connecti
         }
     }
 
-    if verdict == HostKeyVerdict::FirstUse
-        && let Err(err) = known.record(&cfg.endpoint(), &actual)
-    {
-        tracing::warn!(%err, "failed to persist the host key pin");
+    if verdict == HostKeyVerdict::FirstUse {
+        if let Err(err) = known.record(&cfg.endpoint(), &actual).await {
+            tracing::warn!(%err, "failed to persist the host key pin");
+        }
     }
 
     tracing::info!(target = %cfg.display_target(), "SSH authentication succeeded");
 
     Ok(Connection {
-        handle,
+        handle: Arc::new(handle),
         fingerprint: actual,
         verdict,
     })

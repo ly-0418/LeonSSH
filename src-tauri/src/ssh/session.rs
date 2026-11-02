@@ -8,14 +8,14 @@ use russh::client::Msg;
 use russh::{Channel, ChannelMsg, Disconnect};
 use tokio::sync::{mpsc, watch};
 
-use super::client::{self, ClientHandle};
+use super::client::{self, SharedHandle};
 use super::config::SshConfig;
 use super::hostkey::{HostKeyVerdict, KnownHosts};
 use super::SshError;
 
 /// A shell channel that has finished the handshake (PTY + shell requested).
 pub struct ShellSession {
-    pub handle: ClientHandle,
+    pub handle: SharedHandle,
     pub channel: Channel<Msg>,
     pub fingerprint: String,
     pub verdict: HostKeyVerdict,
@@ -27,8 +27,9 @@ pub async fn open(
     known: Arc<KnownHosts>,
     cols: u16,
     rows: u16,
+    routes: crate::forward::RemoteRoutes,
 ) -> Result<ShellSession, SshError> {
-    let connection = client::connect(cfg, known).await?;
+    let connection = client::connect(cfg, known, routes).await?;
 
     let channel = connection
         .handle

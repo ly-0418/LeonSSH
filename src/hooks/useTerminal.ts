@@ -1,9 +1,8 @@
 /** React lifecycle wrapper around {@link TerminalSession}.
  *
- * This hook is the only place where a terminal is created or destroyed. The
- * session is created in an effect (so the container ref is already attached)
- * and always disposed on unmount — including React 19's development
- * double-invoke, which is why creation is ref-guarded and disposal is async.
+ * This hook is the only place where a terminal is created or destroyed. One
+ * instance is created per tab and kept mounted while the tab exists, so the
+ * scrollback survives tab switches; visibility only affects fitting/focus.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -12,18 +11,27 @@ import type { TerminalStatus } from "../lib/ipc/types";
 import { TerminalSession } from "../lib/terminal/TerminalSession";
 
 const INITIAL_STATUS: TerminalStatus = {
-  sessionId: null,
+  terminalId: null,
   renderer: "pending",
   cols: 0,
   rows: 0,
   state: "connecting",
 };
 
-export function useTerminal(title?: string) {
+export interface UseTerminalOptions {
+  sessionId: number;
+  title: string;
+  visible: boolean;
+  onStatus?: (patch: Partial<TerminalStatus>) => void;
+}
+
+export function useTerminal({ sessionId, title, visible, onStatus }: UseTerminalOptions) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sessionRef = useRef<TerminalSession | null>(null);
-  const [status, setStatus] = useState<TerminalStatus>(INITIAL_STATUS);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const statusRef = useRef(onStatus);
+  statusRef.current = onStatus;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -33,8 +41,9 @@ export function useTerminal(title?: string) {
 
     const session = new TerminalSession({
       container,
+      sessionId,
       title,
-      onStatus: (patch) => setStatus((previous) => ({ ...previous, ...patch })),
+      onStatus: (patch) => statusRef.current?.(patch),
       onNotice: (message) => setNotice(message),
     });
     sessionRef.current = session;
@@ -43,10 +52,14 @@ export function useTerminal(title?: string) {
       sessionRef.current = null;
       void session.dispose();
     };
-  }, [title]);
+  }, [sessionId, title]);
+
+  useEffect(() => {
+    sessionRef.current?.setVisible(visible);
+  }, [visible]);
 
   const clearNotice = useCallback(() => setNotice(null), []);
   const focus = useCallback(() => sessionRef.current?.focus(), []);
 
-  return { containerRef, status, notice, clearNotice, focus };
+  return { containerRef, notice, clearNotice, focus, initialStatus: INITIAL_STATUS };
 }

@@ -1,18 +1,15 @@
 //! Terminal IPC commands.
 //!
-//! Contract with the frontend (unchanged since phase 1):
-//!
-//! | command        | direction  | payload                       |
-//! |----------------|------------|-------------------------------|
-//! | `ssh_open`     | JS -> Rust | `Channel<ArrayBuffer>` + size |
-//! | `ssh_write`    | JS -> Rust | `sessionId`, `data: number[]` |
-//! | `ssh_resize`   | JS -> Rust | `sessionId`, `cols`, `rows`   |
-//! | `ssh_close`    | JS -> Rust | `sessionId`                   |
+//! | command        | direction  | payload                                    |
+//! |----------------|------------|--------------------------------------------|
+//! | `ssh_open`     | JS -> Rust | `sessionId` (DB row) + `Channel` + size    |
+//! | `ssh_write`    | JS -> Rust | `terminalId`, `data: number[]`             |
+//! | `ssh_resize`   | JS -> Rust | `terminalId`, `cols`, `rows`               |
+//! | `ssh_close`    | JS -> Rust | `terminalId`                               |
 //!
 //! Output never travels through `invoke`: it is written to the `Channel` with
 //! `InvokeResponseBody::Raw`, so the webview receives an `ArrayBuffer`.
 
-use std::env;
 use std::sync::Arc;
 
 use tauri::ipc::{Channel, InvokeResponseBody};
@@ -20,11 +17,12 @@ use tauri::State;
 use tokio::sync::{mpsc, watch};
 
 use crate::error::AppError;
+use crate::secure;
 use crate::ssh::config::SshConfig;
-use crate::ssh::hostkey::{HostKeyVerdict, KnownHosts};
+use crate::ssh::hostkey::HostKeyVerdict;
 use crate::ssh::session;
 use crate::state::{AppState, SessionId};
-use crate::terminal::fake_source::{self, FakeSourceConfig};
+use crate::storage::sessions;
 use crate::terminal::input::escape_preview;
 use crate::terminal::pump;
 use crate::terminal::registry::{
@@ -42,16 +40,17 @@ const DEFAULT_ROWS: u16 = 32;
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenSessionResult {
-    pub session_id: SessionId,
+    /// Runtime handle used by the other terminal commands (`s1`, `s2`, …).
+    pub terminal_id: SessionId,
+    /// Row id of the stored connection profile.
+    pub session_id: i64,
     pub title: String,
     pub cols: u16,
     pub rows: u16,
-    /// `ssh` for a real connection, `fake` for the built-in demo source.
-    pub transport: &'static str,
     pub endpoint: String,
     pub username: String,
     pub fingerprint: String,
-    /// `match` | `first-use` | `fake`
+    /// `match` | `first-use`
     pub host_key: &'static str,
 }
 
@@ -105,30 +104,32 @@ fn resolve_size(
     Ok(value)
 }
 
-/// `LEONSSH_TRANSPORT=fake` keeps the phase-1 demo source available for UI work
-/// when no SSH server is reachable. Default is a real SSH connection.
-fn use_fake_transport() -> bool {
-    env::var("LEONSSH_TRANSPORT")
-        .map(|value| value.eq_ignore_ascii_case("fake"))
-        .unwrap_or(false)
-}
-
-/// Opens a terminal session: a real SSH shell, or the built-in fake source.
+/// Opens a terminal for a stored session: loads the profile, pulls the password
+/// from the Credential Manager, connects, then starts the byte pump.
 #[tauri::command]
 pub async fn ssh_open(
     state: State<'_, AppState>,
+    session_id: i64,
     channel: Channel<InvokeResponseBody>,
     cols: Option<u16>,
     rows: Option<u16>,
-    title: Option<String>,
 ) -> Result<OpenSessionResult, AppError> {
     let cols = resolve_size(cols, DEFAULT_COLS, MIN_COLS, MAX_COLS, "cols")?;
     let rows = resolve_size(rows, DEFAULT_ROWS, MIN_ROWS, MAX_ROWS, "rows")?;
 
-    let session_id = state.allocate_session_id();
-    let cfg = SshConfig::fixed();
-    let endpoint = cfg.endpoint();
-    let username = cfg.username.clone();
+    let record = sessions::get(state.db(), session_id).await?;
+    let password = match record.keyring_ref.as_deref() {
+        Some(reference) => secure::load(reference)?,
+        None => None,
+    };
+    if password.is_none() {
+        return Err(AppError::InvalidArgument(
+            "该会话还没有保存密码，请先在连接设置里填写".into(),
+        ));
+    }
+
+    let cfg = SshConfig::from_session(&record, password);
+    let terminal_id = state.allocate_session_id();
 
     let sink: Arc<dyn OutputSink> = Arc::new(ChannelSink::new(channel));
     let (input_tx, input_rx) = mpsc::channel::<Vec<u8>>(INPUT_QUEUE_CAPACITY);
@@ -136,80 +137,64 @@ pub async fn ssh_open(
     let (close_tx, close_rx) = watch::channel(false);
     let (out_tx, out_rx) = mpsc::channel::<bytes::Bytes>(OUTPUT_QUEUE_CAPACITY);
 
-    let (transport, fingerprint, host_key, join) = if use_fake_transport() {
-        let data_dir = state.paths().data_dir.display().to_string();
-        let task_session = session_id.clone();
-        let task_close = close_rx.clone();
-
-        let join = tokio::spawn(async move {
-            let pump_fut = pump::run(out_rx, sink, task_close.clone());
-            let source_fut = fake_source::run(
-                FakeSourceConfig {
-                    session_id: task_session,
-                    data_dir,
-                    cols,
-                    rows,
-                },
-                input_rx,
-                resize_rx,
-                task_close,
-                out_tx,
-            );
-            tokio::join!(source_fut, pump_fut);
-        });
-
-        ("fake", String::new(), "fake", join)
-    } else {
-        // Connect *before* spawning so authentication errors surface as a
-        // command error instead of a mysterious empty terminal.
-        let opened = session::open(&cfg, KnownHosts::load(&state.paths().data_dir).into(), cols, rows).await?;
-        let fingerprint = opened.fingerprint.clone();
-        let host_key = match opened.verdict {
-            HostKeyVerdict::Match => "match",
-            HostKeyVerdict::FirstUse => "first-use",
-            HostKeyVerdict::Mismatch { .. } => "mismatch",
-        };
-
-        let task_session = session_id.clone();
-        let task_close = close_rx.clone();
-
-        let join = tokio::spawn(async move {
-            let pump_fut = pump::run(out_rx, sink, task_close.clone());
-            let io_fut = session::run_io(opened, input_rx, resize_rx, task_close, out_tx);
-            tokio::join!(io_fut, pump_fut);
-            tracing::debug!(session = %task_session, "ssh terminal task finished");
-        });
-
-        ("ssh", fingerprint, host_key, join)
+    // Connect *before* spawning so authentication errors surface as a command
+    // error instead of a mysterious empty terminal.
+    let opened = session::open(
+        &cfg,
+        state.known_hosts().clone(),
+        cols,
+        rows,
+        state.forward_manager().remote_routes(),
+    )
+    .await?;
+    let fingerprint = opened.fingerprint.clone();
+    let host_key = match opened.verdict {
+        HostKeyVerdict::Match => "match",
+        HostKeyVerdict::FirstUse => "first-use",
+        HostKeyVerdict::Mismatch { .. } => "mismatch",
     };
+
+    let task_close = close_rx.clone();
+    let task_terminal = terminal_id.clone();
+    // SFTP / port forwarding reuse this exact connection, so keep a clone of
+    // the handle before `opened` is moved into the io task.
+    state
+        .register_connection(terminal_id.clone(), opened.handle.clone())
+        .await;
+    let join = tokio::spawn(async move {
+        let pump_fut = pump::run(out_rx, sink, task_close.clone());
+        let io_fut = session::run_io(opened, input_rx, resize_rx, task_close, out_tx);
+        tokio::join!(io_fut, pump_fut);
+        tracing::debug!(terminal = %task_terminal, "ssh terminal task finished");
+    });
 
     state
         .insert_session(
-            session_id.clone(),
-            SessionHandle::new(session_id.clone(), input_tx, resize_tx, close_tx, join),
+            terminal_id.clone(),
+            SessionHandle::new(terminal_id.clone(), input_tx, resize_tx, close_tx, join),
         )
         .await;
 
     tracing::info!(
-        session = %session_id,
-        transport,
-        endpoint = %endpoint,
-        user = %username,
+        terminal = %terminal_id,
+        session = session_id,
+        endpoint = %cfg.endpoint(),
+        user = %cfg.username,
         fingerprint = %fingerprint,
         host_key,
         cols,
         rows,
-        "terminal session opened"
+        "terminal opened"
     );
 
     Ok(OpenSessionResult {
+        terminal_id,
         session_id,
-        title: title.unwrap_or_else(|| format!("{username}@{endpoint}")),
+        title: record.name,
         cols,
         rows,
-        transport,
-        endpoint,
-        username,
+        endpoint: cfg.endpoint(),
+        username: cfg.username,
         fingerprint,
         host_key,
     })
@@ -220,7 +205,7 @@ pub async fn ssh_open(
 #[tauri::command]
 pub async fn ssh_write(
     state: State<'_, AppState>,
-    session_id: String,
+    terminal_id: String,
     data: Vec<u8>,
 ) -> Result<(), AppError> {
     if data.is_empty() {
@@ -228,16 +213,16 @@ pub async fn ssh_write(
     }
 
     tracing::info!(
-        session = %session_id,
+        terminal = %terminal_id,
         bytes = data.len(),
         preview = %escape_preview(&data),
         "terminal input"
     );
 
-    let tx = state.input_sender(&session_id).await?;
+    let tx = state.input_sender(&terminal_id).await?;
     tx.send(data)
         .await
-        .map_err(|_| AppError::SessionClosed(session_id.clone()))?;
+        .map_err(|_| AppError::SessionClosed(terminal_id.clone()))?;
     Ok(())
 }
 
@@ -246,26 +231,33 @@ pub async fn ssh_write(
 #[tauri::command]
 pub async fn ssh_resize(
     state: State<'_, AppState>,
-    session_id: String,
+    terminal_id: String,
     cols: u16,
     rows: u16,
 ) -> Result<(), AppError> {
     let cols = resolve_size(Some(cols), DEFAULT_COLS, MIN_COLS, MAX_COLS, "cols")?;
     let rows = resolve_size(Some(rows), DEFAULT_ROWS, MIN_ROWS, MAX_ROWS, "rows")?;
 
-    state.request_resize(&session_id, cols, rows).await?;
-    tracing::info!(session = %session_id, cols, rows, "terminal resize");
+    state.request_resize(&terminal_id, cols, rows).await?;
+    tracing::info!(terminal = %terminal_id, cols, rows, "terminal resize");
     Ok(())
 }
 
 #[tauri::command]
-pub async fn ssh_close(state: State<'_, AppState>, session_id: String) -> Result<(), AppError> {
+pub async fn ssh_close(
+    state: State<'_, AppState>,
+    terminal_id: String,
+) -> Result<(), AppError> {
     let handle = state
-        .remove_session(&session_id)
+        .remove_session(&terminal_id)
         .await
-        .ok_or_else(|| AppError::SessionNotFound(session_id.clone()))?;
+        .ok_or_else(|| AppError::SessionNotFound(terminal_id.clone()))?;
+
+    state.drop_sftp(&terminal_id).await;
+    state.drop_connection(&terminal_id).await;
+    state.forward_manager().stop_all_for_terminal(&terminal_id).await;
 
     let outcome = handle.close(DEFAULT_CLOSE_TIMEOUT).await;
-    tracing::info!(session = %session_id, ?outcome, "terminal session closed");
+    tracing::info!(terminal = %terminal_id, ?outcome, "terminal closed");
     Ok(())
 }

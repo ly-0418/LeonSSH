@@ -24,6 +24,18 @@ pub enum AppError {
     #[error("SSH 错误: {0}")]
     Ssh(String),
 
+    #[error("未找到: {0}")]
+    NotFound(String),
+
+    #[error("凭据存储失败: {0}")]
+    Secret(String),
+
+    #[error("SFTP 错误: {0}")]
+    Sftp(String),
+
+    #[error("端口转发错误: {0}")]
+    Forward(String),
+
     #[error("内部错误: {0}")]
     Internal(String),
 }
@@ -37,8 +49,19 @@ impl AppError {
             Self::InvalidArgument(_) => "invalid_argument",
             Self::HostKeyMismatch(_) => "host_key_mismatch",
             Self::Ssh(_) => "ssh_error",
+            Self::NotFound(_) => "not_found",
+            Self::Secret(_) => "secret_error",
+            Self::Sftp(_) => "sftp_error",
+            Self::Forward(_) => "forward_error",
             Self::Internal(_) => "internal",
         }
+    }
+}
+
+impl From<sqlx::Error> for AppError {
+    fn from(value: sqlx::Error) -> Self {
+        tracing::error!(error = %value, "sqlite error");
+        Self::Internal(format!("数据库错误: {value}"))
     }
 }
 
@@ -75,6 +98,8 @@ mod tests {
         assert_eq!(AppError::SessionClosed("x".into()).code(), "session_closed");
         assert_eq!(AppError::HostKeyMismatch("x".into()).code(), "host_key_mismatch");
         assert_eq!(AppError::Ssh("x".into()).code(), "ssh_error");
+        assert_eq!(AppError::NotFound("x".into()).code(), "not_found");
+        assert_eq!(AppError::Secret("x".into()).code(), "secret_error");
         assert_eq!(AppError::Internal("x".into()).code(), "internal");
     }
 }

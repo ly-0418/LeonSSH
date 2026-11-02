@@ -1,19 +1,18 @@
-//! Trust-on-first-use host key pinning.
+//! Trust-on-first-use host key pinning, backed by the SQLite `known_hosts` table.
 //!
-//! Phase 2 keeps the pins in `<data_dir>/known_hosts.json`; phase 3 migrates
-//! the same data into the SQLite `known_hosts` table. The *policy* lives here
-//! and does not change: a pin is recorded on first successful connection, and
-//! a later mismatch refuses the connection.
+//! Policy (unchanged since phase 2): a pin is written after the first
+//! *successful* authentication, and any later mismatch refuses the connection.
+//! Pins are cached in memory so `check_server_key` (which must answer
+//! synchronously inside the SSH handshake) never touches the database.
 
-use std::collections::BTreeMap;
-use std::fs;
-use std::io;
-use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::collections::HashMap;
+use std::sync::RwLock;
 
 use russh::keys::{HashAlg, PublicKeyOrCertificate};
+use serde::Serialize;
+use sqlx::SqlitePool;
 
-const FILE_NAME: &str = "known_hosts.json";
+use crate::error::AppError;
 
 /// OpenSSH style `SHA256:...` fingerprint (no padding), identical to what
 /// `ssh-keygen -lf` prints.
@@ -38,26 +37,35 @@ pub enum HostKeyVerdict {
     Mismatch { stored: String },
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KnownHostEntry {
+    pub endpoint: String,
+    pub fingerprint: String,
+    pub added_at: String,
+}
+
 pub struct KnownHosts {
-    path: PathBuf,
-    entries: Mutex<BTreeMap<String, String>>,
+    entries: RwLock<HashMap<String, String>>,
+    pool: SqlitePool,
 }
 
 impl KnownHosts {
-    pub fn load(data_dir: &Path) -> Self {
-        let path = data_dir.join(FILE_NAME);
-        let entries = fs::read_to_string(&path)
-            .ok()
-            .and_then(|raw| serde_json::from_str::<BTreeMap<String, String>>(&raw).ok())
-            .unwrap_or_default();
-        Self {
-            path,
-            entries: Mutex::new(entries),
-        }
+    pub async fn load(pool: SqlitePool) -> Result<Self, AppError> {
+        let rows: Vec<(String, String)> =
+            sqlx::query_as("SELECT endpoint, fingerprint FROM known_hosts")
+                .fetch_all(&pool)
+                .await?;
+        let entries = rows.into_iter().collect::<HashMap<_, _>>();
+        tracing::debug!(pins = entries.len(), "known_hosts loaded");
+        Ok(Self {
+            entries: RwLock::new(entries),
+            pool,
+        })
     }
 
     pub fn verify(&self, endpoint: &str, actual: &str) -> HostKeyVerdict {
-        let entries = self.entries.lock().expect("known_hosts poisoned");
+        let entries = self.entries.read().expect("known_hosts poisoned");
         match entries.get(endpoint) {
             None => HostKeyVerdict::FirstUse,
             Some(stored) if stored == actual => HostKeyVerdict::Match,
@@ -68,76 +76,65 @@ impl KnownHosts {
     }
 
     /// Persists a newly pinned fingerprint (first successful connection).
-    pub fn record(&self, endpoint: &str, actual: &str) -> io::Result<()> {
-        {
-            let mut entries = self.entries.lock().expect("known_hosts poisoned");
-            if entries.get(endpoint).map(String::as_str) == Some(actual) {
-                return Ok(());
-            }
-            entries.insert(endpoint.to_string(), actual.to_string());
-        }
-        self.persist()
+    pub async fn record(&self, endpoint: &str, actual: &str) -> Result<(), AppError> {
+        sqlx::query(
+            "INSERT INTO known_hosts (endpoint, fingerprint) VALUES (?, ?) \
+             ON CONFLICT(endpoint) DO UPDATE SET fingerprint = excluded.fingerprint",
+        )
+        .bind(endpoint)
+        .bind(actual)
+        .execute(&self.pool)
+        .await?;
+
+        self.entries
+            .write()
+            .expect("known_hosts poisoned")
+            .insert(endpoint.to_string(), actual.to_string());
+        tracing::info!(endpoint, fingerprint = actual, "host key pinned");
+        Ok(())
     }
 
     /// Removes a pin — used when the user explicitly accepts a new key.
-    /// Phase 2 only exercises this from tests; phase 3 wires it to the UI.
-    #[cfg(test)]
-    pub fn forget(&self, endpoint: &str) -> io::Result<()> {
-        {
-            let mut entries = self.entries.lock().expect("known_hosts poisoned");
-            if entries.remove(endpoint).is_none() {
-                return Ok(());
-            }
-        }
-        self.persist()
+    pub async fn forget(&self, endpoint: &str) -> Result<(), AppError> {
+        sqlx::query("DELETE FROM known_hosts WHERE endpoint = ?")
+            .bind(endpoint)
+            .execute(&self.pool)
+            .await?;
+        self.entries
+            .write()
+            .expect("known_hosts poisoned")
+            .remove(endpoint);
+        Ok(())
     }
 
-    fn persist(&self) -> io::Result<()> {
-        let snapshot = {
-            let entries = self.entries.lock().expect("known_hosts poisoned");
-            entries.clone()
-        };
-        if let Some(parent) = self.path.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        let json = serde_json::to_string_pretty(&snapshot)
-            .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
-        let tmp = self.path.with_extension("json.tmp");
-        fs::write(&tmp, json)?;
-        match fs::rename(&tmp, &self.path) {
-            Ok(()) => Ok(()),
-            Err(_) => {
-                // Windows fails to rename onto an existing file in some cases.
-                let _ = fs::remove_file(&self.path);
-                fs::rename(&tmp, &self.path)
-            }
-        }
+    pub async fn list(&self) -> Result<Vec<KnownHostEntry>, AppError> {
+        let rows: Vec<(String, String, String)> =
+            sqlx::query_as("SELECT endpoint, fingerprint, added_at FROM known_hosts ORDER BY endpoint")
+                .fetch_all(&self.pool)
+                .await?;
+        Ok(rows
+            .into_iter()
+            .map(|(endpoint, fingerprint, added_at)| KnownHostEntry {
+                endpoint,
+                fingerprint,
+                added_at,
+            })
+            .collect())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::storage::test_db;
 
-    fn temp_dir(tag: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!(
-            "leonssh-kh-{tag}-{}",
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
-        fs::create_dir_all(&dir).unwrap();
-        dir
-    }
+    #[tokio::test]
+    async fn first_use_then_match_then_mismatch() {
+        let pool = test_db::open().await;
+        let store = KnownHosts::load(pool).await.unwrap();
 
-    #[test]
-    fn first_use_then_match_then_mismatch() {
-        let dir = temp_dir("basic");
-        let store = KnownHosts::load(&dir);
         assert_eq!(store.verify("h:22", "SHA256:aaa"), HostKeyVerdict::FirstUse);
-
-        store.record("h:22", "SHA256:aaa").unwrap();
+        store.record("h:22", "SHA256:aaa").await.unwrap();
         assert_eq!(store.verify("h:22", "SHA256:aaa"), HostKeyVerdict::Match);
         assert_eq!(
             store.verify("h:22", "SHA256:bbb"),
@@ -145,31 +142,37 @@ mod tests {
                 stored: "SHA256:aaa".into()
             }
         );
-
-        let _ = fs::remove_dir_all(&dir);
     }
 
-    #[test]
-    fn pin_survives_a_reload() {
-        let dir = temp_dir("reload");
+    #[tokio::test]
+    async fn pin_survives_a_reload() {
+        let pool = test_db::open().await;
         {
-            let store = KnownHosts::load(&dir);
-            store.record("h:22", "SHA256:ccc").unwrap();
+            let store = KnownHosts::load(pool.clone()).await.unwrap();
+            store.record("h:22", "SHA256:ccc").await.unwrap();
         }
-        let reloaded = KnownHosts::load(&dir);
+        let reloaded = KnownHosts::load(pool).await.unwrap();
         assert_eq!(reloaded.verify("h:22", "SHA256:ccc"), HostKeyVerdict::Match);
-        assert!(dir.join("known_hosts.json").is_file());
-
-        let _ = fs::remove_dir_all(&dir);
+        assert_eq!(reloaded.list().await.unwrap().len(), 1);
     }
 
-    #[test]
-    fn forget_removes_the_pin() {
-        let dir = temp_dir("forget");
-        let store = KnownHosts::load(&dir);
-        store.record("h:22", "SHA256:ddd").unwrap();
-        store.forget("h:22").unwrap();
+    #[tokio::test]
+    async fn forget_removes_the_pin() {
+        let pool = test_db::open().await;
+        let store = KnownHosts::load(pool).await.unwrap();
+        store.record("h:22", "SHA256:ddd").await.unwrap();
+        store.forget("h:22").await.unwrap();
         assert_eq!(store.verify("h:22", "SHA256:ddd"), HostKeyVerdict::FirstUse);
-        let _ = fs::remove_dir_all(&dir);
+        assert!(store.list().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn re_recording_updates_the_pin() {
+        let pool = test_db::open().await;
+        let store = KnownHosts::load(pool).await.unwrap();
+        store.record("h:22", "SHA256:old").await.unwrap();
+        store.record("h:22", "SHA256:new").await.unwrap();
+        assert_eq!(store.verify("h:22", "SHA256:new"), HostKeyVerdict::Match);
+        assert_eq!(store.list().await.unwrap().len(), 1);
     }
 }

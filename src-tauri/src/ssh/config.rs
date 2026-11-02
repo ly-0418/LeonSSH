@@ -1,17 +1,9 @@
 //! Connection profile.
 //!
-//! Phase 2 deliberately uses a *fixed* profile so the transport can be proven
-//! before any UI exists. Every field can be overridden with an environment
-//! variable, which is enough for manual acceptance and for integration tests:
-//!
-//! ```text
-//! LEONSSH_SSH_HOST=127.0.0.1
-//! LEONSSH_SSH_PORT=2222
-//! LEONSSH_SSH_USER=test
-//! LEONSSH_SSH_PASSWORD=test
-//! ```
+//! Phase 3 builds this from a stored session row plus the password fetched from
+//! the Windows Credential Manager. The password never lives in the profile for
+//! longer than one connect call, and `Debug` redacts it.
 
-use std::env;
 use std::fmt;
 use std::time::Duration;
 
@@ -42,26 +34,24 @@ pub struct SshConfig {
 }
 
 impl SshConfig {
-    pub const DEFAULT_HOST: &'static str = "127.0.0.1";
-    pub const DEFAULT_PORT: u16 = 2222;
-    pub const DEFAULT_USER: &'static str = "test";
-    pub const DEFAULT_PASSWORD: &'static str = "test";
-
-    /// The fixed phase-2 profile.
-    pub fn fixed() -> Self {
-        let host = env::var("LEONSSH_SSH_HOST").unwrap_or_else(|_| Self::DEFAULT_HOST.to_string());
-        let port = env::var("LEONSSH_SSH_PORT")
-            .ok()
-            .and_then(|raw| raw.parse().ok())
-            .unwrap_or(Self::DEFAULT_PORT);
-        let username =
-            env::var("LEONSSH_SSH_USER").unwrap_or_else(|_| Self::DEFAULT_USER.to_string());
-        let password = env::var("LEONSSH_SSH_PASSWORD")
-            .unwrap_or_else(|_| Self::DEFAULT_PASSWORD.to_string());
-        Self::new(host, port, username, password)
+    /// Builds a profile from a stored session plus its keyring password.
+    pub fn from_session(
+        record: &crate::storage::sessions::SessionRecord,
+        password: Option<String>,
+    ) -> Self {
+        Self {
+            host: record.host.clone(),
+            port: record.port.clamp(1, u16::MAX as i64) as u16,
+            username: record.username.clone(),
+            auth: AuthMethod::Password(password.unwrap_or_default()),
+            term: "xterm-256color".to_string(),
+            connect_timeout: Duration::from_secs(12),
+        }
     }
 
-    /// Explicit profile, used by tests.
+    /// Explicit profile. Production code goes through [`SshConfig::from_session`];
+    /// tests and the docker acceptance suite build profiles directly.
+    #[cfg(test)]
     pub fn new(
         host: impl Into<String>,
         port: u16,

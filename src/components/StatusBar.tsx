@@ -28,7 +28,7 @@ export function StatusBar({ status, info }: StatusBarProps) {
       <span className="chip">
         PTY {status.cols || "—"}×{status.rows || "—"}
       </span>
-      <span className="chip chip--muted">session {status.sessionId ?? "—"}</span>
+      <span className="chip chip--muted">terminal {status.terminalId ?? "—"}</span>
       {status.endpoint !== undefined && (
         <span className="chip chip--host" title={`主机密钥指纹：${status.fingerprint ?? "—"}`}>
           {status.endpoint}

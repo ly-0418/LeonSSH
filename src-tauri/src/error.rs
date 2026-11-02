@@ -36,6 +36,9 @@ pub enum AppError {
     #[error("端口转发错误: {0}")]
     Forward(String),
 
+    #[error("传输错误: {0}")]
+    Transfer(String),
+
     #[error("内部错误: {0}")]
     Internal(String),
 }
@@ -53,6 +56,7 @@ impl AppError {
             Self::Secret(_) => "secret_error",
             Self::Sftp(_) => "sftp_error",
             Self::Forward(_) => "forward_error",
+            Self::Transfer(_) => "transfer_error",
             Self::Internal(_) => "internal",
         }
     }

@@ -7,6 +7,8 @@ interface FileTableProps {
   selected: string[];
   showPermissions?: boolean;
   loading: boolean;
+  /** Rows can be dragged to the other pane (native HTML5 drag). */
+  draggable?: boolean;
   onSelect: (name: string, mode: SelectionMode) => void;
   onOpen: (entry: FileEntry) => void;
 }
@@ -16,6 +18,7 @@ export function FileTable({
   selected,
   showPermissions = false,
   loading,
+  draggable = false,
   onSelect,
   onOpen,
 }: FileTableProps) {
@@ -47,6 +50,15 @@ export function FileTable({
               )
             }
             onDoubleClick={() => onOpen(entry)}
+            draggable={draggable}
+            onDragStart={(event) => {
+              if (!draggable) {
+                return;
+              }
+              event.dataTransfer.setData("application/x-leonssh-path", entry.path);
+              event.dataTransfer.setData("text/plain", entry.path);
+              event.dataTransfer.effectAllowed = "copy";
+            }}
             title={entry.path}
           >
             <span className={`fm-row__name${entry.isDir ? " fm-row__name--dir" : ""}`}>

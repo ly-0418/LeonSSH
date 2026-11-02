@@ -13,6 +13,7 @@ use tokio::sync::{mpsc, Mutex};
 use crate::error::AppError;
 use crate::forward::ForwardManager;
 use crate::paths::Paths;
+use crate::transfer::TransferManager;
 use crate::ssh::client::SharedHandle;
 use crate::ssh::hostkey::KnownHosts;
 use crate::terminal::registry::{SessionHandle, DEFAULT_CLOSE_TIMEOUT};
@@ -99,6 +100,7 @@ pub struct AppState {
     /// Cached SFTP subsystem sessions, keyed by terminal id.
     sftp: Mutex<HashMap<SessionId, Arc<SftpSession>>>,
     forward: ForwardManager,
+    transfer: Arc<TransferManager>,
 }
 
 impl AppState {
@@ -110,6 +112,7 @@ impl AppState {
             connections: Mutex::new(HashMap::new()),
             sftp: Mutex::new(HashMap::new()),
             forward: ForwardManager::new(),
+            transfer: Arc::new(TransferManager::new()),
             sessions: SessionRegistry::new(),
         }
     }
@@ -128,6 +131,10 @@ impl AppState {
 
     pub fn forward_manager(&self) -> &ForwardManager {
         &self.forward
+    }
+
+    pub fn transfer_manager(&self) -> &Arc<TransferManager> {
+        &self.transfer
     }
 
     pub fn sessions(&self) -> &SessionRegistry {

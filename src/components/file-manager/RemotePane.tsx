@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { FileEntry as PaneEntry } from "../../lib/fs/types";
 import { toUserMessage } from "../../lib/ipc/errors";
@@ -16,13 +16,30 @@ import { useFilePane, type PaneAdapter } from "./useFilePane";
 interface RemotePaneProps {
   terminalId: string | null;
   sessionTitle: string | null;
+  /** Highlight when a native drag from the OS is over the pane. */
+  dropActive?: boolean;
+  refreshToken?: number;
+  onPathChange?: (path: string) => void;
+  onSelectionChange?: (entries: PaneEntry[]) => void;
+  onOpenFile?: (entry: PaneEntry) => void;
+  /** Upload local paths (HTML5 drag from the local pane, or OS drop). */
+  onDropPaths?: (paths: string[]) => void;
 }
 
 /**
- * Right pane. Phase B: remote directory listing over the SFTP subsystem that is
- * opened on the *same* SSH connection as the terminal.
+ * Right pane: remote directory listing over the SFTP subsystem opened on the
+ * *same* SSH connection as the terminal.
  */
-export function RemotePane({ terminalId, sessionTitle }: RemotePaneProps) {
+export function RemotePane({
+  terminalId,
+  sessionTitle,
+  dropActive = false,
+  refreshToken,
+  onPathChange,
+  onSelectionChange,
+  onOpenFile,
+  onDropPaths,
+}: RemotePaneProps) {
   if (terminalId === null) {
     return (
       <section className="fm-pane fm-pane--placeholder">
@@ -32,12 +49,23 @@ export function RemotePane({ terminalId, sessionTitle }: RemotePaneProps) {
           <p className="fm-placeholder__text">先回到终端连接一台服务器，远程面板会自动绑定该连接。</p>
         </div>
         <footer className="fm-pane__foot">
-          <span>阶段 B</span>
+          <span>远程</span>
         </footer>
       </section>
     );
   }
-  return <RemotePaneConnected terminalId={terminalId} sessionTitle={sessionTitle} />;
+  return (
+    <RemotePaneConnected
+      terminalId={terminalId}
+      sessionTitle={sessionTitle}
+      dropActive={dropActive}
+      refreshToken={refreshToken}
+      onPathChange={onPathChange}
+      onSelectionChange={onSelectionChange}
+      onOpenFile={onOpenFile}
+      onDropPaths={onDropPaths}
+    />
+  );
 }
 
 function PlaceholderPathBar() {
@@ -58,9 +86,21 @@ function PlaceholderPathBar() {
 function RemotePaneConnected({
   terminalId,
   sessionTitle,
+  dropActive,
+  refreshToken,
+  onPathChange,
+  onSelectionChange,
+  onOpenFile,
+  onDropPaths,
 }: {
   terminalId: string;
   sessionTitle: string | null;
+  dropActive: boolean;
+  refreshToken?: number;
+  onPathChange?: (path: string) => void;
+  onSelectionChange?: (entries: PaneEntry[]) => void;
+  onOpenFile?: (entry: PaneEntry) => void;
+  onDropPaths?: (paths: string[]) => void;
 }) {
   const [home, setHome] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -115,7 +155,19 @@ function RemotePaneConnected({
     );
   }
 
-  return <RemotePaneLoaded terminalId={terminalId} home={home} sessionTitle={sessionTitle} />;
+  return (
+    <RemotePaneLoaded
+      terminalId={terminalId}
+      home={home}
+      sessionTitle={sessionTitle}
+      dropActive={dropActive}
+      refreshToken={refreshToken}
+      onPathChange={onPathChange}
+      onSelectionChange={onSelectionChange}
+      onOpenFile={onOpenFile}
+      onDropPaths={onDropPaths}
+    />
+  );
 }
 
 function toPaneEntry(entry: RemoteEntry): PaneEntry {
@@ -134,10 +186,22 @@ function RemotePaneLoaded({
   terminalId,
   home,
   sessionTitle,
+  dropActive,
+  refreshToken,
+  onPathChange,
+  onSelectionChange,
+  onOpenFile,
+  onDropPaths,
 }: {
   terminalId: string;
   home: string;
   sessionTitle: string | null;
+  dropActive?: boolean;
+  refreshToken?: number;
+  onPathChange?: (path: string) => void;
+  onSelectionChange?: (entries: PaneEntry[]) => void;
+  onOpenFile?: (entry: PaneEntry) => void;
+  onDropPaths?: (paths: string[]) => void;
 }) {
   const adapter = useMemo<PaneAdapter>(
     () => ({
@@ -150,8 +214,47 @@ function RemotePaneLoaded({
   );
   const pane = useFilePane(adapter);
 
+  useEffect(() => {
+    onPathChange?.(pane.path);
+  }, [pane.path, onPathChange]);
+
+  useEffect(() => {
+    onSelectionChange?.(pane.selectedEntries);
+  }, [pane.selectedEntries, onSelectionChange]);
+
+  const refreshRef = useRef(pane.refresh);
+  refreshRef.current = pane.refresh;
+  useEffect(() => {
+    if (refreshToken !== undefined && refreshToken > 0) {
+      void refreshRef.current();
+    }
+  }, [refreshToken]);
+
   return (
-    <section className="fm-pane">
+    <section
+      className={`fm-pane${dropActive === true ? " fm-pane--drop" : ""}`}
+      onDragOver={(event) => {
+        if (onDropPaths !== undefined) {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "copy";
+        }
+      }}
+      onDrop={(event) => {
+        if (onDropPaths === undefined) {
+          return;
+        }
+        event.preventDefault();
+        const custom = event.dataTransfer.getData("application/x-leonssh-path");
+        const text = custom.length > 0 ? custom : event.dataTransfer.getData("text/plain");
+        const paths = text
+          .split("\n")
+          .map((value) => value.trim())
+          .filter((value) => value.length > 0);
+        if (paths.length > 0) {
+          onDropPaths(paths);
+        }
+      }}
+    >
       <PathBar
         label="远程"
         path={pane.path}
@@ -169,6 +272,8 @@ function RemotePaneLoaded({
         onOpen={(entry) => {
           if (entry.isDir) {
             void pane.load(entry.path);
+          } else {
+            onOpenFile?.(entry);
           }
         }}
       />

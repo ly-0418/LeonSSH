@@ -1,4 +1,4 @@
-﻿//! SFTP file access.
+//! SFTP file access.
 //!
 //! The SFTP subsystem runs on a **new channel of the existing SSH connection**
 //! (`Handle::channel_open_session` + `request_subsystem("sftp")`), never on a
@@ -38,14 +38,14 @@ pub async fn open_subsystem(
     let channel = handle
         .channel_open_session()
         .await
-        .map_err(|err| AppError::Sftp(format!("鎵撳紑 SFTP 閫氶亾澶辫触: {err}")))?;
+        .map_err(|err| AppError::Sftp(format!("打开 SFTP 通道失败: {err}")))?;
     channel
         .request_subsystem(true, "sftp")
         .await
-        .map_err(|err| AppError::Sftp(format!("璇锋眰 sftp 瀛愮郴缁熷け璐? {err}")))?;
+        .map_err(|err| AppError::Sftp(format!("请求 sftp 子系统失败: {err}")))?;
     SftpSession::new(channel.into_stream())
         .await
-        .map_err(|err| AppError::Sftp(format!("SFTP 鍒濆鍖栧け璐? {err}")))
+        .map_err(|err| AppError::Sftp(format!("SFTP 初始化失败: {err}")))
 }
 
 pub async fn list(sftp: &SftpSession, path: &str) -> Result<Vec<FileEntry>, AppError> {
@@ -54,7 +54,7 @@ pub async fn list(sftp: &SftpSession, path: &str) -> Result<Vec<FileEntry>, AppE
     let mut reader = sftp
         .read_dir(dir.clone())
         .await
-        .map_err(|err| AppError::Sftp(format!("璇诲彇鐩綍 {dir} 澶辫触: {err}")))?;
+        .map_err(|err| AppError::Sftp(format!("读取目录 {dir} 失败: {err}")))?;
 
     while let Some(entry) = reader.next() {
         let name = entry.file_name();
@@ -93,7 +93,7 @@ pub async fn stat(sftp: &SftpSession, path: &str) -> Result<FileEntry, AppError>
     let metadata = sftp
         .symlink_metadata(target.clone())
         .await
-        .map_err(|err| AppError::Sftp(format!("璇诲彇 {target} 鍏冩暟鎹け璐? {err}")))?;
+        .map_err(|err| AppError::Sftp(format!("读取 {target} 元数据失败: {err}")))?;
     let name = target
         .rsplit('/')
         .next()
@@ -114,7 +114,7 @@ pub async fn stat(sftp: &SftpSession, path: &str) -> Result<FileEntry, AppError>
 pub async fn mkdir(sftp: &SftpSession, path: &str) -> Result<(), AppError> {
     sftp.create_dir(normalize_remote(path))
         .await
-        .map_err(|err| AppError::Sftp(format!("鍒涘缓鐩綍澶辫触: {err}")))
+        .map_err(|err| AppError::Sftp(format!("创建目录失败: {err}")))
 }
 
 pub async fn remove(sftp: &SftpSession, path: &str, is_dir: bool) -> Result<(), AppError> {
@@ -124,7 +124,7 @@ pub async fn remove(sftp: &SftpSession, path: &str, is_dir: bool) -> Result<(), 
     } else {
         sftp.remove_file(path).await
     };
-    result.map_err(|err| AppError::Sftp(format!("鍒犻櫎澶辫触: {err}")))
+    result.map_err(|err| AppError::Sftp(format!("删除失败: {err}")))
 }
 
 pub async fn rename(sftp: &SftpSession, from: &str, to: &str) -> Result<(), AppError> {
@@ -141,7 +141,7 @@ pub async fn chmod(sftp: &SftpSession, path: &str, mode: u32) -> Result<(), AppE
     };
     sftp.set_metadata(normalize_remote(path), metadata)
         .await
-        .map_err(|err| AppError::Sftp(format!("淇敼鏉冮檺澶辫触: {err}")))
+        .map_err(|err| AppError::Sftp(format!("修改权限失败: {err}")))
 }
 
 // ----------------------------------------------------------------- transfer
@@ -160,7 +160,7 @@ pub async fn upload_file(
 
     let mut source = tokio::fs::File::open(local)
         .await
-        .map_err(|err| AppError::Sftp(format!("鎵撳紑鏈湴鏂囦欢澶辫触: {err}")))?;
+        .map_err(|err| AppError::Sftp(format!("打开本地文件失败: {err}")))?;
     let total = source
         .metadata()
         .await
@@ -170,7 +170,7 @@ pub async fn upload_file(
     let mut target = sftp
         .create(remote.to_string())
         .await
-        .map_err(|err| AppError::Sftp(format!("鍒涘缓杩滅鏂囦欢澶辫触: {err}")))?;
+        .map_err(|err| AppError::Sftp(format!("创建远端文件失败: {err}")))?;
 
     let mut buffer = vec![0u8; CHUNK_SIZE];
     let mut transferred = 0u64;
@@ -178,25 +178,25 @@ pub async fn upload_file(
         let read = source
             .read(&mut buffer)
             .await
-            .map_err(|err| AppError::Sftp(format!("璇诲彇鏈湴鏂囦欢澶辫触: {err}")))?;
+            .map_err(|err| AppError::Sftp(format!("读取本地文件失败: {err}")))?;
         if read == 0 {
             break;
         }
         target
             .write_all(&buffer[..read])
             .await
-            .map_err(|err| AppError::Sftp(format!("鍐欏叆杩滅澶辫触: {err}")))?;
+            .map_err(|err| AppError::Sftp(format!("写入远端失败: {err}")))?;
         transferred += read as u64;
         on_progress(transferred, total);
     }
     target
         .flush()
         .await
-        .map_err(|err| AppError::Sftp(format!("鍒锋柊杩滅鏂囦欢澶辫触: {err}")))?;
+        .map_err(|err| AppError::Sftp(format!("刷新远端文件失败: {err}")))?;
     target
         .shutdown()
         .await
-        .map_err(|err| AppError::Sftp(format!("鍏抽棴杩滅鏂囦欢澶辫触: {err}")))?;
+        .map_err(|err| AppError::Sftp(format!("关闭远端文件失败: {err}")))?;
     Ok(transferred)
 }
 
@@ -212,7 +212,7 @@ pub async fn download_file(
     let mut source = sftp
         .open(remote.to_string())
         .await
-        .map_err(|err| AppError::Sftp(format!("鎵撳紑杩滅鏂囦欢澶辫触: {err}")))?;
+        .map_err(|err| AppError::Sftp(format!("打开远端文件失败: {err}")))?;
     let total = sftp
         .metadata(remote.to_string())
         .await
@@ -222,7 +222,7 @@ pub async fn download_file(
 
     let mut target = tokio::fs::File::create(local)
         .await
-        .map_err(|err| AppError::Sftp(format!("鍒涘缓鏈湴鏂囦欢澶辫触: {err}")))?;
+        .map_err(|err| AppError::Sftp(format!("创建本地文件失败: {err}")))?;
 
     let mut buffer = vec![0u8; CHUNK_SIZE];
     let mut transferred = 0u64;
@@ -230,21 +230,21 @@ pub async fn download_file(
         let read = source
             .read(&mut buffer)
             .await
-            .map_err(|err| AppError::Sftp(format!("璇诲彇杩滅澶辫触: {err}")))?;
+            .map_err(|err| AppError::Sftp(format!("读取远端失败: {err}")))?;
         if read == 0 {
             break;
         }
         target
             .write_all(&buffer[..read])
             .await
-            .map_err(|err| AppError::Sftp(format!("鍐欏叆鏈湴鏂囦欢澶辫触: {err}")))?;
+            .map_err(|err| AppError::Sftp(format!("写入本地文件失败: {err}")))?;
         transferred += read as u64;
         on_progress(transferred, total);
     }
     target
         .flush()
         .await
-        .map_err(|err| AppError::Sftp(format!("鍒锋柊鏈湴鏂囦欢澶辫触: {err}")))?;
+        .map_err(|err| AppError::Sftp(format!("刷新本地文件失败: {err}")))?;
     Ok(transferred)
 }
 

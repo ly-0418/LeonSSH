@@ -14,6 +14,7 @@ mod ssh;
 mod state;
 mod storage;
 mod terminal;
+mod transfer;
 
 #[cfg(feature = "test-server")]
 pub use ssh::test_server as ssh_test_server;
@@ -195,6 +196,11 @@ pub fn run() {
             commands::forward::forward_start,
             commands::forward::forward_stop,
             commands::local::local_roots,
+            commands::transfer::transfer_attach,
+            commands::transfer::transfer_list,
+            commands::transfer::transfer_cancel,
+            commands::transfer::transfer_upload,
+            commands::transfer::transfer_download,
         ])
         .run(tauri::generate_context!())
         .expect("failed to start LeonSSH");

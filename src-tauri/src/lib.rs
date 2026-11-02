@@ -5,6 +5,7 @@
 //! `terminal` is the transport-agnostic byte pipeline.
 
 mod commands;
+mod editor;
 mod error;
 mod forward;
 mod paths;
@@ -149,16 +150,18 @@ pub fn run() {
                     // Cooperative teardown: stop listeners/forwards first, then
                     // close every session. Handles are cloned so the borrow of
                     // `handle` ends before the async block.
-                    let (registry, forwards) = {
+                    let (registry, forwards, editors) = {
                         let state = handle.state::<AppState>();
                         (
                             state.sessions().clone(),
                             state.forward_manager().clone(),
+                            state.editor_manager().clone(),
                         )
                     };
                     tauri::async_runtime::spawn(async move {
                         forwards.stop_all().await;
                         registry.close_all().await;
+                        editors.cleanup_all();
                     });
                 }
             });
@@ -201,6 +204,10 @@ pub fn run() {
             commands::transfer::transfer_cancel,
             commands::transfer::transfer_upload,
             commands::transfer::transfer_download,
+            commands::editor::editor_open,
+            commands::editor::editor_save,
+            commands::editor::editor_save_as,
+            commands::editor::editor_close,
         ])
         .run(tauri::generate_context!())
         .expect("failed to start LeonSSH");

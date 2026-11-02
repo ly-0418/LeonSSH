@@ -24,6 +24,7 @@ Windows 优先的可视化 SSH 客户端。**阶段 1–5 全部完成**：二�
 | 3 | SQLite `sessions`/`known_hosts`、密码进 Windows 凭据管理器、多标签、连接表单、已知主机管理 |
 | 4 | 同连接 SFTP 子系统、本地/远程双面板、上传下载（32 KiB 分块 + 进度）、删除/重命名/新建目录/改权限 |
 | 5 | `-L` 本地转发、`-R` 远程转发、`-D` SOCKS5、规则随会话持久化、关闭自动回收 |
+| 6 | 双栏文件管理器：本地（plugin-fs）/远程（同连接 SFTP）、256 KiB 流式传输、**断点续传**、任务队列、拖拽上传、远程在线编辑（CodeMirror 6） |
 
 ## 快速开始
 
@@ -47,8 +48,8 @@ pnpm tauri build
 
 | 产物 | 路径 | 大小 |
 | --- | --- | --- |
-| 免安装可执行文件 | `src-tauri/target/release/leonssh.exe` | 13.67 MB |
-| NSIS 安装包 | `src-tauri/target/release/bundle/nsis/LeonSSH_0.1.0_x64-setup.exe` | 3.65 MB |
+| 免安装可执行文件 | `src-tauri/target/release/leonssh.exe` | 15.77 MB |
+| NSIS 安装包 | `src-tauri/target/release/bundle/nsis/LeonSSH_0.1.0_x64-setup.exe` | 4.41 MB |
 
 安装包 `installMode: currentUser`，默认装到 `%LOCALAPPDATA%\LeonSSH`；卸载删除程序与快捷方式，保留 `data/`。
 
@@ -63,6 +64,7 @@ pnpm tauri build
    ├─ leonssh.db       SQLite：sessions / known_hosts / forwards
    ├─ logs/            leonssh.log.YYYY-MM-DD
    ├─ cache/           预留
+   ├─ edit/            远程在线编辑的临时工作区（退出时清理）
    └─ webview/         WebView2 用户数据目录
 ```
 
@@ -73,11 +75,29 @@ pnpm tauri build
 
 ```powershell
 cd src-tauri
-cargo test                      # 43 个单元/集成测试
-cargo test -- --ignored         # 4 个需要 docker sshd 的端到端测试
+cargo test                      # 53 个单元/集成测试
+cargo test -- --ignored         # 7 个需要 docker sshd 的端到端测试
 ```
 
-需要容器的四个：终端（颜色/htop/vim/tmux/resize）、SFTP 往返、端口转发（-L/-D）、种子脚本。
+需要容器的七个：终端（颜色/htop/vim/tmux/resize）、SFTP 往返、端口转发（-L/-D）、种子脚本、
+传输断点续传（上传+下载）、600 MB 流式上传、远程编辑往返（打开/保存/另存为/清理）。
+
+## 文件管理器（增量阶段 A–D）
+
+| 阶段 | 能力 | 验收 |
+| --- | --- | --- |
+| A | 双栏骨架 + 本地浏览（`@tauri-apps/plugin-fs`，盘符/路径栏/多选） | [fm-phase-a](docs/fm-phase-a.md) |
+| B | 远程 SFTP 列表（同一条 SSH 连接）、权限列、Rust 侧排序、路径守卫 | [fm-phase-b](docs/fm-phase-b.md) |
+| C | 256 KiB 流式上传下载、断点续传、队列（进度/速度/取消）、拖拽、双击下载 | [fm-phase-c](docs/fm-phase-c.md) |
+| D | 远程在线编辑：临时目录 + CodeMirror 6 + 另存为 + 一致性校验 | [fm-phase-d](docs/fm-phase-d.md) |
+
+自动化/调试用深链（正常启动不受影响）：
+
+```powershell
+$env:LEONSSH_START_VIEW = "files"          # 直接打开文件管理视图
+$env:LEONSSH_START_LOCAL = "C:\Windows"    # 左栏初始目录
+$env:LEONSSH_AUTO_SESSION = "2"            # 自动连接 sessions 表里 id=2 的会话
+```
 
 ## 验收文档与截图
 

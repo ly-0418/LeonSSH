@@ -14,7 +14,10 @@ use crate::transfer::task::TransferTask;
 
 /// The SFTP subsystem for this terminal, opened on demand on the *existing*
 /// SSH connection (never a new one).
-async fn ensure_sftp(state: &AppState, terminal_id: &str) -> Result<Arc<SftpSession>, AppError> {
+pub(crate) async fn ensure_sftp(
+    state: &AppState,
+    terminal_id: &str,
+) -> Result<Arc<SftpSession>, AppError> {
     if let Ok(session) = state.sftp(terminal_id).await {
         return Ok(session);
     }

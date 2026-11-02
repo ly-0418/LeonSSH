@@ -256,6 +256,7 @@ pub async fn ssh_close(
     state.drop_sftp(&terminal_id).await;
     state.drop_connection(&terminal_id).await;
     state.forward_manager().stop_all_for_terminal(&terminal_id).await;
+    state.editor_manager().cleanup_terminal(&terminal_id);
 
     let outcome = handle.close(DEFAULT_CLOSE_TIMEOUT).await;
     tracing::info!(terminal = %terminal_id, ?outcome, "terminal closed");

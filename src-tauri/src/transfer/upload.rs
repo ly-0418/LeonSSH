@@ -16,7 +16,30 @@ pub async fn upload(
     local: &Path,
     remote: &str,
     cancel: &AtomicBool,
+    progress: impl FnMut(u64, u64),
+) -> Result<TransferOutcome, AppError> {
+    upload_inner(sftp, local, remote, cancel, progress, false).await
+}
+
+/// Overwrites the remote file from offset 0 (used by the online editor:
+/// resume semantics would keep stale bytes when the text got shorter).
+pub async fn upload_overwrite(
+    sftp: &SftpSession,
+    local: &Path,
+    remote: &str,
+    cancel: &AtomicBool,
+    progress: impl FnMut(u64, u64),
+) -> Result<TransferOutcome, AppError> {
+    upload_inner(sftp, local, remote, cancel, progress, true).await
+}
+
+async fn upload_inner(
+    sftp: &SftpSession,
+    local: &Path,
+    remote: &str,
+    cancel: &AtomicBool,
     mut progress: impl FnMut(u64, u64),
+    overwrite: bool,
 ) -> Result<TransferOutcome, AppError> {
     let meta = tokio::fs::metadata(local).await.map_err(|err| {
         AppError::Transfer(format!("读取本地文件 {} 失败: {err}", local.display()))
@@ -30,9 +53,13 @@ pub async fn upload(
     let total = meta.len();
 
     // Existing remote file size decides whether we resume.
-    let remote_size = match sftp.metadata(remote.to_string()).await {
-        Ok(metadata) => metadata.size.unwrap_or(0),
-        Err(_) => 0,
+    let remote_size = if overwrite {
+        0
+    } else {
+        match sftp.metadata(remote.to_string()).await {
+            Ok(metadata) => metadata.size.unwrap_or(0),
+            Err(_) => 0,
+        }
     };
 
     let plan = stream::plan(total, remote_size);

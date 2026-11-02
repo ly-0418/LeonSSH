@@ -11,6 +11,7 @@ use sqlx::SqlitePool;
 use tokio::sync::{mpsc, Mutex};
 
 use crate::error::AppError;
+use crate::editor::EditorManager;
 use crate::forward::ForwardManager;
 use crate::paths::Paths;
 use crate::transfer::TransferManager;
@@ -101,10 +102,12 @@ pub struct AppState {
     sftp: Mutex<HashMap<SessionId, Arc<SftpSession>>>,
     forward: ForwardManager,
     transfer: Arc<TransferManager>,
+    editors: Arc<EditorManager>,
 }
 
 impl AppState {
     pub fn new(paths: Paths, db: SqlitePool, known_hosts: Arc<KnownHosts>) -> Self {
+        let editors = Arc::new(EditorManager::new(paths.data_dir.join("edit")));
         Self {
             paths,
             db,
@@ -113,6 +116,7 @@ impl AppState {
             sftp: Mutex::new(HashMap::new()),
             forward: ForwardManager::new(),
             transfer: Arc::new(TransferManager::new()),
+            editors,
             sessions: SessionRegistry::new(),
         }
     }
@@ -135,6 +139,10 @@ impl AppState {
 
     pub fn transfer_manager(&self) -> &Arc<TransferManager> {
         &self.transfer
+    }
+
+    pub fn editor_manager(&self) -> &Arc<EditorManager> {
+        &self.editors
     }
 
     pub fn sessions(&self) -> &SessionRegistry {

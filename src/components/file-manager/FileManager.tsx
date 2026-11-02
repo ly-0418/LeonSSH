@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
+import { isEditableFile } from "../../lib/editor/codemirror";
 import type { FileEntry } from "../../lib/fs/types";
 import { fileName, joinLocal } from "../../lib/fs/paths";
+import { openEditor, type EditorFile } from "../../lib/ipc/editor";
 import { toUserMessage } from "../../lib/ipc/errors";
 import { joinPath } from "../../lib/ipc/sftp";
 import { startDownload, startUpload } from "../../lib/ipc/transfers";
+import { EditorPanel } from "./EditorPanel";
 import { LocalPane } from "./LocalPane";
 import { RemotePane } from "./RemotePane";
 import { TransferQueue } from "./TransferQueue";
@@ -34,6 +37,8 @@ export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: File
   const [remoteSelection, setRemoteSelection] = useState<FileEntry[]>([]);
   const [dropActive, setDropActive] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [editor, setEditor] = useState<EditorFile | null>(null);
+  const [editorRevision, setEditorRevision] = useState(0);
   const { tasks, speeds, error: transferError, revision, clearError, cancel } = useTransfers();
 
   const upload = useCallback(
@@ -80,6 +85,26 @@ export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: File
       }
     },
     [terminalId, localPath],
+  );
+
+  /** Double-click on a remote file: edit text files, download anything else. */
+  const openRemote = useCallback(
+    async (entry: FileEntry) => {
+      if (terminalId === null) {
+        return;
+      }
+      if (!isEditableFile(entry.name)) {
+        await download([entry]);
+        return;
+      }
+      try {
+        setMessage(null);
+        setEditor(await openEditor(terminalId, entry.path));
+      } catch (err) {
+        setMessage(toUserMessage(err));
+      }
+    },
+    [terminalId, download],
   );
 
   /** Paths dropped from the OS (Explorer) or dragged from the local pane. */
@@ -187,7 +212,7 @@ export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: File
       <div className="fm-panes">
         <LocalPane
           initialPath={initialLocal}
-          refreshToken={revision}
+          refreshToken={revision + editorRevision}
           onPathChange={setLocalPath}
           onSelectionChange={setLocalSelection}
           onOpenFile={() => setMessage("双击本地文件不会上传；可选中后点「上传」")}
@@ -196,15 +221,23 @@ export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: File
           terminalId={terminalId}
           sessionTitle={sessionTitle}
           dropActive={dropActive}
-          refreshToken={revision}
+          refreshToken={revision + editorRevision}
           onPathChange={setRemotePath}
           onSelectionChange={setRemoteSelection}
-          onOpenFile={(entry) => void download([entry])}
+          onOpenFile={(entry) => void openRemote(entry)}
           onDropPaths={(paths) => void dropPaths(paths)}
         />
       </div>
 
       <TransferQueue tasks={tasks} speeds={speeds} onCancel={(id) => void cancel(id)} />
+
+      {editor !== null && (
+        <EditorPanel
+          file={editor}
+          onClose={() => setEditor(null)}
+          onSaved={() => setEditorRevision((value) => value + 1)}
+        />
+      )}
     </div>
   );
 }

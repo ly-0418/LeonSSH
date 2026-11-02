@@ -1,0 +1,32 @@
+{
+  "name": "leonssh",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "LeonSSH - a Windows-first visual SSH client (Tauri 2 + russh + xterm.js)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "icon": "tauri icon ./assets/icon.png"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.12.4",
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/addon-webgl": "0.19.0",
+    "@xterm/xterm": "6.0.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.2.1",
+    "typescript": "~6.0.3",
+    "vite": "8.3.5"
+  }
+}

@@ -1,0 +1,70 @@
+//! Error type shared by every Tauri command.
+//!
+//! Commands return `Result<T, AppError>`; the type serializes to
+//! `{ "code": "...", "message": "..." }` so the frontend can branch on `code`
+//! while still showing a human readable `message`.
+
+use serde::ser::SerializeStruct;
+use serde::{Serialize, Serializer};
+
+#[derive(Debug, thiserror::Error)]
+pub enum AppError {
+    #[error("会话不存在: {0}")]
+    SessionNotFound(String),
+
+    #[error("会话已关闭: {0}")]
+    SessionClosed(String),
+
+    #[error("参数非法: {0}")]
+    InvalidArgument(String),
+
+    #[error("内部错误: {0}")]
+    Internal(String),
+}
+
+impl AppError {
+    /// Stable machine readable identifier, mirrored in `src/lib/ipc/errors.ts`.
+    pub fn code(&self) -> &'static str {
+        match self {
+            Self::SessionNotFound(_) => "session_not_found",
+            Self::SessionClosed(_) => "session_closed",
+            Self::InvalidArgument(_) => "invalid_argument",
+            Self::Internal(_) => "internal",
+        }
+    }
+}
+
+impl From<std::io::Error> for AppError {
+    fn from(value: std::io::Error) -> Self {
+        Self::Internal(value.to_string())
+    }
+}
+
+impl Serialize for AppError {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut state = serializer.serialize_struct("AppError", 2)?;
+        state.serialize_field("code", self.code())?;
+        state.serialize_field("message", &self.to_string())?;
+        state.end()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn error_serializes_to_code_and_message() {
+        let err = AppError::SessionNotFound("s7".into());
+        let json = serde_json::to_value(&err).unwrap();
+        assert_eq!(json["code"], "session_not_found");
+        assert_eq!(json["message"], "会话不存在: s7");
+    }
+
+    #[test]
+    fn codes_are_stable() {
+        assert_eq!(AppError::InvalidArgument("x".into()).code(), "invalid_argument");
+        assert_eq!(AppError::SessionClosed("x".into()).code(), "session_closed");
+        assert_eq!(AppError::Internal("x".into()).code(), "internal");
+    }
+}

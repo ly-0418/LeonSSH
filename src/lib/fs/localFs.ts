@@ -1,0 +1,84 @@
+/** The single entry point for local filesystem access.
+ *
+ * Everything here goes through `@tauri-apps/plugin-fs`, which enforces the
+ * capability scope (widened at startup to the user profile + every drive root).
+ * No component may call `invoke` for local paths.
+ */
+
+import { invoke } from "@tauri-apps/api/core";
+import { homeDir } from "@tauri-apps/api/path";
+import { readDir, stat } from "@tauri-apps/plugin-fs";
+
+import type { FileEntry } from "./types";
+import { joinLocal, normalizeLocal } from "./paths";
+
+const STAT_CONCURRENCY = 8;
+
+export async function localHome(): Promise<string> {
+  const home = await homeDir();
+  return normalizeLocal(home.replace(/[\\/]+$/, ""));
+}
+
+export async function localRoots(): Promise<string[]> {
+  return invoke<string[]>("local_roots");
+}
+
+export function sortEntries(entries: FileEntry[]): FileEntry[] {
+  return [...entries].sort((a, b) => {
+    if (a.isDir !== b.isDir) {
+      return a.isDir ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
+  });
+}
+
+export async function listLocal(path: string): Promise<FileEntry[]> {
+  const target = normalizeLocal(path);
+  const entries = await readDir(target);
+  return sortEntries(
+    entries.map((entry) => ({
+      name: entry.name,
+      path: joinLocal(target, entry.name),
+      isDir: entry.isDirectory,
+      isSymlink: entry.isSymlink,
+      size: null,
+      mtimeMs: null,
+      permissions: null,
+    })),
+  );
+}
+
+/** Fills in size/mtime in the background so big folders render immediately.
+ *
+ * `readDir` does not return metadata, so this costs one `stat` per entry. A
+ * bounded worker pool keeps large directories responsive.
+ */
+export async function hydrateLocalStats(
+  entries: FileEntry[],
+  onPatch: (path: string, patch: Partial<FileEntry>) => void,
+): Promise<void> {
+  const queue = [...entries];
+  if (queue.length === 0) {
+    return;
+  }
+
+  const workers = Array.from({ length: Math.min(STAT_CONCURRENCY, queue.length) }, async () => {
+    for (;;) {
+      const entry = queue.shift();
+      if (entry === undefined) {
+        return;
+      }
+      try {
+        const info = await stat(entry.path);
+        onPatch(entry.path, {
+          size: entry.isDir ? null : (info.size ?? null),
+          mtimeMs: info.mtime ? new Date(info.mtime).getTime() : null,
+        });
+      } catch {
+        // A file may vanish between read_dir and stat; leave the placeholders.
+      }
+    }
+  });
+
+  await Promise.all(workers);
+}

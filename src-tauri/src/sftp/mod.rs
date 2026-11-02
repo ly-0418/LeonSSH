@@ -11,6 +11,8 @@ use serde::Serialize;
 
 use crate::error::AppError;
 
+pub mod path;
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileEntry {

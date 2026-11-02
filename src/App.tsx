@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { SessionForm } from "./components/SessionForm";
 import { Sidebar } from "./components/Sidebar";
-import { SftpPanel } from "./components/SftpPanel";
+import { FileManager } from "./components/file-manager/FileManager";
 import { ForwardPanel } from "./components/ForwardPanel";
 import { StatusBar } from "./components/StatusBar";
 import { TabBar, type TabItem } from "./components/TabBar";
@@ -38,7 +38,9 @@ export default function App() {
   const [editing, setEditing] = useState<SessionSummary | null>(null);
   const [pendingDelete, setPendingDelete] = useState<SessionSummary | null>(null);
   const [knownHostsOpen, setKnownHostsOpen] = useState(false);
-  const [sftpOpen, setSftpOpen] = useState(false);
+  const [view, setView] = useState<"terminal" | "files">(() =>
+    new URLSearchParams(window.location.search).get("view") === "files" ? "files" : "terminal",
+  );
   const [forwardOpen, setForwardOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -178,6 +180,8 @@ export default function App() {
 
       <div className="app-body">
         <Sidebar
+          view={view}
+          onChangeView={setView}
           sessions={sessions}
           activeSessionId={activeTab?.sessionId ?? null}
           onOpen={openTab}
@@ -194,18 +198,18 @@ export default function App() {
         />
 
         <main className="workspace">
-          <TabBar
-            tabs={tabs}
-            activeKey={activeKey}
-            onActivate={setActiveKey}
-            onClose={closeTab}
-            sftpOpen={sftpOpen}
-            onToggleSftp={() => setSftpOpen((open) => !open)}
-            forwardOpen={forwardOpen}
-            onToggleForward={() => setForwardOpen((open) => !open)}
-          />
+          {view === "terminal" && (
+            <TabBar
+              tabs={tabs}
+              activeKey={activeKey}
+              onActivate={setActiveKey}
+              onClose={closeTab}
+              forwardOpen={forwardOpen}
+              onToggleForward={() => setForwardOpen((open) => !open)}
+            />
+          )}
 
-          {mode === "form" ? (
+          {mode === "form" && view === "terminal" && (
             <div className="workspace__form">
               <SessionForm
                 key={editing?.id ?? "new"}
@@ -222,46 +226,51 @@ export default function App() {
                 }
               />
             </div>
-          ) : (
-            <div className="terminals">
-              {tabs.map((tab) => (
-                <div
-                  key={tab.key}
-                  className={`terminal-slot${tab.key === activeKey ? " terminal-slot--active" : ""}`}
-                >
-                  <TerminalTab
-                    sessionId={tab.sessionId}
-                    title={tab.title}
-                    visible={tab.key === activeKey}
-                    onStatus={makeStatusHandler(tab.key)}
-                  />
-                </div>
-              ))}
-              {tabs.length === 0 && (
-                <div className="workspace__empty">
-                  <p>从左侧选择一个会话，或新建一个。</p>
-                </div>
-              )}
-              {sftpOpen && activeTab?.status.terminalId != null && (
-                <div className="sftp-overlay">
-                  <SftpPanel
-                    terminalId={activeTab.status.terminalId}
-                    title={activeTab.title}
-                    onClose={() => setSftpOpen(false)}
-                  />
-                </div>
-              )}
-              {forwardOpen && activeTab?.status.terminalId != null && (
-                <div className="sftp-overlay">
-                  <ForwardPanel
-                    terminalId={activeTab.status.terminalId}
-                    sessionId={activeTab.sessionId}
-                    title={activeTab.title}
-                    onClose={() => setForwardOpen(false)}
-                  />
-                </div>
-              )}
-            </div>
+          )}
+
+          {/* Terminals stay mounted while the file manager is open so that the
+              SSH sessions (and their scrollback) survive view switches. */}
+          <div
+            className={`terminals${
+              view === "files" || mode === "form" ? " terminals--hidden" : ""
+            }`}
+          >
+            {tabs.map((tab) => (
+              <div
+                key={tab.key}
+                className={`terminal-slot${tab.key === activeKey ? " terminal-slot--active" : ""}`}
+              >
+                <TerminalTab
+                  sessionId={tab.sessionId}
+                  title={tab.title}
+                  visible={tab.key === activeKey}
+                  onStatus={makeStatusHandler(tab.key)}
+                />
+              </div>
+            ))}
+            {tabs.length === 0 && (
+              <div className="workspace__empty">
+                <p>从左侧选择一个会话，或新建一个。</p>
+              </div>
+            )}
+            {forwardOpen && activeTab?.status.terminalId != null && (
+              <div className="sftp-overlay">
+                <ForwardPanel
+                  terminalId={activeTab.status.terminalId}
+                  sessionId={activeTab.sessionId}
+                  title={activeTab.title}
+                  onClose={() => setForwardOpen(false)}
+                />
+              </div>
+            )}
+          </div>
+
+          {view === "files" && (
+            <FileManager
+              terminalId={activeTab?.status.terminalId ?? null}
+              sessionTitle={activeTab?.title ?? null}
+              onBackToTerminal={() => setView("terminal")}
+            />
           )}
         </main>
       </div>

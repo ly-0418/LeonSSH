@@ -19,8 +19,6 @@ interface TabBarProps {
   activeKey: string | null;
   onActivate: (key: string) => void;
   onClose: (key: string) => void;
-  sftpOpen: boolean;
-  onToggleSftp: () => void;
   forwardOpen: boolean;
   onToggleForward: () => void;
 }
@@ -30,8 +28,6 @@ export function TabBar({
   activeKey,
   onActivate,
   onClose,
-  sftpOpen,
-  onToggleSftp,
   forwardOpen,
   onToggleForward,
 }: TabBarProps) {
@@ -73,15 +69,6 @@ export function TabBar({
         </div>
       ))}
       <span className="tab-bar__spacer" />
-      <button
-        type="button"
-        className={`tab-bar__action${sftpOpen ? " tab-bar__action--active" : ""}`}
-        onClick={onToggleSftp}
-        disabled={activeKey === null}
-        title="SFTP 文件面板（复用当前 SSH 连接）"
-      >
-        文件
-      </button>
       <button
         type="button"
         className={`tab-bar__action${forwardOpen ? " tab-bar__action--active" : ""}`}

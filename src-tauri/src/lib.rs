@@ -19,10 +19,25 @@ mod terminal;
 pub use ssh::test_server as ssh_test_server;
 
 use tauri::Manager;
+use tauri_plugin_fs::FsExt;
 use tauri_plugin_sql::{DbInstances, DbPool};
 
 use crate::ssh::hostkey::KnownHosts;
 use crate::state::AppState;
+
+/// Minimal percent-encoding for the deep-link query string.
+fn urlencode(input: &str) -> String {
+    let mut out = String::with_capacity(input.len() * 3);
+    for byte in input.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(byte as char);
+            }
+            _ => out.push_str(&format!("%{byte:02X}")),
+        }
+    }
+    out
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -54,8 +69,27 @@ pub fn run() {
         // Registered so the frontend may use `@tauri-apps/plugin-sql` against the
         // very same pool (see `storage` module docs for why the file lives here).
         .plugin(tauri_plugin_sql::Builder::default().build())
+        // Local file manager: directory browsing/CRUD is done by the frontend
+        // through this plugin, never through ad-hoc `std::fs` commands.
+        .plugin(tauri_plugin_fs::init())
         .manage(app_state)
         .setup(move |app| {
+            // The fs plugin defaults to app-specific directories only. The file
+            // manager must browse the whole machine, so the runtime scope is
+            // widened to the user profile and every drive root.
+            {
+                let scope = app.fs_scope();
+                if let Some(home) = std::env::var_os("USERPROFILE") {
+                    if let Err(err) = scope.allow_directory(std::path::PathBuf::from(home), true) {
+                        tracing::warn!(%err, "cannot widen fs scope to the user profile");
+                    }
+                }
+                for root in commands::local::drive_roots() {
+                    if let Err(err) = scope.allow_directory(&root, true) {
+                        tracing::warn!(%err, root = %root, "cannot widen fs scope to a drive");
+                    }
+                }
+            }
             // Publish our pool into the plugin's state so `Database.get()` in the
             // frontend resolves to the database under the install directory
             // instead of the plugin's default `%APPDATA%` location.
@@ -74,11 +108,24 @@ pub fn run() {
 
             // The window is created programmatically (instead of via
             // tauri.conf.json) purely so `data_directory` can be set.
-            let window = tauri::WebviewWindowBuilder::new(
-                app,
-                "main",
-                tauri::WebviewUrl::App("index.html".into()),
-            )
+            // `LEONSSH_START_VIEW=files` deep-links straight into the file
+            // manager (handy for smoke tests / scripted screenshots).
+            let start_url = if std::env::var("LEONSSH_START_VIEW")
+                .map(|value| value.eq_ignore_ascii_case("files"))
+                .unwrap_or(false)
+            {
+                let local = std::env::var("LEONSSH_START_LOCAL").unwrap_or_default();
+                if local.is_empty() {
+                    tauri::WebviewUrl::App("index.html?view=files".into())
+                } else {
+                    tauri::WebviewUrl::App(
+                        format!("index.html?view=files&local={}", urlencode(&local)).into(),
+                    )
+                }
+            } else {
+                tauri::WebviewUrl::App("index.html".into())
+            };
+            let window = tauri::WebviewWindowBuilder::new(app, "main", start_url)
             .title("LeonSSH")
             .inner_size(1180.0, 760.0)
             .min_inner_size(760.0, 480.0)
@@ -139,6 +186,7 @@ pub fn run() {
             commands::forward::forward_delete,
             commands::forward::forward_start,
             commands::forward::forward_stop,
+            commands::local::local_roots,
         ])
         .run(tauri::generate_context!())
         .expect("failed to start LeonSSH");

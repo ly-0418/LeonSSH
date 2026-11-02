@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import "@xterm/xterm/css/xterm.css";
 import "./styles/global.css";
 import "./styles/layout.css";
+import "./styles/file-manager.css";
 import "./styles/terminal.css";
 
 import App from "./App";

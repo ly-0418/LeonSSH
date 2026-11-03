@@ -21,6 +21,16 @@ interface FileManagerProps {
   onOpenInTerminal?: (path: string) => void;
 }
 
+/** Per-session UI memory: paths and layout survive hide/show and tab switches. */
+interface FmMemory {
+  localPath: string;
+  remotePath: string;
+  split: number;
+  queueHeight: number;
+}
+
+const FM_MEMORY = new Map<string, FmMemory>();
+
 const MIN_SPLIT = 20;
 const MAX_SPLIT = 80;
 
@@ -37,6 +47,10 @@ export function FileManager({
   // Optional deep link: `?view=files&local=C%3A%5CWindows` opens the pane there.
   const initialLocal = new URLSearchParams(window.location.search).get("local") ?? undefined;
 
+  const memoryKey = terminalId ?? "none";
+
+  const remembered = FM_MEMORY.get(memoryKey);
+
   const [localPath, setLocalPath] = useState<string>("");
   const [remotePath, setRemotePath] = useState<string>("");
   const [localSelection, setLocalSelection] = useState<FileEntry[]>([]);
@@ -45,9 +59,9 @@ export function FileManager({
   const [message, setMessage] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorFile | null>(null);
   const [editorRevision, setEditorRevision] = useState(0);
-  const [splitPercent, setSplitPercent] = useState(50);
+  const [splitPercent, setSplitPercent] = useState(remembered?.split ?? 50);
   const [dragging, setDragging] = useState(false);
-  const [queueHeight, setQueueHeight] = useState(150);
+  const [queueHeight, setQueueHeight] = useState(remembered?.queueHeight ?? 150);
   const [conflict, setConflict] = useState<{ name: string } | null>(null);
   const conflictResolver = useRef<((choice: "overwrite" | "skip") => void) | null>(null);
   const queueDragRef = useRef<{ startY: number; startHeight: number } | null>(null);
@@ -263,6 +277,22 @@ export function FileManager({
   }, []);
 
   const banner = message ?? transferError;
+  // Remember this session's view; restore it when the session changes.
+  useEffect(() => {
+    FM_MEMORY.set(memoryKey, { localPath, remotePath, split: splitPercent, queueHeight });
+  }, [memoryKey, localPath, remotePath, splitPercent, queueHeight]);
+
+  useEffect(() => {
+    const saved = FM_MEMORY.get(memoryKey);
+    if (saved === undefined) {
+      return;
+    }
+    setLocalPath(saved.localPath);
+    setRemotePath(saved.remotePath);
+    setSplitPercent(saved.split);
+    setQueueHeight(saved.queueHeight);
+  }, [memoryKey]);
+
   const canUpload = terminalId !== null && remotePath !== "" && localSelection.some((e) => !e.isDir);
   const canDownload =
     terminalId !== null && localPath !== "" && remoteSelection.some((e) => !e.isDir);
@@ -320,7 +350,8 @@ export function FileManager({
         style={{ gridTemplateColumns: `${splitPercent}% 6px 1fr` }}
       >
         <LocalPane
-          initialPath={initialLocal}
+          key={memoryKey}
+          initialPath={localPath || initialLocal}
           refreshToken={revision + editorRevision}
           onPathChange={setLocalPath}
           onSelectionChange={setLocalSelection}

@@ -50,11 +50,13 @@ pub async fn open_subsystem(
 
 pub async fn list(sftp: &SftpSession, path: &str) -> Result<Vec<FileEntry>, AppError> {
     let dir = normalize_remote(path);
+    let started = std::time::Instant::now();
     let mut entries = Vec::new();
     let mut reader = sftp
         .read_dir(dir.clone())
         .await
         .map_err(|err| AppError::Sftp(format!("读取目录 {dir} 失败: {err}")))?;
+    let read_all_ms = started.elapsed().as_millis() as u64;
 
     while let Some(entry) = reader.next() {
         let name = entry.file_name();
@@ -84,6 +86,13 @@ pub async fn list(sftp: &SftpSession, path: &str) -> Result<Vec<FileEntry>, AppE
         (false, true) => std::cmp::Ordering::Greater,
         _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
     });
+    tracing::info!(
+        dir = %dir,
+        entries = entries.len(),
+        read_all_ms,
+        total_ms = started.elapsed().as_millis() as u64,
+        "remote listing"
+    );
     Ok(entries)
 }
 
@@ -130,7 +139,7 @@ pub async fn remove(sftp: &SftpSession, path: &str, is_dir: bool) -> Result<(), 
 pub async fn rename(sftp: &SftpSession, from: &str, to: &str) -> Result<(), AppError> {
     sftp.rename(normalize_remote(from), normalize_remote(to))
         .await
-        .map_err(|err| AppError::Sftp(format!("閲嶅懡鍚嶅け璐? {err}")))
+        .map_err(|err| AppError::Sftp(format!("重命名失败: {err}")))
 }
 
 /// Creates an empty remote file (used by "新建文件").

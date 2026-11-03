@@ -14,6 +14,7 @@
 import { Channel } from "@tauri-apps/api/core";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
+import { SearchAddon } from "@xterm/addon-search";
 
 import { toUserMessage } from "../ipc/errors";
 import { closeTerminal, openTerminal, resizeTerminal, writeTerminal } from "../ipc/session";
@@ -40,6 +41,7 @@ export interface TerminalSessionOptions {
 export class TerminalSession {
   private readonly terminal: Terminal;
   private readonly fitAddon = new FitAddon();
+  private readonly searchAddon = new SearchAddon();
   private readonly channel = new Channel<ArrayBuffer>();
   private readonly encoder = new TextEncoder();
   private renderer: RendererController | null = null;
@@ -60,6 +62,7 @@ export class TerminalSession {
       theme: terminalTheme(options.theme ?? "dark"),
     });
     this.terminal.loadAddon(this.fitAddon);
+    this.terminal.loadAddon(this.searchAddon);
     this.terminal.open(options.container);
 
     this.renderer = installRenderer(this.terminal, (kind: RendererKind, reason: string) => {
@@ -181,6 +184,20 @@ export class TerminalSession {
     this.terminal.options.fontSize = size;
     this.fitNow();
     this.terminal.refresh(0, Math.max(0, this.terminal.rows - 1));
+  }
+
+  /** Scrolls to the next buffer match (search bar). */
+  findNext(text: string): void {
+    if (!this.disposed && text.length > 0) {
+      this.searchAddon.findNext(text);
+    }
+  }
+
+  /** Scrolls to the previous buffer match. */
+  findPrevious(text: string): void {
+    if (!this.disposed && text.length > 0) {
+      this.searchAddon.findPrevious(text);
+    }
   }
 
   /** Swaps the xterm palette without recreating the terminal. */

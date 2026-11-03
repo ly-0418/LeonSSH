@@ -175,6 +175,19 @@ pub async fn connect(
     let actual = actual_slot.lock().expect("host key slot poisoned").clone();
 
     match &cfg.auth {
+        AuthMethod::Key { path, passphrase } => {
+            let key = russh::keys::load_secret_key(path, passphrase.as_deref()).map_err(|err| {
+                SshError::Handshake(format!("读取私钥 {} 失败: {err}", path.display()))
+            })?;
+            let key = russh::keys::PrivateKeyWithHashAlg::new(std::sync::Arc::new(key), None);
+            let result = handle
+                .authenticate_publickey(cfg.username.clone(), key)
+                .await
+                .map_err(|err| SshError::Handshake(err.to_string()))?;
+            if !result.success() {
+                return Err(SshError::AuthRejected);
+            }
+        }
         AuthMethod::Password(password) => {
             let result = handle
                 .authenticate_password(cfg.username.clone(), password.clone())

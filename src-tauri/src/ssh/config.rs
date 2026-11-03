@@ -12,6 +12,8 @@ use std::time::Duration;
 #[derive(Clone)]
 pub enum AuthMethod {
     Password(String),
+    /// Private key file on disk; `passphrase` decrypts it (kept in the keyring).
+    Key { path: std::path::PathBuf, passphrase: Option<String> },
 }
 
 // Hand-written so a stray `{:?}` can never leak the credential into the logs.
@@ -19,6 +21,7 @@ impl fmt::Debug for AuthMethod {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Password(_) => f.write_str("Password(<redacted>)"),
+            Self::Key { .. } => f.write_str("Key(<redacted>)"),
         }
     }
 }
@@ -43,7 +46,13 @@ impl SshConfig {
             host: record.host.clone(),
             port: record.port.clamp(1, u16::MAX as i64) as u16,
             username: record.username.clone(),
-            auth: AuthMethod::Password(password.unwrap_or_default()),
+            auth: match (record.auth_method.as_str(), record.private_key_path.as_deref()) {
+                ("key", Some(path)) => AuthMethod::Key {
+                    path: std::path::PathBuf::from(path),
+                    passphrase: password,
+                },
+                _ => AuthMethod::Password(password.unwrap_or_default()),
+            },
             term: "xterm-256color".to_string(),
             connect_timeout: Duration::from_secs(12),
         }

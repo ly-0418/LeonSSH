@@ -113,15 +113,25 @@ export function ForwardPanel({ terminalId, sessionId, title }: ForwardPanelProps
 
       <div className="forward__body">
         <div className="forward__form">
-          <select className="input forward__kind" value={kind} onChange={(e) => setKind(e.target.value)}>
-            <option value="local">-L 本地转发</option>
-            <option value="remote">-R 远程转发</option>
-            <option value="dynamic">-D 动态 SOCKS5</option>
-          </select>
-          <span className="forward__label">本地端口</span>
-          <input className="input forward__port" value={bindPort} onChange={(e) => setBindPort(e.target.value)} />
+          <div className="forward__row">
+            <select className="input forward__kind" value={kind} onChange={(e) => setKind(e.target.value)}>
+              <option value="local">-L 本地转发</option>
+              <option value="remote">-R 远程转发</option>
+              <option value="dynamic">-D 动态 SOCKS5</option>
+            </select>
+            <span className="forward__label">本地端口</span>
+            <input className="input forward__port" value={bindPort} onChange={(e) => setBindPort(e.target.value)} />
+            <button
+              type="button"
+              className="button button--primary button--sm forward__add"
+              disabled={busy}
+              onClick={() => void addRule()}
+            >
+              添加规则
+            </button>
+          </div>
           {kind !== "dynamic" && (
-            <>
+            <div className="forward__row">
               <span className="forward__label">目标</span>
               <input
                 className="input forward__host"
@@ -135,11 +145,8 @@ export function ForwardPanel({ terminalId, sessionId, title }: ForwardPanelProps
                 value={targetPort}
                 onChange={(e) => setTargetPort(e.target.value)}
               />
-            </>
+            </div>
           )}
-          <button type="button" className="button button--primary button--sm" disabled={busy} onClick={() => void addRule()}>
-            添加规则
-          </button>
         </div>
 
         {error !== null && <p className="form-error">{error}</p>}

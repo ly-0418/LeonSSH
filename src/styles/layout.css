@@ -497,7 +497,7 @@ input[type="password"]::-ms-reveal {
   justify-content: center;
   padding: 24px;
   background: var(--backdrop);
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(1px);
 }
 
 .modal {
@@ -600,6 +600,7 @@ input[type="password"]::-ms-reveal {
   justify-content: flex-end;
   background: var(--overlay);
   overflow: hidden;
+  backdrop-filter: blur(1px);
 }
 
 /* Forward panel sheet: half the window, slides in from the right. */
@@ -1580,4 +1581,21 @@ input[type="password"]::-ms-reveal {
   font-family: var(--font-mono);
   overflow-x: auto;
   white-space: nowrap;
+}
+/* Forward form: controls on the first row, target address on the second. */
+.forward__form {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.forward__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.forward__row .forward__add {
+  margin-left: auto;
 }

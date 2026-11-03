@@ -209,6 +209,8 @@ pub fn run() {
             commands::forward::forward_start_all,
             commands::forward::forward_stop,
             commands::local::local_roots,
+            commands::local::app_version,
+            commands::local::open_external_url,
             commands::transfer::transfer_attach,
             commands::transfer::transfer_list,
             commands::transfer::transfer_cancel,

@@ -125,3 +125,47 @@ pub fn process_alive(pid: u32) -> bool {
 pub fn local_open_file(path: String) -> Result<(), AppError> {
     open_path(Path::new(&path)).map(|_| ())
 }
+
+/// Current application version (shown in the settings drawer).
+#[tauri::command]
+pub fn app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
+/// Opens an https URL in the default browser (used by "check for updates").
+#[tauri::command]
+pub fn open_external_url(url: String) -> Result<(), AppError> {
+    if !url.starts_with("https://") {
+        return Err(AppError::InvalidArgument("只允许打开 https 链接".into()));
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        use windows_sys::Win32::UI::Shell::ShellExecuteW;
+        use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+
+        fn wide(value: &str) -> Vec<u16> {
+            value.encode_utf16().chain(std::iter::once(0)).collect()
+        }
+        let operation = wide("open");
+        let target = wide(&url);
+        let result = unsafe {
+            ShellExecuteW(
+                std::ptr::null_mut(),
+                operation.as_ptr(),
+                target.as_ptr(),
+                std::ptr::null(),
+                std::ptr::null(),
+                SW_SHOWNORMAL,
+            )
+        };
+        if (result as isize) <= 32 {
+            return Err(AppError::Internal("无法打开浏览器".into()));
+        }
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        Err(AppError::Internal("仅支持 Windows".into()))
+    }
+}

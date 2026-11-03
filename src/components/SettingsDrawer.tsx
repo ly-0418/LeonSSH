@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { appVersion } from "../lib/ipc/app";
 import { forgetKnownHost, listKnownHosts } from "../lib/ipc/sessions";
 import { toUserMessage } from "../lib/ipc/errors";
 import type { KnownHostEntry } from "../lib/ipc/types";
@@ -16,12 +17,13 @@ interface SettingsDrawerProps {
   onClose: () => void;
 }
 
-type SettingsTab = "theme" | "fonts" | "hosts";
+type SettingsTab = "theme" | "fonts" | "hosts" | "about";
 
 const TABS: Array<{ key: SettingsTab; label: string }> = [
   { key: "theme", label: "主题" },
   { key: "fonts", label: "字体" },
   { key: "hosts", label: "主机" },
+  { key: "about", label: "关于" },
 ];
 
 /** Right-side settings drawer: categories on the left, content on the right. */
@@ -36,6 +38,13 @@ export function SettingsDrawer({
   const [tab, setTab] = useState<SettingsTab>("theme");
   const [hosts, setHosts] = useState<KnownHostEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState<string>("");
+
+  useEffect(() => {
+    void appVersion()
+      .then(setVersion)
+      .catch(() => setVersion(""));
+  }, []);
 
   useEffect(() => {
     if (tab !== "hosts") {
@@ -135,6 +144,21 @@ export function SettingsDrawer({
                 <div className="font-preview" style={{ fontSize: `${fontSize}px` }}>
                   LeonSSH@localhost:~$ echo 字体预览
                 </div>
+              </div>
+            )}
+
+            {tab === "about" && (
+              <div className="setting-group">
+                <h3 className="setting-group__title">关于 LeonSSH</h3>
+                <p className="modal__hint">
+                  版本 {version.length > 0 ? `v${version}` : "…"} · Windows 优先的可视化 SSH 客户端
+                </p>
+                <ul className="about-list">
+                  <li>数据目录：安装目录下的 <code>data</code>（数据库、日志、缓存、编辑临时文件）</li>
+                  <li>密码与密钥口令：Windows 凭据管理器，不写入数据库</li>
+                  <li>主机密钥：首次连接即记录指纹（TOFU），变更会提示</li>
+                  <li>更新：当前版本需手动下载安装包覆盖；自动更新需要签名证书与发布源，尚未启用</li>
+                </ul>
               </div>
             )}
 

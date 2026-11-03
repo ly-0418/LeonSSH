@@ -305,8 +305,20 @@
   color: var(--text-faint);
 }
 
-.extedit__state--dirty {
+.extedit__state--pending {
   color: var(--warn);
+}
+
+.extedit__state--uploading {
+  color: var(--accent-cyan);
+}
+
+.extedit__state--saved {
+  color: var(--accent);
+}
+
+.extedit__state--error {
+  color: var(--danger-text);
 }
 
 .extedit__error {

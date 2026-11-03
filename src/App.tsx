@@ -25,8 +25,8 @@ const INITIAL_STATUS: TerminalStatus = {
 type WorkspaceView = "terminal" | "files";
 
 interface SessionDialogState {
-  mode: "list" | "form";
-  editing: SessionSummary | null;
+  creating: boolean;
+  selectedId: number | null;
 }
 
 const THEME_KEY = "leonssh.theme";
@@ -193,7 +193,6 @@ export default function App() {
 
   async function handleDelete(session: SessionSummary) {
     setPendingDelete(null);
-    setSessionDialog(null);
     try {
       await deleteSession(session.id);
       const tab = tabs.find((item) => item.sessionId === session.id);
@@ -204,6 +203,12 @@ export default function App() {
       if (list.length === 0) {
         setMode("form");
       }
+      // Keep the connection dialog open and select the next session.
+      setSessionDialog((current) =>
+        current === null
+          ? null
+          : { creating: list.length === 0, selectedId: list[0]?.id ?? null },
+      );
     } catch (err) {
       setError(toUserMessage(err));
     }
@@ -260,7 +265,12 @@ export default function App() {
             activeKey={activeKey}
             onActivate={setActiveKey}
             onClose={closeTab}
-            onNewSession={() => setSessionDialog({ mode: "list", editing: null })}
+            onNewSession={() =>
+              setSessionDialog({
+                creating: sessions.length === 0,
+                selectedId: sessions[0]?.id ?? null,
+              })
+            }
             onDuplicate={duplicateTab}
             onShowKnownHosts={() => setKnownHostsOpen(true)}
             forwardOpen={forwardOpen}
@@ -336,19 +346,21 @@ export default function App() {
 
       {sessionDialog !== null && (
         <NewSessionDialog
-          key={`${sessionDialog.mode}-${sessionDialog.editing?.id ?? "new"}`}
-          mode={sessionDialog.mode}
           sessions={sessions}
-          editing={sessionDialog.editing}
-          onPick={(session) => {
+          creating={sessionDialog.creating}
+          selected={
+            sessionDialog.creating
+              ? null
+              : (sessions.find((item) => item.id === sessionDialog.selectedId) ?? null)
+          }
+          onSelect={(session) => setSessionDialog({ creating: false, selectedId: session.id })}
+          onCreate={() => setSessionDialog({ creating: true, selectedId: null })}
+          onDelete={(session) => setPendingDelete(session)}
+          onConnect={(session) => {
             setSessionDialog(null);
             openTab(session);
           }}
           onSaved={(session) => void handleSaved(session)}
-          onCreate={() => setSessionDialog({ mode: "form", editing: null })}
-          onEdit={(session) => setSessionDialog({ mode: "form", editing: session })}
-          onDelete={(session) => setPendingDelete(session)}
-          onBack={() => setSessionDialog({ mode: "list", editing: null })}
           onClose={() => setSessionDialog(null)}
         />
       )}

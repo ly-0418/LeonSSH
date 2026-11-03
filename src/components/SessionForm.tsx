@@ -11,9 +11,17 @@ interface SessionFormProps {
   onboarding?: boolean;
   onSaved: (session: SessionSummary) => void;
   onCancel?: () => void;
+  /** Connect with the saved profile without persisting form edits. */
+  onConnect?: (session: SessionSummary) => void;
 }
 
-export function SessionForm({ initial, onboarding = false, onSaved, onCancel }: SessionFormProps) {
+export function SessionForm({
+  initial,
+  onboarding = false,
+  onSaved,
+  onCancel,
+  onConnect,
+}: SessionFormProps) {
   const [name, setName] = useState(initial?.name ?? (onboarding ? "本地 Docker 测试" : ""));
   const [host, setHost] = useState(initial?.host ?? "127.0.0.1");
   const [port, setPort] = useState(String(initial?.port ?? 2222));
@@ -151,6 +159,17 @@ export function SessionForm({ initial, onboarding = false, onSaved, onCancel }: 
         <button type="submit" className="button button--primary" disabled={busy}>
           {busy ? "保存中…" : initial ? "保存并连接" : "创建并连接"}
         </button>
+        {initial !== null && initial !== undefined && onConnect !== undefined && (
+          <button
+            type="button"
+            className="button"
+            disabled={busy}
+            title="不保存当前的修改，直接用已保存的配置连接"
+            onClick={() => onConnect(initial)}
+          >
+            直接连接
+          </button>
+        )}
         {onCancel && (
           <button type="button" className="button button--ghost" onClick={onCancel}>
             取消

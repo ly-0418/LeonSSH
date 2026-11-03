@@ -2,95 +2,114 @@ import { SessionForm } from "./SessionForm";
 import type { SessionSummary } from "../lib/ipc/types";
 
 interface NewSessionDialogProps {
-  mode: "list" | "form";
   sessions: SessionSummary[];
-  editing: SessionSummary | null;
-  onPick: (session: SessionSummary) => void;
-  onSaved: (session: SessionSummary) => void;
+  /** Session loaded into the form (null while creating a new one). */
+  selected: SessionSummary | null;
+  creating: boolean;
+  onSelect: (session: SessionSummary) => void;
   onCreate: () => void;
-  onEdit: (session: SessionSummary) => void;
   onDelete: (session: SessionSummary) => void;
-  /** Back from the form to the saved-session list. */
-  onBack: () => void;
+  onConnect: (session: SessionSummary) => void;
+  onSaved: (session: SessionSummary) => void;
   onClose: () => void;
 }
 
 /**
- * Tab-bar "+" dialog: pick an already saved connection, create a new one, or
- * edit/delete an existing profile. The mode is fully controlled by the parent so
- * switching between list and form never leaves stale state behind.
+ * Single-screen connection manager: the saved sessions on the left, the form on
+ * the right. Selecting a session loads it for editing; "新建连接" clears the form.
  */
 export function NewSessionDialog({
-  mode,
   sessions,
-  editing,
-  onPick,
-  onSaved,
+  selected,
+  creating,
+  onSelect,
   onCreate,
-  onEdit,
   onDelete,
-  onBack,
+  onConnect,
+  onSaved,
   onClose,
 }: NewSessionDialogProps) {
   return (
     <div className="modal-backdrop" role="presentation">
       <div
-        className="modal modal--wide"
+        className="modal modal--session"
         role="dialog"
         aria-modal="true"
-        aria-label="新建连接"
+        aria-label="连接"
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="new-session__head">
-          <h2 className="modal__title">
-            {mode === "form" ? (editing === null ? "新建连接" : "编辑会话") : "选择会话"}
-          </h2>
+        <header className="session-dialog__head">
+          <div className="session-dialog__titles">
+            <h2 className="modal__title">连接</h2>
+            <p className="modal__hint">选择左侧已保存的会话，或新建一个连接。</p>
+          </div>
           <button type="button" className="modal__close" onClick={onClose} aria-label="关闭">
             ✕
           </button>
         </header>
 
-        {mode === "form" ? (
-          <SessionForm
-            key={editing?.id ?? "new"}
-            initial={editing}
-            onboarding={false}
-            onSaved={onSaved}
-            onCancel={onBack}
-          />
-        ) : (
-          <>
-            <ul className="new-session__list">
+        <div className="session-dialog">
+          <aside className="session-dialog__list">
+            <button
+              type="button"
+              className={`session-card session-card--new${creating ? " session-card--active" : ""}`}
+              onClick={onCreate}
+            >
+              <span className="session-card__plus">＋</span>
+              新建连接
+            </button>
+
+            <div className="session-dialog__scroll">
               {sessions.map((session) => (
-                <li key={session.id} className="new-session__row">
-                  <button type="button" className="new-session__item" onClick={() => onPick(session)}>
-                    <span className="new-session__dot" />
-                    <span className="new-session__name">{session.name}</span>
-                    <span className="new-session__target">
-                      {session.username}@{session.host}:{session.port}
+                <div
+                  key={session.id}
+                  className={`session-card${
+                    !creating && selected?.id === session.id ? " session-card--active" : ""
+                  }`}
+                >
+                  <button
+                    type="button"
+                    className="session-card__main"
+                    onClick={() => onSelect(session)}
+                    title={`${session.username}@${session.host}:${session.port}`}
+                  >
+                    <span className="session-card__avatar">
+                      {session.name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="session-card__text">
+                      <span className="session-card__name">{session.name}</span>
+                      <span className="session-card__meta">
+                        {session.username}@{session.host}:{session.port}
+                      </span>
                     </span>
                   </button>
-                  <span className="new-session__actions">
-                    <button type="button" title="编辑" onClick={() => onEdit(session)}>
-                      ✎
-                    </button>
-                    <button type="button" title="删除" onClick={() => onDelete(session)}>
-                      ✕
-                    </button>
-                  </span>
-                </li>
+                  <button
+                    type="button"
+                    className="session-card__del"
+                    title="删除会话"
+                    onClick={() => onDelete(session)}
+                  >
+                    ✕
+                  </button>
+                </div>
               ))}
-            </ul>
-            <div className="modal__actions">
-              <button type="button" className="button button--primary" onClick={onCreate}>
-                ＋ 新建连接
-              </button>
-              <button type="button" className="button button--ghost" onClick={onClose}>
-                取消
-              </button>
+              {sessions.length === 0 && (
+                <p className="session-dialog__empty">还没有保存的会话，右侧直接填写即可。</p>
+              )}
             </div>
-          </>
-        )}
+          </aside>
+
+          <section className="session-dialog__form">
+            <SessionForm
+              key={creating ? "new" : (selected?.id ?? "new")}
+              initial={creating ? null : selected}
+              onboarding={false}
+              onSaved={onSaved}
+              onCancel={onClose}
+              onConnect={creating ? undefined : onConnect}
+            />
+          </section>
+        </div>
       </div>
     </div>
   );

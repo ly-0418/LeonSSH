@@ -834,7 +834,182 @@ input[type="password"]::-ms-reveal {
   color: var(--text-faint);
 }
 
-/* --------------------------------------------------- new session dialog */
+/* --------------------------------------------------- connection dialog */
+
+.modal--session {
+  width: min(860px, 100%);
+  padding: 0;
+  overflow: hidden;
+}
+
+.session-dialog__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.session-dialog__titles .modal__title {
+  margin: 0;
+}
+
+.session-dialog__titles .modal__hint {
+  margin: 4px 0 0;
+}
+
+.session-dialog {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 430px;
+}
+
+.session-dialog__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+
+.session-dialog__scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.session-card {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-panel);
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.session-card:hover {
+  border-color: var(--border-strong);
+}
+
+.session-card--active {
+  border-color: var(--accent);
+  background: var(--accent-soft-bg);
+}
+
+.session-card--new {
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border-style: dashed;
+  border-color: var(--border-strong);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.session-card--new:hover,
+.session-card--new.session-card--active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.session-card__plus {
+  font-size: 14px;
+}
+
+.session-card__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.session-card__avatar {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft-bg);
+  border: 1px solid var(--accent-soft-border);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.session-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.session-card__name {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-card__meta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-card__del {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  margin-right: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.session-card:hover .session-card__del {
+  opacity: 1;
+}
+
+.session-card__del:hover {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.session-dialog__form {
+  padding: 18px 22px;
+  min-width: 0;
+  max-height: 72vh;
+  overflow-y: auto;
+}
+
+.session-dialog__empty {
+  margin: 8px 4px;
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1.6;
+}
 
 .tab-bar__new {
   align-self: center;

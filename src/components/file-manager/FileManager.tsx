@@ -16,6 +16,8 @@ import { useTransfers } from "./useTransfers";
 interface FileManagerProps {
   terminalId: string | null;
   sessionTitle: string | null;
+  /** Playing the slide-up exit animation; stays mounted until it ends. */
+  exiting?: boolean;
   onBackToTerminal: () => void;
 }
 
@@ -26,7 +28,12 @@ const MAX_SPLIT = 80;
  * Dual-pane file manager with a draggable splitter, streaming transfers,
  * drag-and-drop and the remote editor drawer.
  */
-export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: FileManagerProps) {
+export function FileManager({
+  terminalId,
+  sessionTitle,
+  exiting = false,
+  onBackToTerminal,
+}: FileManagerProps) {
   // Optional deep link: `?view=files&local=C%3A%5CWindows` opens the pane there.
   const initialLocal = new URLSearchParams(window.location.search).get("local") ?? undefined;
 
@@ -216,7 +223,7 @@ export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: File
     terminalId !== null && localPath !== "" && remoteSelection.some((e) => !e.isDir);
 
   return (
-    <div className="file-manager">
+    <div className={`file-manager${exiting ? " file-manager--leave" : " file-manager--enter"}`}>
       <header className="fm-head">
         <span className="fm-head__title">文件管理</span>
         <button

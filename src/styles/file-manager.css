@@ -8,6 +8,47 @@
   flex-direction: column;
   min-height: 0;
   background: var(--bg);
+  will-change: transform;
+}
+
+/* Slides down into view when opened... */
+@keyframes fm-slide-in {
+  from {
+    transform: translateY(-100%);
+    opacity: 0.55;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ...and slides back up when returning to the terminal. */
+@keyframes fm-slide-out {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-100%);
+    opacity: 0.35;
+  }
+}
+
+.file-manager--enter {
+  animation: fm-slide-in 220ms cubic-bezier(0.22, 0.9, 0.24, 1);
+}
+
+.file-manager--leave {
+  animation: fm-slide-out 220ms cubic-bezier(0.55, 0, 0.85, 0.3) forwards;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .file-manager--enter,
+  .file-manager--leave {
+    animation: none;
+  }
 }
 
 .fm-head {

@@ -47,6 +47,7 @@ export default function App() {
     new URLSearchParams(window.location.search).get("view") === "files" ? "files" : "terminal",
   );
   const [forwardOpen, setForwardOpen] = useState(false);
+  const [filesExiting, setFilesExiting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeMode>(initialTheme);
   const [sessionDialog, setSessionDialog] = useState<SessionDialogState | null>(null);
@@ -212,6 +213,18 @@ export default function App() {
     setTheme((value) => (value === "dark" ? "light" : "dark"));
   }, []);
 
+  /** Slide the file manager out (it stays mounted until the animation ends). */
+  const closeFiles = useCallback(() => {
+    setFilesExiting(true);
+    setView("terminal");
+    window.setTimeout(() => setFilesExiting(false), 220);
+  }, []);
+
+  const openFiles = useCallback(() => {
+    setFilesExiting(false);
+    setView("files");
+  }, []);
+
   return (
     <div className="app">
       <header className="app-header" data-tauri-drag-region>
@@ -282,9 +295,7 @@ export default function App() {
                     connected={tab.status.state === "ready"}
                     filesOpen={view === "files" && tab.key === activeKey}
                     theme={theme}
-                    onToggleFiles={() =>
-                      setView((current) => (current === "files" ? "terminal" : "files"))
-                    }
+                    onToggleFiles={() => (view === "files" ? closeFiles() : openFiles())}
                     onStatus={makeStatusHandler(tab.key)}
                   />
                 </div>
@@ -306,11 +317,12 @@ export default function App() {
               )}
             </div>
 
-            {view === "files" && (
+            {(view === "files" || filesExiting) && (
               <FileManager
                 terminalId={activeTab?.status.terminalId ?? null}
                 sessionTitle={activeTab?.title ?? null}
-                onBackToTerminal={() => setView("terminal")}
+                exiting={filesExiting}
+                onBackToTerminal={closeFiles}
               />
             )}
           </div>

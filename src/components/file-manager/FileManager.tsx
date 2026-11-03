@@ -130,6 +130,44 @@ export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: File
     [terminalId, remotePath],
   );
 
+  // Pointer-based drag from the local pane onto the remote pane. HTML5 DnD was
+  // unreliable inside WebView2, so we track the pointer ourselves and check the
+  // drop target with elementFromPoint.
+  const beginDrag = useCallback(
+    (entry: FileEntry, event: React.PointerEvent) => {
+      if (entry.isDir || event.button !== 0) {
+        return;
+      }
+      const startX = event.clientX;
+      const startY = event.clientY;
+      let active = false;
+
+      const move = (moveEvent: PointerEvent) => {
+        if (!active && Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) > 6) {
+          active = true;
+          setDropActive(true);
+        }
+      };
+      const up = (upEvent: PointerEvent) => {
+        document.removeEventListener("pointermove", move);
+        document.removeEventListener("pointerup", up);
+        setDropActive(false);
+        if (!active) {
+          return;
+        }
+        const element = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
+        const target = element instanceof Element ? element.closest("[data-drop-remote]") : null;
+        if (target !== null) {
+          void dropPaths([entry.path]);
+        }
+      };
+
+      document.addEventListener("pointermove", move);
+      document.addEventListener("pointerup", up);
+    },
+    [dropPaths],
+  );
+
   // Native drag-and-drop from the OS: the webview hands us absolute paths.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -235,7 +273,7 @@ export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: File
           refreshToken={revision + editorRevision}
           onPathChange={setLocalPath}
           onSelectionChange={setLocalSelection}
-          onOpenFile={() => setMessage("双击本地文件不会上传；可选中后点「上传」")}
+          onRowPointerDown={beginDrag}
         />
         <div
           className="fm-splitter"

@@ -51,6 +51,14 @@ sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runti
 # Phase 3: passwords live in the Windows Credential Manager, never in SQLite.
 keyring = "4"
 
+# Windows shell integration: open a local file with its default application.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+] }
+
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
 

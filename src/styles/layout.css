@@ -377,6 +377,46 @@
   box-shadow: 0 0 0 3px var(--accent-faint);
 }
 
+/* Password field with an always-visible reveal toggle. */
+.field__with-action {
+  position: relative;
+  display: block;
+}
+
+.field__with-action .input {
+  padding-right: 42px;
+}
+
+.field__action {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.field__action:hover {
+  border-color: var(--border);
+  background: var(--bg-panel);
+  color: var(--text);
+}
+
+/* Hide the WebView2 built-in reveal button (ours is always visible). */
+input[type="password"]::-ms-reveal {
+  display: none;
+}
+
 .swatches {
   display: flex;
   gap: 8px;

@@ -1,10 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { FileEntry } from "../../lib/fs/types";
-import { hydrateLocalStats, listLocal, localHome, localRoots } from "../../lib/fs/localFs";
-import { parentLocal } from "../../lib/fs/paths";
+import {
+  createLocalDir,
+  createLocalFile,
+  deleteLocal,
+  hydrateLocalStats,
+  listLocal,
+  localHome,
+  localRoots,
+  openLocalFile,
+  renameLocal,
+} from "../../lib/fs/localFs";
+import { joinLocal, parentLocal } from "../../lib/fs/paths";
+import { toUserMessage } from "../../lib/ipc/errors";
+import { ConfirmDialog } from "../dialogs";
+import { FileContextMenu, type FileMenuItem } from "./FileContextMenu";
 import { FileTable } from "./FileTable";
 import { PathBar } from "./PathBar";
+import { PromptDialog } from "./PromptDialog";
 import { useFilePane, type PaneAdapter } from "./useFilePane";
 
 interface LocalPaneProps {
@@ -12,7 +26,16 @@ interface LocalPaneProps {
   refreshToken?: number;
   onPathChange?: (path: string) => void;
   onSelectionChange?: (entries: FileEntry[]) => void;
-  onOpenFile?: (entry: FileEntry) => void;
+  onRowPointerDown?: (entry: FileEntry, event: React.PointerEvent) => void;
+}
+
+type PromptState =
+  | { kind: "folder" }
+  | { kind: "file" }
+  | { kind: "rename"; entry: FileEntry };
+
+function isRename(prompt: PromptState): prompt is { kind: "rename"; entry: FileEntry } {
+  return prompt.kind === "rename";
 }
 
 /** Left pane: the local filesystem, exclusively through @tauri-apps/plugin-fs. */
@@ -21,7 +44,7 @@ export function LocalPane({
   refreshToken,
   onPathChange,
   onSelectionChange,
-  onOpenFile,
+  onRowPointerDown,
 }: LocalPaneProps) {
   const adapter = useMemo<PaneAdapter>(
     () => ({
@@ -34,6 +57,10 @@ export function LocalPane({
   );
   const pane = useFilePane(adapter, initialPath);
   const [roots, setRoots] = useState<string[]>([]);
+  const [menu, setMenu] = useState<{ x: number; y: number; entry: FileEntry | null } | null>(null);
+  const [prompt, setPrompt] = useState<PromptState | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<FileEntry | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     localRoots()
@@ -57,6 +84,63 @@ export function LocalPane({
     }
   }, [refreshToken]);
 
+  const run = useCallback(
+    async (action: () => Promise<void>) => {
+      try {
+        setError(null);
+        await action();
+        await pane.refresh();
+      } catch (err) {
+        setError(toUserMessage(err));
+      }
+    },
+    [pane],
+  );
+
+  function menuItems(entry: FileEntry | null): FileMenuItem[] {
+    if (entry === null) {
+      return [
+        { label: "新建文件夹", onSelect: () => setPrompt({ kind: "folder" }) },
+        { label: "新建文件", onSelect: () => setPrompt({ kind: "file" }) },
+      ];
+    }
+    if (entry.isDir) {
+      return [
+        { label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
+        { label: "删除文件夹", danger: true, onSelect: () => setPendingDelete(entry) },
+      ];
+    }
+    return [
+      { label: "编辑（系统默认工具）", onSelect: () => void run(() => openLocalFile(entry.path)) },
+      { label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
+      { label: "删除", danger: true, onSelect: () => setPendingDelete(entry) },
+    ];
+  }
+
+  async function submitPrompt(value: string) {
+    const current = prompt;
+    setPrompt(null);
+    if (current === null) {
+      return;
+    }
+    if (current.kind === "folder") {
+      await run(() => createLocalDir(joinLocal(pane.path, value)));
+    } else if (current.kind === "file") {
+      await run(() => createLocalFile(joinLocal(pane.path, value)));
+    } else {
+      await run(() => renameLocal(current.entry.path, joinLocal(pane.path, value)));
+    }
+  }
+
+  const promptTitle =
+    prompt === null
+      ? ""
+      : prompt.kind === "folder"
+        ? "新建文件夹"
+        : prompt.kind === "file"
+          ? "新建文件"
+          : "重命名";
+
   return (
     <section className="fm-pane">
       <PathBar
@@ -64,34 +148,80 @@ export function LocalPane({
         path={pane.path}
         loading={pane.loading}
         roots={roots}
+        search={pane.filter}
+        onSearch={pane.setFilter}
         onNavigate={(next) => void pane.load(next)}
         onUp={() => void pane.goUp()}
         onRefresh={() => void pane.refresh()}
       />
       <FileTable
-        entries={pane.entries}
+        entries={pane.visible}
         selected={pane.selected}
         loading={pane.loading}
-        draggable
+        sort={pane.sort}
+        onSort={pane.toggleSort}
         onSelect={pane.select}
         onOpen={(entry) => {
           if (entry.isDir) {
             void pane.load(entry.path);
           } else {
-            onOpenFile?.(entry);
+            void run(() => openLocalFile(entry.path));
           }
         }}
+        onContextMenu={(entry, event) => setMenu({ x: event.clientX, y: event.clientY, entry })}
+        onRowPointerDown={onRowPointerDown}
       />
-      {pane.error !== null && (
-        <button type="button" className="fm-error" onClick={pane.clearError}>
-          {pane.error}（点击关闭）
+      {(error ?? pane.error) !== null && (
+        <button
+          type="button"
+          className="fm-error"
+          onClick={() => {
+            setError(null);
+            pane.clearError();
+          }}
+        >
+          {error ?? pane.error}（点击关闭）
         </button>
       )}
       <footer className="fm-pane__foot">
-        <span>{pane.entries.length} 项</span>
+        <span>{pane.visible.length} 项</span>
         {pane.selected.length > 0 && <span>已选 {pane.selected.length}</span>}
         <span className="fm-pane__foot-end">拖到右侧可上传</span>
       </footer>
+
+      {menu !== null && (
+        <FileContextMenu
+          x={menu.x}
+          y={menu.y}
+          items={menuItems(menu.entry)}
+          onClose={() => setMenu(null)}
+        />
+      )}
+
+      {prompt !== null && (
+        <PromptDialog
+          title={promptTitle}
+          initial={isRename(prompt) ? prompt.entry.name : ""}
+          placeholder={prompt.kind === "folder" ? "文件夹名称" : "文件名"}
+          confirmLabel={prompt.kind === "rename" ? "重命名" : "创建"}
+          onConfirm={(value) => void submitPrompt(value)}
+          onCancel={() => setPrompt(null)}
+        />
+      )}
+
+      {pendingDelete !== null && (
+        <ConfirmDialog
+          title="删除本地项目"
+          message={`确定删除「${pendingDelete.name}」吗？${pendingDelete.isDir ? "文件夹及其内容会被删除。" : ""}`}
+          confirmLabel="删除"
+          onConfirm={() => {
+            const target = pendingDelete;
+            setPendingDelete(null);
+            void run(() => deleteLocal(target.path, target.isDir));
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </section>
   );
 }

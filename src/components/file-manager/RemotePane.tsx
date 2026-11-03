@@ -1,30 +1,40 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { FileEntry as PaneEntry } from "../../lib/fs/types";
 import { toUserMessage } from "../../lib/ipc/errors";
 import {
   closeSftp,
+  createRemoteFile,
+  joinPath,
   listRemote,
+  mkdirRemote,
   openSftp,
   parentPath,
+  removeRemote,
+  renameRemote,
   type FileEntry as RemoteEntry,
 } from "../../lib/ipc/sftp";
+import { ConfirmDialog } from "../dialogs";
+import { FileContextMenu, type FileMenuItem } from "./FileContextMenu";
 import { FileTable } from "./FileTable";
 import { PathBar } from "./PathBar";
+import { PromptDialog } from "./PromptDialog";
 import { useFilePane, type PaneAdapter } from "./useFilePane";
 
 interface RemotePaneProps {
   terminalId: string | null;
   sessionTitle: string | null;
-  /** Highlight when a native drag from the OS is over the pane. */
+  /** Highlight when a drag from the local pane (or the OS) is over the pane. */
   dropActive?: boolean;
   refreshToken?: number;
   onPathChange?: (path: string) => void;
   onSelectionChange?: (entries: PaneEntry[]) => void;
   onOpenFile?: (entry: PaneEntry) => void;
-  /** Upload local paths (HTML5 drag from the local pane, or OS drop). */
   onDropPaths?: (paths: string[]) => void;
+  onRowPointerDown?: (entry: PaneEntry, event: React.PointerEvent) => void;
 }
+
+type PaneHooks = Omit<RemotePaneProps, "terminalId" | "sessionTitle">;
 
 /**
  * Right pane: remote directory listing over the SFTP subsystem opened on the
@@ -33,12 +43,7 @@ interface RemotePaneProps {
 export function RemotePane({
   terminalId,
   sessionTitle,
-  dropActive = false,
-  refreshToken,
-  onPathChange,
-  onSelectionChange,
-  onOpenFile,
-  onDropPaths,
+  ...hooks
 }: RemotePaneProps) {
   if (terminalId === null) {
     return (
@@ -55,16 +60,7 @@ export function RemotePane({
     );
   }
   return (
-    <RemotePaneConnected
-      terminalId={terminalId}
-      sessionTitle={sessionTitle}
-      dropActive={dropActive}
-      refreshToken={refreshToken}
-      onPathChange={onPathChange}
-      onSelectionChange={onSelectionChange}
-      onOpenFile={onOpenFile}
-      onDropPaths={onDropPaths}
-    />
+    <RemotePaneConnected terminalId={terminalId} sessionTitle={sessionTitle} {...hooks} />
   );
 }
 
@@ -75,10 +71,13 @@ function PlaceholderPathBar() {
       <button type="button" className="fm-iconbtn" disabled>
         ↑
       </button>
-      <input className="fm-pathbar__input" value="" disabled placeholder="等待 SSH 会话" />
+      <div className="fm-pathbar__field">
+        <input className="fm-pathbar__input" value="" disabled placeholder="等待 SSH 会话" />
+      </div>
       <button type="button" className="fm-iconbtn" disabled>
         ⟳
       </button>
+      <input className="fm-pathbar__search" value="" disabled placeholder="搜索当前目录" />
     </div>
   );
 }
@@ -86,22 +85,8 @@ function PlaceholderPathBar() {
 function RemotePaneConnected({
   terminalId,
   sessionTitle,
-  dropActive,
-  refreshToken,
-  onPathChange,
-  onSelectionChange,
-  onOpenFile,
-  onDropPaths,
-}: {
-  terminalId: string;
-  sessionTitle: string | null;
-  dropActive: boolean;
-  refreshToken?: number;
-  onPathChange?: (path: string) => void;
-  onSelectionChange?: (entries: PaneEntry[]) => void;
-  onOpenFile?: (entry: PaneEntry) => void;
-  onDropPaths?: (paths: string[]) => void;
-}) {
+  ...hooks
+}: { terminalId: string; sessionTitle: string | null } & PaneHooks) {
   const [home, setHome] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -155,19 +140,16 @@ function RemotePaneConnected({
     );
   }
 
-  return (
-    <RemotePaneLoaded
-      terminalId={terminalId}
-      home={home}
-      sessionTitle={sessionTitle}
-      dropActive={dropActive}
-      refreshToken={refreshToken}
-      onPathChange={onPathChange}
-      onSelectionChange={onSelectionChange}
-      onOpenFile={onOpenFile}
-      onDropPaths={onDropPaths}
-    />
-  );
+  return <RemotePaneLoaded terminalId={terminalId} home={home} sessionTitle={sessionTitle} {...hooks} />;
+}
+
+type RemotePrompt =
+  | { kind: "folder" }
+  | { kind: "file" }
+  | { kind: "rename"; entry: PaneEntry };
+
+function isRenamePrompt(prompt: RemotePrompt): prompt is { kind: "rename"; entry: PaneEntry } {
+  return prompt.kind === "rename";
 }
 
 function toPaneEntry(entry: RemoteEntry): PaneEntry {
@@ -192,20 +174,10 @@ function RemotePaneLoaded({
   onSelectionChange,
   onOpenFile,
   onDropPaths,
-}: {
-  terminalId: string;
-  home: string;
-  sessionTitle: string | null;
-  dropActive?: boolean;
-  refreshToken?: number;
-  onPathChange?: (path: string) => void;
-  onSelectionChange?: (entries: PaneEntry[]) => void;
-  onOpenFile?: (entry: PaneEntry) => void;
-  onDropPaths?: (paths: string[]) => void;
-}) {
+  onRowPointerDown,
+}: { terminalId: string; home: string; sessionTitle: string | null } & PaneHooks) {
   const adapter = useMemo<PaneAdapter>(
     () => ({
-      // Sorting happens in Rust (directories first, then case-insensitive name).
       list: async (path: string) => (await listRemote(terminalId, path)).map(toPaneEntry),
       home: async () => home,
       parent: parentPath,
@@ -213,6 +185,11 @@ function RemotePaneLoaded({
     [terminalId, home],
   );
   const pane = useFilePane(adapter);
+
+  const [menu, setMenu] = useState<{ x: number; y: number; entry: PaneEntry | null } | null>(null);
+  const [prompt, setPrompt] = useState<RemotePrompt | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PaneEntry | null>(null);
+  const [opError, setOpError] = useState<string | null>(null);
 
   useEffect(() => {
     onPathChange?.(pane.path);
@@ -230,9 +207,69 @@ function RemotePaneLoaded({
     }
   }, [refreshToken]);
 
+  const run = useCallback(
+    async (action: () => Promise<void>) => {
+      try {
+        setOpError(null);
+        await action();
+        await pane.refresh();
+      } catch (err) {
+        setOpError(toUserMessage(err));
+      }
+    },
+    [pane],
+  );
+
+  function menuItems(entry: PaneEntry | null): FileMenuItem[] {
+    if (entry === null) {
+      return [
+        { label: "新建文件夹", onSelect: () => setPrompt({ kind: "folder" }) },
+        { label: "新建文件", onSelect: () => setPrompt({ kind: "file" }) },
+      ];
+    }
+    if (entry.isDir) {
+      return [
+        { label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
+        { label: "删除文件夹", danger: true, onSelect: () => setPendingDelete(entry) },
+      ];
+    }
+    return [
+      { label: "编辑", onSelect: () => onOpenFile?.(entry) },
+      { label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
+      { label: "删除", danger: true, onSelect: () => setPendingDelete(entry) },
+    ];
+  }
+
+  async function submitPrompt(value: string) {
+    const current = prompt;
+    setPrompt(null);
+    if (current === null) {
+      return;
+    }
+    if (current.kind === "folder") {
+      await run(() => mkdirRemote(terminalId, joinPath(pane.path, value)));
+    } else if (current.kind === "file") {
+      await run(() => createRemoteFile(terminalId, joinPath(pane.path, value)));
+    } else {
+      await run(() => renameRemote(terminalId, current.entry.path, joinPath(pane.path, value)));
+    }
+  }
+
+  const promptTitle =
+    prompt === null
+      ? ""
+      : prompt.kind === "folder"
+        ? "新建远程文件夹"
+        : prompt.kind === "file"
+          ? "新建远程文件"
+          : "重命名远程项目";
+
+  const errorText = opError ?? pane.error;
+
   return (
     <section
       className={`fm-pane${dropActive === true ? " fm-pane--drop" : ""}`}
+      data-drop-remote="true"
       onDragOver={(event) => {
         if (onDropPaths !== undefined) {
           event.preventDefault();
@@ -259,15 +296,19 @@ function RemotePaneLoaded({
         label="远程"
         path={pane.path}
         loading={pane.loading}
+        search={pane.filter}
+        onSearch={pane.setFilter}
         onNavigate={(next) => void pane.load(next)}
         onUp={() => void pane.goUp()}
         onRefresh={() => void pane.refresh()}
       />
       <FileTable
-        entries={pane.entries}
+        entries={pane.visible}
         selected={pane.selected}
         showPermissions
         loading={pane.loading}
+        sort={pane.sort}
+        onSort={pane.toggleSort}
         onSelect={pane.select}
         onOpen={(entry) => {
           if (entry.isDir) {
@@ -276,17 +317,60 @@ function RemotePaneLoaded({
             onOpenFile?.(entry);
           }
         }}
+        onContextMenu={(entry, event) => setMenu({ x: event.clientX, y: event.clientY, entry })}
+        onRowPointerDown={onRowPointerDown}
       />
-      {pane.error !== null && (
-        <button type="button" className="fm-error" onClick={pane.clearError}>
-          {pane.error}（点击关闭）
+      {errorText !== null && (
+        <button
+          type="button"
+          className="fm-error"
+          onClick={() => {
+            setOpError(null);
+            pane.clearError();
+          }}
+        >
+          {errorText}（点击关闭）
         </button>
       )}
       <footer className="fm-pane__foot">
-        <span>{pane.entries.length} 项</span>
+        <span>{pane.visible.length} 项</span>
         {pane.selected.length > 0 && <span>已选 {pane.selected.length}</span>}
         <span className="fm-pane__foot-end">{sessionTitle ?? ""}</span>
       </footer>
+
+      {menu !== null && (
+        <FileContextMenu
+          x={menu.x}
+          y={menu.y}
+          items={menuItems(menu.entry)}
+          onClose={() => setMenu(null)}
+        />
+      )}
+
+      {prompt !== null && (
+        <PromptDialog
+          title={promptTitle}
+          initial={isRenamePrompt(prompt) ? prompt.entry.name : ""}
+          placeholder={prompt.kind === "folder" ? "文件夹名称" : "文件名"}
+          confirmLabel={prompt.kind === "rename" ? "重命名" : "创建"}
+          onConfirm={(value) => void submitPrompt(value)}
+          onCancel={() => setPrompt(null)}
+        />
+      )}
+
+      {pendingDelete !== null && (
+        <ConfirmDialog
+          title="删除远程项目"
+          message={`确定删除「${pendingDelete.name}」吗？${pendingDelete.isDir ? "文件夹必须为空。" : ""}`}
+          confirmLabel="删除"
+          onConfirm={() => {
+            const target = pendingDelete;
+            setPendingDelete(null);
+            void run(() => removeRemote(terminalId, target.path, target.isDir));
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </section>
   );
 }

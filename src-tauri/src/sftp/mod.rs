@@ -133,6 +133,17 @@ pub async fn rename(sftp: &SftpSession, from: &str, to: &str) -> Result<(), AppE
         .map_err(|err| AppError::Sftp(format!("閲嶅懡鍚嶅け璐? {err}")))
 }
 
+/// Creates an empty remote file (used by "新建文件").
+pub async fn create_file(sftp: &SftpSession, path: &str) -> Result<(), AppError> {
+    let target = normalize_remote(path);
+    let file = sftp
+        .create(target.clone())
+        .await
+        .map_err(|err| AppError::Sftp(format!("创建远程文件 {target} 失败: {err}")))?;
+    drop(file);
+    Ok(())
+}
+
 /// `mode` is the Unix permission bits, e.g. `0o755`.
 pub async fn chmod(sftp: &SftpSession, path: &str, mode: u32) -> Result<(), AppError> {
     let metadata = russh_sftp::protocol::FileAttributes {

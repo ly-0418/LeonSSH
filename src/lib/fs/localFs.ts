@@ -7,7 +7,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { homeDir } from "@tauri-apps/api/path";
-import { readDir, stat } from "@tauri-apps/plugin-fs";
+import { mkdir, readDir, remove, rename, stat, writeTextFile } from "@tauri-apps/plugin-fs";
 
 import type { FileEntry } from "./types";
 import { joinLocal, normalizeLocal } from "./paths";
@@ -21,6 +21,27 @@ export async function localHome(): Promise<string> {
 
 export async function localRoots(): Promise<string[]> {
   return invoke<string[]>("local_roots");
+}
+
+export async function createLocalDir(path: string): Promise<void> {
+  await mkdir(path);
+}
+
+export async function createLocalFile(path: string): Promise<void> {
+  await writeTextFile(path, "");
+}
+
+export async function renameLocal(from: string, to: string): Promise<void> {
+  await rename(from, to);
+}
+
+export async function deleteLocal(path: string, isDir: boolean): Promise<void> {
+  await remove(path, { recursive: isDir });
+}
+
+/** Opens the file with the Windows default application (Notepad fallback). */
+export async function openLocalFile(path: string): Promise<void> {
+  await invoke("local_open_file", { path });
 }
 
 export function sortEntries(entries: FileEntry[]): FileEntry[] {

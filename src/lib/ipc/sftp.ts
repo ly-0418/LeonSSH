@@ -66,6 +66,15 @@ export async function mkdirRemote(terminalId: string, path: string): Promise<voi
   }
 }
 
+/** Creates an empty remote file. */
+export async function createRemoteFile(terminalId: string, path: string): Promise<void> {
+  try {
+    await invoke<void>("sftp_create_file", { terminalId, path });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
 export async function removeRemote(
   terminalId: string,
   path: string,

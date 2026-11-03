@@ -1,5 +1,5 @@
 import type { FileEntry } from "../../lib/fs/types";
-import type { SelectionMode } from "./useFilePane";
+import type { SelectionMode, SortKey, SortState } from "./useFilePane";
 import { formatMode, formatSize, formatTime } from "./format";
 
 interface FileTableProps {
@@ -7,34 +7,67 @@ interface FileTableProps {
   selected: string[];
   showPermissions?: boolean;
   loading: boolean;
-  /** Rows can be dragged to the other pane (native HTML5 drag). */
-  draggable?: boolean;
+  sort: SortState;
+  onSort: (key: SortKey) => void;
   onSelect: (name: string, mode: SelectionMode) => void;
   onOpen: (entry: FileEntry) => void;
+  /** `entry === null` means the empty area below the rows. */
+  onContextMenu: (entry: FileEntry | null, event: React.MouseEvent) => void;
+  onRowPointerDown?: (entry: FileEntry, event: React.PointerEvent) => void;
 }
+
+const SORT_LABEL: Record<SortKey, string> = {
+  name: "名称",
+  size: "大小",
+  mtime: "修改时间",
+  type: "类型",
+};
 
 export function FileTable({
   entries,
   selected,
   showPermissions = false,
   loading,
-  draggable = false,
+  sort,
+  onSort,
   onSelect,
   onOpen,
+  onContextMenu,
+  onRowPointerDown,
 }: FileTableProps) {
-  if (entries.length === 0) {
-    return <div className="fm-table__empty">{loading ? "加载中…" : "空目录"}</div>;
-  }
+  const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === 1 ? " ▲" : " ▼") : "");
+
+  const head = (key: SortKey, label: string) => (
+    <button
+      type="button"
+      className={`fm-table__sort${sort.key === key ? " fm-table__sort--active" : ""}`}
+      onClick={() => onSort(key)}
+      title={`按${SORT_LABEL[key]}排序`}
+    >
+      {label}
+      {arrow(key)}
+    </button>
+  );
 
   return (
     <div className="fm-table" role="grid">
       <div className={`fm-table__head${showPermissions ? " fm-table__head--perm" : ""}`}>
-        <span>名称</span>
-        <span>大小</span>
-        {showPermissions && <span>权限</span>}
-        <span>修改时间</span>
+        {head("name", "名称")}
+        {head("size", "大小")}
+        {showPermissions && head("type", "权限")}
+        {head("mtime", "修改时间")}
       </div>
-      <div className="fm-table__body">
+      <div
+        className="fm-table__body"
+        onContextMenu={(event) => {
+          // Only fires when the click was not on a row (rows stop propagation).
+          event.preventDefault();
+          onContextMenu(null, event);
+        }}
+      >
+        {entries.length === 0 && (
+          <div className="fm-table__empty">{loading ? "加载中…" : "空目录（右键可新建）"}</div>
+        )}
         {entries.map((entry) => (
           <div
             key={entry.path}
@@ -50,15 +83,13 @@ export function FileTable({
               )
             }
             onDoubleClick={() => onOpen(entry)}
-            draggable={draggable}
-            onDragStart={(event) => {
-              if (!draggable) {
-                return;
-              }
-              event.dataTransfer.setData("application/x-leonssh-path", entry.path);
-              event.dataTransfer.setData("text/plain", entry.path);
-              event.dataTransfer.effectAllowed = "copy";
+            onContextMenu={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onSelect(entry.name, "single");
+              onContextMenu(entry, event);
             }}
+            onPointerDown={(event) => onRowPointerDown?.(entry, event)}
             title={entry.path}
           >
             <span className={`fm-row__name${entry.isDir ? " fm-row__name--dir" : ""}`}>

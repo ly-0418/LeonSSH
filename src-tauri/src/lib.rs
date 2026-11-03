@@ -196,6 +196,8 @@ pub fn run() {
             commands::sftp::sftp_upload,
             commands::sftp::sftp_download,
             commands::sftp::sftp_stat,
+            commands::sftp::sftp_create_file,
+            commands::local::local_open_file,
             commands::forward::forward_list,
             commands::forward::forward_create,
             commands::forward::forward_delete,

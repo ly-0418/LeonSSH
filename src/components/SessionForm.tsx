@@ -19,6 +19,7 @@ export function SessionForm({ initial, onboarding = false, onSaved, onCancel }: 
   const [port, setPort] = useState(String(initial?.port ?? 2222));
   const [username, setUsername] = useState(initial?.username ?? "test");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement | null>(null);
@@ -121,14 +122,26 @@ export function SessionForm({ initial, onboarding = false, onSaved, onCancel }: 
         </label>
         <label className="field field--grow">
           <span className="field__label">密码</span>
-          <input
-            className="input"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder={initial?.hasPassword ? "已保存，留空则不修改" : "保存到凭据管理器"}
-            autoComplete="new-password"
-          />
+          <span className="field__with-action">
+            <input
+              className="input"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder={initial?.hasPassword ? "已保存，留空则不修改" : "保存到凭据管理器"}
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              className="field__action"
+              title={showPassword ? "隐藏密码" : "显示密码"}
+              aria-label={showPassword ? "隐藏密码" : "显示密码"}
+              tabIndex={-1}
+              onClick={() => setShowPassword((value) => !value)}
+            >
+              {showPassword ? "🙈" : "👁"}
+            </button>
+          </span>
         </label>
       </div>
 

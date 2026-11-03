@@ -186,6 +186,16 @@ pub async fn sftp_download(
     Ok(())
 }
 
+#[tauri::command]
+pub async fn sftp_create_file(
+    state: State<'_, AppState>,
+    terminal_id: String,
+    path: String,
+) -> Result<(), AppError> {
+    let session = state.sftp(&terminal_id).await?;
+    sftp::create_file(&session, &path).await
+}
+
 /// Metadata for one remote path.
 #[tauri::command]
 pub async fn sftp_stat(

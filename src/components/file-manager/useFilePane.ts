@@ -1,3 +1,4 @@
+import { memGet, memSet } from "../../lib/fs/fmMemory";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { FileEntry } from "../../lib/fs/types";
@@ -226,7 +227,7 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string, persistK
 
   useEffect(() => {
     let cancelled = false;
-    const stored = persistKey !== undefined ? localStorage.getItem(persistKey) : null;
+    const stored = persistKey !== undefined ? memGet(persistKey) : null;
     const start = stored !== null && stored.length > 0
       ? Promise.resolve(stored)
       : initialPath !== undefined && initialPath.length > 0
@@ -251,7 +252,7 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string, persistK
 
   useEffect(() => {
     if (persistKey !== undefined && path.length > 0) {
-      localStorage.setItem(persistKey, path);
+      memSet(persistKey, path);
     }
   }, [persistKey, path]);
 
@@ -266,7 +267,7 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string, persistK
     }
     restoredSel.current = true;
     try {
-      const raw = localStorage.getItem(persistKey + ":sel");
+      const raw = memGet(persistKey + ":sel");
       if (raw === null) {
         return;
       }
@@ -279,7 +280,7 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string, persistK
   }, [entries, persistKey]);
   useEffect(() => {
     if (persistKey !== undefined) {
-      localStorage.setItem(persistKey + ":sel", JSON.stringify(selected));
+      memSet(persistKey + ":sel", JSON.stringify(selected));
     }
   }, [persistKey, selected]);
 

@@ -1,3 +1,4 @@
+import { memGet, memSet } from "../../lib/fs/fmMemory";
 import { useEffect, useRef, useState } from "react";
 
 import type { FileEntry } from "../../lib/fs/types";
@@ -57,7 +58,7 @@ export function FileTable({
       return;
     }
     // Restore once the rows exist (the spacer needs its height first).
-    const raw = localStorage.getItem(scrollKey);
+    const raw = memGet(scrollKey);
     const top = raw === null ? 0 : Number.parseInt(raw, 10);
     if (Number.isFinite(top) && top > 0) {
       element.scrollTop = top;
@@ -68,7 +69,7 @@ export function FileTable({
 
   useEffect(() => {
     if (scrollKey !== undefined && restoreScroll.current) {
-      localStorage.setItem(scrollKey, String(scrollTop));
+      memSet(scrollKey, String(scrollTop));
     }
   }, [scrollKey, scrollTop]);
 

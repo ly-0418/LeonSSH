@@ -28,6 +28,7 @@ interface RemotePaneProps {
   /** Highlight when a drag from the local pane (or the OS) is over the pane. */
   dropActive?: boolean;
   refreshToken?: number;
+  initialPath?: string;
   onPathChange?: (path: string) => void;
   onSelectionChange?: (entries: PaneEntry[]) => void;
   onOpenFile?: (entry: PaneEntry) => void;
@@ -173,6 +174,7 @@ function RemotePaneLoaded({
   dropActive,
   refreshToken,
   onPathChange,
+  initialPath,
   onSelectionChange,
   onOpenFile,
   onDropPaths,
@@ -192,7 +194,7 @@ function RemotePaneLoaded({
     }),
     [terminalId, home],
   );
-  const pane = useFilePane(adapter);
+  const pane = useFilePane(adapter, initialPath);
 
   const [menu, setMenu] = useState<{ x: number; y: number; entry: PaneEntry | null } | null>(null);
   const [prompt, setPrompt] = useState<RemotePrompt | null>(null);

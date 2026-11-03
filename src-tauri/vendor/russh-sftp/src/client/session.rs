@@ -310,7 +310,13 @@ impl SftpSession {
     {
         let handle = self.session.opendir(path.into()).await?.handle;
         loop {
-            let name = self.session.readdir(handle.as_str()).await?;
+            // Some servers report EOF as an error instead of an empty batch.
+            let name = match self.session.readdir(handle.as_str()).await {
+                Ok(name) => name,
+                Err(Error::Status(status)) if status.status_code == StatusCode::Eof => break,
+                Err(err) if err.to_string().to_lowercase().contains("eof") => break,
+                Err(err) => return Err(err),
+            };
             if name.files.is_empty() {
                 break;
             }

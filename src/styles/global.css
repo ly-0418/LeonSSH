@@ -105,6 +105,43 @@ body {
   background: var(--border-strong);
 }
 
+/* Frameless window: the header is also the title bar (drag region). */
+.app-header {
+  padding-right: 0;
+}
+
+.app-header > * {
+  pointer-events: none;
+}
+
+.window-controls {
+  display: flex;
+  align-items: stretch;
+  height: 44px;
+  margin-left: 4px;
+  pointer-events: auto;
+}
+
+.window-controls__btn {
+  width: 46px;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.window-controls__btn:hover {
+  background: #1b2836;
+  color: var(--text);
+}
+
+.window-controls__btn--close:hover {
+  background: #c42b1c;
+  color: #ffffff;
+}
+
 .boot-error {
   flex: 0 0 auto;
   padding: 6px 16px;

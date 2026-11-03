@@ -7,6 +7,7 @@ import { ForwardPanel } from "./components/ForwardPanel";
 import { StatusBar } from "./components/StatusBar";
 import { TabBar, type TabItem } from "./components/TabBar";
 import { TerminalTab } from "./components/TerminalTab";
+import { WindowControls } from "./components/WindowControls";
 import { ConfirmDialog, KnownHostsDialog } from "./components/dialogs";
 import { toUserMessage } from "./lib/ipc/errors";
 import { deleteSession, listSessions } from "./lib/ipc/sessions";
@@ -180,7 +181,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
+      <header className="app-header" data-tauri-drag-region>
         <div className="brand">
           <span className="brand__mark">▌</span>
           <h1 className="brand__title">LeonSSH</h1>
@@ -191,6 +192,7 @@ export default function App() {
           <span className="app-header__sep" />
           <span>{info !== null ? `${info.platform}/${info.arch}` : "—"}</span>
         </div>
+        <WindowControls />
       </header>
 
       {error !== null && (

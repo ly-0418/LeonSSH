@@ -140,6 +140,9 @@ pub fn run() {
             .title("LeonSSH")
             .inner_size(1180.0, 760.0)
             .min_inner_size(760.0, 480.0)
+            // Frameless: the app header doubles as the title bar and renders
+            // its own minimize/maximize/close buttons.
+            .decorations(false)
             .center()
             .data_directory(webview_data_dir.clone())
             .build()?;

@@ -18,7 +18,7 @@ export function ConfirmDialog({
   onCancel: () => void;
 }) {
   return (
-    <div className="modal-backdrop" role="presentation" onClick={onCancel}>
+    <div className="modal-backdrop" role="presentation">
       <div className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
         <h2 className="modal__title">{title}</h2>
         <p className="modal__body">{message}</p>
@@ -55,7 +55,7 @@ export function KnownHostsDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="modal-backdrop" role="presentation" onClick={onClose}>
+    <div className="modal-backdrop" role="presentation">
       <div className="modal modal--wide" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <h2 className="modal__title">已知主机（TOFU 指纹）</h2>
         <p className="modal__hint">

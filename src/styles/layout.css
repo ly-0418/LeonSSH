@@ -959,3 +959,8 @@
   box-shadow: none;
   width: 100%;
 }
+
+/* The dialog header already carries the title. */
+.modal .session-form__head {
+  display: none;
+}

@@ -25,8 +25,8 @@ const INITIAL_STATUS: TerminalStatus = {
 type WorkspaceView = "terminal" | "files";
 
 interface SessionDialogState {
+  mode: "list" | "form";
   editing: SessionSummary | null;
-  startInForm: boolean;
 }
 
 const THEME_KEY = "leonssh.theme";
@@ -247,7 +247,7 @@ export default function App() {
             activeKey={activeKey}
             onActivate={setActiveKey}
             onClose={closeTab}
-            onNewSession={() => setSessionDialog({ editing: null, startInForm: false })}
+            onNewSession={() => setSessionDialog({ mode: "list", editing: null })}
             onDuplicate={duplicateTab}
             onShowKnownHosts={() => setKnownHostsOpen(true)}
             forwardOpen={forwardOpen}
@@ -324,16 +324,19 @@ export default function App() {
 
       {sessionDialog !== null && (
         <NewSessionDialog
+          key={`${sessionDialog.mode}-${sessionDialog.editing?.id ?? "new"}`}
+          mode={sessionDialog.mode}
           sessions={sessions}
-          startInForm={sessionDialog.startInForm}
           editing={sessionDialog.editing}
           onPick={(session) => {
             setSessionDialog(null);
             openTab(session);
           }}
           onSaved={(session) => void handleSaved(session)}
-          onEdit={(session) => setSessionDialog({ editing: session, startInForm: true })}
+          onCreate={() => setSessionDialog({ mode: "form", editing: null })}
+          onEdit={(session) => setSessionDialog({ mode: "form", editing: session })}
           onDelete={(session) => setPendingDelete(session)}
+          onBack={() => setSessionDialog({ mode: "list", editing: null })}
           onClose={() => setSessionDialog(null)}
         />
       )}

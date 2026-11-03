@@ -4,8 +4,6 @@ import { toUserMessage } from "../lib/ipc/errors";
 import { createSession, setSessionPassword, updateSession } from "../lib/ipc/sessions";
 import type { SessionInput, SessionSummary } from "../lib/ipc/types";
 
-const COLORS = ["#4ade80", "#38bdf8", "#fbbf24", "#f472b6", "#a78bfa", "#fb7185"];
-
 interface SessionFormProps {
   /** Present when editing an existing profile. */
   initial?: SessionSummary | null;
@@ -21,7 +19,6 @@ export function SessionForm({ initial, onboarding = false, onSaved, onCancel }: 
   const [port, setPort] = useState(String(initial?.port ?? 2222));
   const [username, setUsername] = useState(initial?.username ?? "test");
   const [password, setPassword] = useState("");
-  const [color, setColor] = useState(initial?.color ?? COLORS[0]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement | null>(null);
@@ -48,7 +45,6 @@ export function SessionForm({ initial, onboarding = false, onSaved, onCancel }: 
       port: portNumber,
       username: username.trim(),
       authMethod: "password",
-      color,
     };
 
     setBusy(true);
@@ -135,23 +131,6 @@ export function SessionForm({ initial, onboarding = false, onSaved, onCancel }: 
           />
         </label>
       </div>
-
-      <fieldset className="field">
-        <legend className="field__label">标签颜色</legend>
-        <div className="swatches">
-          {COLORS.map((value) => (
-            <button
-              key={value}
-              type="button"
-              tabIndex={-1}
-              className={`swatch${value === color ? " swatch--active" : ""}`}
-              style={{ backgroundColor: value }}
-              aria-label={`颜色 ${value}`}
-              onClick={() => setColor(value)}
-            />
-          ))}
-        </div>
-      </fieldset>
 
       {error !== null && <p className="form-error">{error}</p>}
 

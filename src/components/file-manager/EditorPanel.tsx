@@ -168,7 +168,7 @@ export function EditorPanel({ file, onClose, onSaved }: EditorPanelProps) {
       )}
 
       {saveAsOpen && (
-        <div className="modal-backdrop" role="presentation" onClick={() => setSaveAsOpen(false)}>
+        <div className="modal-backdrop" role="presentation">
           <div className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <h2 className="modal__title">另存为远程路径</h2>
             <input

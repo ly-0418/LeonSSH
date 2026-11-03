@@ -119,8 +119,6 @@ export function ForwardPanel({ terminalId, sessionId, title }: ForwardPanelProps
               <option value="remote">-R 远程转发</option>
               <option value="dynamic">-D 动态 SOCKS5</option>
             </select>
-            <span className="forward__label">本地端口</span>
-            <input className="input forward__port" value={bindPort} onChange={(e) => setBindPort(e.target.value)} />
             <button
               type="button"
               className="button button--primary button--sm forward__add"
@@ -130,23 +128,39 @@ export function ForwardPanel({ terminalId, sessionId, title }: ForwardPanelProps
               添加规则
             </button>
           </div>
-          {kind !== "dynamic" && (
-            <div className="forward__row">
-              <span className="forward__label">目标</span>
-              <input
-                className="input forward__host"
-                value={targetHost}
-                onChange={(e) => setTargetHost(e.target.value)}
-                placeholder="host"
-              />
-              <span className="forward__colon">:</span>
-              <input
-                className="input forward__port"
-                value={targetPort}
-                onChange={(e) => setTargetPort(e.target.value)}
-              />
-            </div>
-          )}
+          <div className="forward__row">
+            <span className="forward__label">本地端口</span>
+            <input
+              className="input forward__port"
+              type="number"
+              min={1}
+              max={65535}
+              step={1}
+              value={bindPort}
+              onChange={(e) => setBindPort(e.target.value)}
+            />
+            {kind !== "dynamic" && (
+              <>
+                <span className="forward__label forward__label--target">目标</span>
+                <input
+                  className="input forward__host"
+                  value={targetHost}
+                  onChange={(e) => setTargetHost(e.target.value)}
+                  placeholder="host"
+                />
+                <span className="forward__colon">:</span>
+                <input
+                  className="input forward__port"
+                  type="number"
+                  min={1}
+                  max={65535}
+                  step={1}
+                  value={targetPort}
+                  onChange={(e) => setTargetPort(e.target.value)}
+                />
+              </>
+            )}
+          </div>
         </div>
 
         {error !== null && <p className="form-error">{error}</p>}

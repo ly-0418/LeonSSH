@@ -1599,3 +1599,18 @@ input[type="password"]::-ms-reveal {
 .forward__row .forward__add {
   margin-left: auto;
 }
+/* Compact forwarding inputs: narrow numeric ports, compact target host. */
+.forward__port {
+  width: 76px;
+  flex: 0 0 auto;
+}
+
+.forward__host {
+  width: 150px;
+  flex: 0 1 auto;
+  min-width: 110px;
+}
+
+.forward__label--target {
+  margin-left: 6px;
+}

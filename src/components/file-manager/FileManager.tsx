@@ -270,17 +270,16 @@ export function FileManager({
   return (
     <div className={`file-manager${exiting ? " file-manager--leave" : " file-manager--enter"}`}>
       <header className="fm-head">
-        <span className="fm-head__title">文件管理</span>
         <button
           type="button"
-          className="button button--primary button--sm"
+          className="button button--primary button--sm fm-head__upload"
           disabled={!canUpload}
           onClick={() => void upload(localSelection)}
           title="上传选中的本地文件到当前远程目录"
         >
           ↑ 上传
         </button>
-        <span className="fm-head__spacer" />
+        <span className="fm-head__title">文件传输</span>
         <button
           type="button"
           className="fm-head__download button button--sm"
@@ -290,7 +289,6 @@ export function FileManager({
         >
           ↓ 下载
         </button>
-
       </header>
 
       {banner !== null && (

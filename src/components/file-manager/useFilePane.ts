@@ -111,13 +111,42 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string): FilePan
         setFilter("");
         anchorRef.current = null;
         if (adapter.enrich) {
-          void adapter.enrich(list, (entryPath, patch) => {
-            setEntries((previous) =>
-              previous.map((entry) =>
-                entry.path === entryPath ? { ...entry, ...patch } : entry,
-              ),
-            );
-          });
+          // Defer metadata hydration until the listing has painted, then apply
+          // results in batches: one state update per ~200ms instead of one per
+          // file (which used to map the whole folder array hundreds of times).
+          window.setTimeout(() => {
+            if (request !== requestRef.current) {
+              return;
+            }
+            const pending = new Map<string, Partial<FileEntry>>();
+            let scheduled = false;
+
+            const flush = () => {
+              scheduled = false;
+              if (request !== requestRef.current || pending.size === 0) {
+                return;
+              }
+              const patches = new Map(pending);
+              pending.clear();
+              setEntries((previous) =>
+                previous.map((entry) => {
+                  const patch = patches.get(entry.path);
+                  return patch === undefined ? entry : { ...entry, ...patch };
+                }),
+              );
+            };
+
+            void adapter.enrich?.(list, (entryPath, patch) => {
+              if (request !== requestRef.current) {
+                return;
+              }
+              pending.set(entryPath, patch);
+              if (!scheduled) {
+                scheduled = true;
+                window.setTimeout(flush, 200);
+              }
+            });
+          }, 120);
         }
       } catch (err) {
         if (request === requestRef.current) {

@@ -99,3 +99,15 @@ export async function startUploadDir(
     throw normalizeError(error);
   }
 }
+/** Recursively downloads a remote directory, queueing one task per file. */
+export async function startDownloadDir(
+  terminalId: string,
+  remotePath: string,
+  localPath: string,
+): Promise<number> {
+  try {
+    return await invoke<number>("transfer_download_dir", { terminalId, remotePath, localPath });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}

@@ -213,6 +213,7 @@ pub fn run() {
             commands::transfer::transfer_upload,
             commands::transfer::transfer_upload_dir,
             commands::transfer::transfer_download,
+            commands::transfer::transfer_download_dir,
             commands::editor::editor_open,
             commands::editor::editor_open_external,
             commands::editor::editor_temp_stat,

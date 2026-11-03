@@ -189,6 +189,62 @@ pub async fn transfer_upload(
         .start_upload(session, terminal_id, local, remote, overwrite)
 }
 
+/// Recursively downloads a remote directory, one task per file.
+#[tauri::command]
+pub async fn transfer_download_dir(
+    state: State<'_, AppState>,
+    terminal_id: String,
+    remote_path: String,
+    local_path: String,
+) -> Result<usize, AppError> {
+    let root = sftp::path::normalize_remote(&remote_path);
+    let local_root = std::path::PathBuf::from(&local_path);
+    std::fs::create_dir_all(&local_root).map_err(|err| {
+        AppError::Internal(format!("创建本地目录 {} 失败: {err}", local_root.display()))
+    })?;
+    let session = ensure_sftp(&state, &terminal_id).await?;
+
+    let mut files: Vec<(String, String)> = Vec::new();
+    let mut stack = vec![(root.clone(), String::new())];
+    while let Some((remote_dir, relative)) = stack.pop() {
+        let entries = sftp::list(&session, &remote_dir).await?;
+        for entry in entries {
+            let next_relative = if relative.is_empty() {
+                entry.name.clone()
+            } else {
+                format!("{relative}/{}", entry.name)
+            };
+            if entry.is_dir && !entry.is_symlink {
+                stack.push((entry.path, next_relative));
+            } else if !entry.is_dir {
+                files.push((entry.path, next_relative));
+            }
+        }
+    }
+    files.sort_by(|a, b| a.1.cmp(&b.1));
+
+    let mut queued = 0usize;
+    for (remote_file, relative) in &files {
+        let target = local_root.join(relative.replace('/', std::path::MAIN_SEPARATOR_STR));
+        if let Some(parent) = target.parent() {
+            std::fs::create_dir_all(parent).map_err(|err| {
+                AppError::Internal(format!("创建本地目录 {} 失败: {err}", parent.display()))
+            })?;
+        }
+        state
+            .transfer_manager()
+            .start_download(
+                session.clone(),
+                terminal_id.clone(),
+                remote_file.clone(),
+                target,
+            )?;
+        queued += 1;
+    }
+    tracing::info!(remote = %root, local = %local_root.display(), files = queued, "directory download queued");
+    Ok(queued)
+}
+
 #[tauri::command]
 pub async fn transfer_download(
     state: State<'_, AppState>,

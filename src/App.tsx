@@ -336,7 +336,6 @@ export default function App() {
                     terminalId={activeTab.status.terminalId}
                     sessionId={activeTab.sessionId}
                     title={activeTab.title}
-                    onClose={() => setForwardOpen(false)}
                   />
                 </div>
               )}

@@ -14,7 +14,6 @@ interface ForwardPanelProps {
   terminalId: string;
   sessionId: number;
   title: string;
-  onClose: () => void;
 }
 
 const KIND_LABEL: Record<string, string> = {
@@ -23,7 +22,7 @@ const KIND_LABEL: Record<string, string> = {
   dynamic: "-D SOCKS5",
 };
 
-export function ForwardPanel({ terminalId, sessionId, title, onClose }: ForwardPanelProps) {
+export function ForwardPanel({ terminalId, sessionId, title }: ForwardPanelProps) {
   const [rules, setRules] = useState<ForwardView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -110,9 +109,6 @@ export function ForwardPanel({ terminalId, sessionId, title, onClose }: ForwardP
       <header className="sftp__head">
         <span className="sftp__title">端口转发 · {title}</span>
         <span className="sftp__hint">复用当前 SSH 连接；终端关闭时自动回收</span>
-        <button type="button" className="button button--ghost button--sm" onClick={onClose}>
-          关闭
-        </button>
       </header>
 
       <div className="forward__body">

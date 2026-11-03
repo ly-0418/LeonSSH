@@ -133,6 +133,59 @@ pub async fn connect(
     known: Arc<KnownHosts>,
     routes: RemoteRoutes,
 ) -> Result<Connection, SshError> {
+    if let Some(jump) = cfg.jump.as_deref() {
+        tracing::info!(
+            jump = %jump.display_target(),
+            target = %cfg.display_target(),
+            "connecting through a jump host"
+        );
+        let jump_connection = Box::pin(connect(jump, known.clone(), routes.clone())).await?;
+        let channel = jump_connection
+            .handle
+            .channel_open_direct_tcpip(
+                cfg.host.clone(),
+                cfg.port as u32,
+                "127.0.0.1".to_string(),
+                0,
+            )
+            .await
+            .map_err(|err| SshError::Connect {
+                endpoint: cfg.endpoint(),
+                reason: format!("跳板机转发通道创建失败: {err}"),
+            })?;
+        return connect_over(cfg, known, routes, channel.into_stream()).await;
+    }
+
+    let stream = match tokio::time::timeout(
+        cfg.connect_timeout,
+        TcpStream::connect((cfg.host.as_str(), cfg.port)),
+    )
+    .await
+    {
+        Err(_) => return Err(SshError::Timeout(cfg.connect_timeout.as_secs())),
+        Ok(Err(err)) => {
+            return Err(SshError::Connect {
+                endpoint: cfg.endpoint(),
+                reason: err.to_string(),
+            })
+        }
+        Ok(Ok(stream)) => stream,
+    };
+
+    connect_over(cfg, known, routes, stream).await
+}
+
+/// Runs the SSH handshake + authentication over an established byte stream
+/// (a direct TCP socket, or a `direct-tcpip` channel through a jump host).
+async fn connect_over<S>(
+    cfg: &SshConfig,
+    known: Arc<KnownHosts>,
+    routes: RemoteRoutes,
+    stream: S,
+) -> Result<Connection, SshError>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
+{
     let client_config = Arc::new(client::Config {
         inactivity_timeout: None,
         // Heartbeat keeps NAT/firewall mappings alive on idle sessions.
@@ -146,7 +199,7 @@ pub async fn connect(
 
     let attempt = tokio::time::timeout(
         cfg.connect_timeout,
-        client::connect(client_config, (cfg.host.as_str(), cfg.port), handler),
+        client::connect_stream(client_config, stream, handler),
     )
     .await;
 

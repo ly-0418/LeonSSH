@@ -34,6 +34,8 @@ pub struct SshConfig {
     pub auth: AuthMethod,
     pub term: String,
     pub connect_timeout: Duration,
+    /// Optional jump host (ProxyJump): the target is reached through it.
+    pub jump: Option<Box<SshConfig>>,
 }
 
 impl SshConfig {
@@ -54,6 +56,7 @@ impl SshConfig {
                 _ => AuthMethod::Password(password.unwrap_or_default()),
             },
             term: "xterm-256color".to_string(),
+            jump: None,
             connect_timeout: Duration::from_secs(12),
         }
     }
@@ -73,6 +76,7 @@ impl SshConfig {
             username: username.into(),
             auth: AuthMethod::Password(password.into()),
             term: "xterm-256color".to_string(),
+            jump: None,
             connect_timeout: Duration::from_secs(12),
         }
     }

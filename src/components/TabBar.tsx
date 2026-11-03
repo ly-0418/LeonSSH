@@ -23,6 +23,8 @@ interface TabBarProps {
   onClose: (key: string) => void;
   onNewSession: () => void;
   onDuplicate: (key: string) => void;
+  forwardOpen: boolean;
+  onToggleForward: () => void;
 }
 
 interface MenuState {
@@ -38,6 +40,8 @@ export function TabBar({
   onClose,
   onNewSession,
   onDuplicate,
+  forwardOpen,
+  onToggleForward,
 }: TabBarProps) {
   const [menu, setMenu] = useState<MenuState | null>(null);
 
@@ -112,6 +116,17 @@ export function TabBar({
       </button>
 
 
+
+      <span className="tab-bar__spacer" />
+      <button
+        type="button"
+        className={`tab-bar__action${forwardOpen ? " tab-bar__action--active" : ""}`}
+        onClick={onToggleForward}
+        disabled={activeKey === null}
+        title="端口转发（-L / -R / -D）"
+      >
+        转发
+      </button>
 
       {menu !== null && (
         <div

@@ -8,11 +8,11 @@ export type ThemeMode = "dark" | "light";
 
 /** Dark palette tuned for a 24-bit capable renderer. */
 export const DARK_TERMINAL_THEME: ITheme = {
-  background: "#151b23",
-  foreground: "#dbe5ef",
+  background: "#1c242e",
+  foreground: "#e4edf6",
   cursor: "#4ade80",
-  cursorAccent: "#151b23",
-  selectionBackground: "#2c4a6e80",
+  cursorAccent: "#1c242e",
+  selectionBackground: "#3a5a7e80",
   black: "#1c2530",
   red: "#f87171",
   green: "#4ade80",

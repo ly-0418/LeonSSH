@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { FileManager } from "./components/file-manager/FileManager";
+import { ForwardPanel } from "./components/ForwardPanel";
 import { NewSessionDialog } from "./components/NewSessionDialog";
 import { SessionForm } from "./components/SessionForm";
 import { SettingsDrawer } from "./components/SettingsDrawer";
@@ -48,6 +49,7 @@ export default function App() {
   );
   const [filesExiting, setFilesExiting] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [forwardOpen, setForwardOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeMode>(initialTheme);
   const [sessionDialog, setSessionDialog] = useState<SessionDialogState | null>(null);
@@ -293,6 +295,8 @@ export default function App() {
               })
             }
             onDuplicate={duplicateTab}
+            forwardOpen={forwardOpen}
+            onToggleForward={() => setForwardOpen((open) => !open)}
 
           />
 
@@ -326,6 +330,16 @@ export default function App() {
                   />
                 </div>
               ))}
+              {forwardOpen && activeTab?.status.terminalId != null && (
+                <div className="sftp-overlay">
+                  <ForwardPanel
+                    terminalId={activeTab.status.terminalId}
+                    sessionId={activeTab.sessionId}
+                    title={activeTab.title}
+                    onClose={() => setForwardOpen(false)}
+                  />
+                </div>
+              )}
               {tabs.length === 0 && mode !== "form" && (
                 <div className="workspace__empty">
                   <p>点右上角「＋」新建连接，或从左侧选择一个会话。</p>
@@ -388,9 +402,6 @@ export default function App() {
         <SettingsDrawer
           theme={theme}
           onChangeTheme={setTheme}
-          terminalId={activeTab?.status.terminalId ?? null}
-          sessionId={activeTab?.sessionId ?? null}
-          sessionTitle={activeTab?.title ?? null}
           onClose={() => setSettingsOpen(false)}
         />
       )}

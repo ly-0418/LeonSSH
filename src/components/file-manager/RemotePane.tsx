@@ -227,6 +227,7 @@ function RemotePaneLoaded({
       return [
         { label: "新建文件夹", onSelect: () => setPrompt({ kind: "folder" }) },
         { label: "新建文件", onSelect: () => setPrompt({ kind: "file" }) },
+        { label: "在终端中打开", onSelect: () => onOpenInTerminal?.(pane.path) },
       ];
     }
     if (entry.isDir) {

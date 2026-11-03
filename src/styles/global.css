@@ -1,43 +1,43 @@
 :root {
   color-scheme: dark;
 
-  --bg: #151b23;
-  --bg-elevated: #1a222c;
-  --bg-header: #1a222c;
-  --bg-panel: #1a222c;
-  --bg-input: #1d2731;
-  --bg-sunken: #121820;
-  --bg-hover: #232d3a;
-  --bg-hover-strong: #2c3846;
-  --bg-selected: #24344a;
-  --bg-track: #2a3644;
+  --bg: #1c242e;
+  --bg-elevated: #242e3a;
+  --bg-header: #242e3a;
+  --bg-panel: #242e3a;
+  --bg-input: #28333f;
+  --bg-sunken: #171e26;
+  --bg-hover: #2c3845;
+  --bg-hover-strong: #48586a;
+  --bg-selected: #2f4157;
+  --bg-track: #34424f;
 
-  --border: #2a3644;
-  --border-strong: #3a4859;
+  --border: #34424f;
+  --border-strong: #48586a;
 
-  --text: #dbe5ef;
-  --text-dim: #9fb0c0;
-  --text-faint: #6f8093;
-  --muted: #8595a6;
+  --text: #e4edf6;
+  --text-dim: #adbccd;
+  --text-faint: #7f91a5;
+  --muted: #93a3b4;
 
   --accent: #4ade80;
   --accent-cyan: #38bdf8;
-  --accent-soft-bg: #173226;
-  --accent-soft-border: #2a5a3c;
+  --accent-soft-bg: #1b382a;
+  --accent-soft-border: #326648;
   --accent-glow: #4ade8066;
   --accent-faint: #4ade8018;
 
   --danger: #f87171;
   --danger-text: #fca5a5;
-  --danger-bg: #3a1518;
-  --danger-border: #6b2b32;
+  --danger-bg: #431a1e;
+  --danger-border: #7a323a;
 
   --warn: #fbbf24;
   --warn-text: #fcd34d;
-  --warn-bg: #3a2e12;
-  --warn-border: #6b5522;
+  --warn-bg: #40331a;
+  --warn-border: #77602a;
 
-  --overlay: rgba(21, 27, 35, 0.97);
+  --overlay: rgba(28, 36, 46, 0.97);
   --backdrop: rgba(6, 10, 15, 0.62);
 
   --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;

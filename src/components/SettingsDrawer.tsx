@@ -4,32 +4,26 @@ import { forgetKnownHost, listKnownHosts } from "../lib/ipc/sessions";
 import { toUserMessage } from "../lib/ipc/errors";
 import type { KnownHostEntry } from "../lib/ipc/types";
 import type { ThemeMode } from "../lib/terminal/theme";
-import { ForwardPanel } from "./ForwardPanel";
 
 interface SettingsDrawerProps {
   theme: ThemeMode;
   onChangeTheme: (theme: ThemeMode) => void;
-  terminalId: string | null;
-  sessionId: number | null;
-  sessionTitle: string | null;
+
   onClose: () => void;
 }
 
-type SettingsTab = "theme" | "hosts" | "forward";
+type SettingsTab = "theme" | "hosts";
 
 const TABS: Array<{ key: SettingsTab; label: string }> = [
   { key: "theme", label: "主题" },
   { key: "hosts", label: "主机" },
-  { key: "forward", label: "转发" },
 ];
 
 /** Right-side settings drawer: categories on the left, content on the right. */
 export function SettingsDrawer({
   theme,
   onChangeTheme,
-  terminalId,
-  sessionId,
-  sessionTitle,
+
   onClose,
 }: SettingsDrawerProps) {
   const [tab, setTab] = useState<SettingsTab>("theme");
@@ -147,20 +141,7 @@ export function SettingsDrawer({
               </div>
             )}
 
-            {tab === "forward" && (
-              <div className="setting-group setting-group--forward">
-                {terminalId !== null && sessionId !== null ? (
-                  <ForwardPanel
-                    terminalId={terminalId}
-                    sessionId={sessionId}
-                    title={sessionTitle ?? "当前会话"}
-                    onClose={onClose}
-                  />
-                ) : (
-                  <p className="modal__hint">先在终端里连接一个会话，才能配置端口转发。</p>
-                )}
-              </div>
-            )}
+
           </section>
         </div>
       </aside>

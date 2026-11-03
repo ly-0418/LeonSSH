@@ -5,7 +5,7 @@ import type { FileEntry } from "../../lib/fs/types";
 import { fileName, joinLocal } from "../../lib/fs/paths";
 import { openEditorExternal, type EditorFile } from "../../lib/ipc/editor";
 import { toUserMessage } from "../../lib/ipc/errors";
-import { joinPath } from "../../lib/ipc/sftp";
+import { joinPath, statRemote } from "../../lib/ipc/sftp";
 import { startDownload, startUpload } from "../../lib/ipc/transfers";
 import { ExternalEditorBar } from "./ExternalEditorBar";
 import { LocalPane } from "./LocalPane";
@@ -48,9 +48,54 @@ export function FileManager({
   const [splitPercent, setSplitPercent] = useState(50);
   const [dragging, setDragging] = useState(false);
   const [queueHeight, setQueueHeight] = useState(150);
+  const [conflict, setConflict] = useState<{ name: string } | null>(null);
+  const conflictResolver = useRef<((choice: "overwrite" | "skip") => void) | null>(null);
   const queueDragRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const panesRef = useRef<HTMLDivElement | null>(null);
   const { tasks, speeds, error: transferError, revision, clearError, cancel } = useTransfers();
+
+  /** Asks the user what to do when the remote file already exists. */
+  const askConflict = useCallback(
+    (name: string) =>
+      new Promise<"overwrite" | "skip">((resolve) => {
+        conflictResolver.current = resolve;
+        setConflict({ name });
+      }),
+    [],
+  );
+
+  const resolveConflict = useCallback((choice: "overwrite" | "skip") => {
+    conflictResolver.current?.(choice);
+    conflictResolver.current = null;
+    setConflict(null);
+  }, []);
+
+  /** Uploads one file, asking before overwriting an existing remote file. */
+  const uploadOne = useCallback(
+    async (localFile: string, name: string) => {
+      if (terminalId === null || remotePath === "") {
+        return;
+      }
+      const target = joinPath(remotePath, name);
+      let exists = false;
+      try {
+        await statRemote(terminalId, target);
+        exists = true;
+      } catch {
+        exists = false;
+      }
+      let overwrite = false;
+      if (exists) {
+        const choice = await askConflict(name);
+        if (choice === "skip") {
+          return;
+        }
+        overwrite = true;
+      }
+      await startUpload(terminalId, localFile, target, overwrite);
+    },
+    [terminalId, remotePath, askConflict],
+  );
 
   const upload = useCallback(
     async (sources: FileEntry[]) => {
@@ -65,14 +110,14 @@ export function FileManager({
       setMessage(null);
       for (const file of files) {
         try {
-          await startUpload(terminalId, file.path, joinPath(remotePath, file.name));
+          await uploadOne(file.path, file.name);
         } catch (err) {
           setMessage(toUserMessage(err));
           break;
         }
       }
     },
-    [terminalId, remotePath],
+    [terminalId, remotePath, uploadOne],
   );
 
   const download = useCallback(
@@ -124,14 +169,14 @@ export function FileManager({
       setMessage(null);
       for (const path of paths) {
         try {
-          await startUpload(terminalId, path, joinPath(remotePath, fileName(path)));
+          await uploadOne(path, fileName(path));
         } catch (err) {
           setMessage(toUserMessage(err));
           break;
         }
       }
     },
-    [terminalId, remotePath],
+    [terminalId, remotePath, uploadOne],
   );
 
   // Pointer-based drag from the local pane onto the remote pane. HTML5 DnD was
@@ -357,6 +402,33 @@ export function FileManager({
         height={queueHeight}
         onCancel={(id) => void cancel(id)}
       />
+
+      {conflict !== null && (
+        <div className="modal-backdrop" role="presentation">
+          <div className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <h2 className="modal__title">远程文件已存在</h2>
+            <p className="modal__body">
+              远程目录中已有「{conflict.name}」，要覆盖还是跳过这个文件？
+            </p>
+            <div className="modal__actions">
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={() => resolveConflict("overwrite")}
+              >
+                覆盖
+              </button>
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => resolveConflict("skip")}
+              >
+                跳过
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

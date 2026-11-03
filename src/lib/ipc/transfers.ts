@@ -53,12 +53,14 @@ export async function startUpload(
   terminalId: string,
   localPath: string,
   remotePath: string,
+  overwrite = false,
 ): Promise<TransferTask> {
   try {
     return await invoke<TransferTask>("transfer_upload", {
       terminalId,
       localPath,
       remotePath,
+      overwrite,
     });
   } catch (error) {
     throw normalizeError(error);

@@ -104,6 +104,7 @@ pub async fn transfer_upload(
     terminal_id: String,
     local_path: String,
     remote_path: String,
+    overwrite: bool,
 ) -> Result<TransferTask, AppError> {
     let local = local_source(&local_path)?;
     let remote = sftp::path::normalize_remote(&remote_path);
@@ -112,11 +113,11 @@ pub async fn transfer_upload(
             "不能上传到远程根目录，请进入某个目录后再试".into(),
         ));
     }
-    tracing::info!(%remote, local = %local.display(), "upload requested");
+    tracing::info!(%remote, overwrite, local = %local.display(), "upload requested");
     let session = ensure_sftp(&state, &terminal_id).await?;
     state
         .transfer_manager()
-        .start_upload(session, terminal_id, local, remote)
+        .start_upload(session, terminal_id, local, remote, overwrite)
 }
 
 #[tauri::command]

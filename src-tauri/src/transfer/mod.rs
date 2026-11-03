@@ -166,6 +166,7 @@ impl TransferManager {
         terminal_id: String,
         local: PathBuf,
         remote: String,
+        overwrite: bool,
     ) -> Result<TransferTask, AppError> {
         let (task, cancel) =
             self.enqueue(terminal_id, Direction::Upload, local.display().to_string(), remote.clone());
@@ -175,26 +176,40 @@ impl TransferManager {
         tokio::spawn(async move {
             manager.update(&task_id, |task| task.status = TransferStatus::Running);
             let progress_manager = Arc::clone(&manager);
-            let progress_id = task_id.clone();
-            let mut last_emit = Instant::now();
-            let mut last_bytes = 0u64;
 
-            let result = upload::upload(&sftp, &local, &remote, &cancel, move |written, total| {
-                let due = last_emit.elapsed() >= PROGRESS_INTERVAL || written == total;
-                if due {
-                    last_emit = Instant::now();
-                    last_bytes = written;
-                    progress_manager.update(&progress_id, |task| {
-                        task.transferred = written;
-                        if total > 0 {
-                            task.total = total;
-                        }
-                    });
-                } else if written < last_bytes {
-                    last_bytes = written;
-                }
-            })
-            .await;
+            // Overwrite starts from byte 0 (explicit user choice); the default
+            // path keeps the resume semantics for interrupted transfers.
+            let result = if overwrite {
+                let progress_id = task_id.clone();
+                let mut last_emit = Instant::now();
+                upload::upload_overwrite(&sftp, &local, &remote, &cancel, move |written, total| {
+                    if last_emit.elapsed() >= PROGRESS_INTERVAL || written == total {
+                        last_emit = Instant::now();
+                        progress_manager.update(&progress_id, |task| {
+                            task.transferred = written;
+                            if total > 0 {
+                                task.total = total;
+                            }
+                        });
+                    }
+                })
+                .await
+            } else {
+                let progress_id = task_id.clone();
+                let mut last_emit = Instant::now();
+                upload::upload(&sftp, &local, &remote, &cancel, move |written, total| {
+                    if last_emit.elapsed() >= PROGRESS_INTERVAL || written == total {
+                        last_emit = Instant::now();
+                        progress_manager.update(&progress_id, |task| {
+                            task.transferred = written;
+                            if total > 0 {
+                                task.total = total;
+                            }
+                        });
+                    }
+                })
+                .await
+            };
 
             manager.finish(&task_id, result);
         });

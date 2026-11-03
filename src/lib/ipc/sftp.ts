@@ -58,6 +58,15 @@ export async function listRemote(terminalId: string, path: string): Promise<File
   }
 }
 
+/** Metadata for one remote path (throws when it does not exist). */
+export async function statRemote(terminalId: string, path: string): Promise<FileEntry> {
+  try {
+    return await invoke<FileEntry>("sftp_stat", { terminalId, path });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
 export async function mkdirRemote(terminalId: string, path: string): Promise<void> {
   try {
     await invoke<void>("sftp_mkdir", { terminalId, path });

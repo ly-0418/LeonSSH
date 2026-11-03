@@ -32,6 +32,7 @@ interface RemotePaneProps {
   onOpenFile?: (entry: PaneEntry) => void;
   onDropPaths?: (paths: string[]) => void;
   onRowPointerDown?: (entry: PaneEntry, event: React.PointerEvent) => void;
+  onOpenInTerminal?: (path: string) => void;
 }
 
 type PaneHooks = Omit<RemotePaneProps, "terminalId" | "sessionTitle">;
@@ -175,6 +176,7 @@ function RemotePaneLoaded({
   onOpenFile,
   onDropPaths,
   onRowPointerDown,
+  onOpenInTerminal,
 }: { terminalId: string; home: string; sessionTitle: string | null } & PaneHooks) {
   const adapter = useMemo<PaneAdapter>(
     () => ({
@@ -229,6 +231,10 @@ function RemotePaneLoaded({
     }
     if (entry.isDir) {
       return [
+        {
+          label: "在终端中打开",
+          onSelect: () => onOpenInTerminal?.(entry.path),
+        },
         { label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
         { label: "删除文件夹", danger: true, onSelect: () => setPendingDelete(entry) },
       ];

@@ -14,32 +14,19 @@ interface SessionFormProps {
   onSaved: (session: SessionSummary) => void;
   /** Save and connect right away. */
   onSavedAndConnect: (session: SessionSummary) => void;
-  onCancel?: () => void;
 }
 
 const DEFAULT_PORT = 22;
-
-/** "host" / "host:port" (IPv6 literals keep their brackets). */
-function splitAddress(value: string): { host: string; port: number } {
-  const trimmed = value.trim();
-  const match = trimmed.match(/^(.*):(\d{1,5})$/);
-  if (match === null) {
-    return { host: trimmed, port: DEFAULT_PORT };
-  }
-  return { host: match[1].trim(), port: Number.parseInt(match[2], 10) };
-}
 
 export function SessionForm({
   initial,
   onboarding = false,
   onSaved,
   onSavedAndConnect,
-  onCancel,
 }: SessionFormProps) {
   const [name, setName] = useState(initial?.name ?? (onboarding ? "本地 Docker 测试" : ""));
-  const [address, setAddress] = useState(
-    initial ? `${initial.host}:${initial.port}` : "",
-  );
+  const [host, setHost] = useState(initial?.host ?? "");
+  const [port, setPort] = useState(String(initial?.port ?? DEFAULT_PORT));
   const [username, setUsername] = useState(initial?.username ?? "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -55,15 +42,19 @@ export function SessionForm({
   }, []);
 
   async function handleTest() {
-    const { host, port } = splitAddress(address);
-    if (host.length === 0) {
-      setTestResult({ ok: false, text: "请先填写地址" });
+    const portNumber = Number.parseInt(port, 10);
+    if (host.trim().length === 0) {
+      setTestResult({ ok: false, text: "请先填写主机地址" });
+      return;
+    }
+    if (!Number.isInteger(portNumber) || portNumber < 1 || portNumber > 65535) {
+      setTestResult({ ok: false, text: "端口必须是 1-65535 的整数" });
       return;
     }
     setTesting(true);
     setTestResult(null);
     try {
-      const millis = await testConnection(host, port);
+      const millis = await testConnection(host.trim(), portNumber);
       setTestResult({ ok: true, text: `可达，${millis} ms` });
     } catch (err) {
       setTestResult({ ok: false, text: toUserMessage(err) });
@@ -76,12 +67,12 @@ export function SessionForm({
     if (busy) {
       return;
     }
-    const { host, port } = splitAddress(address);
-    if (host.length === 0) {
-      setError("地址不能为空（例如 192.168.1.10:22）");
+    const portNumber = Number.parseInt(port, 10);
+    if (host.trim().length === 0) {
+      setError("主机地址不能为空");
       return;
     }
-    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    if (!Number.isInteger(portNumber) || portNumber < 1 || portNumber > 65535) {
       setError("端口必须是 1-65535 之间的整数");
       return;
     }
@@ -91,9 +82,9 @@ export function SessionForm({
     }
 
     const input: SessionInput = {
-      name: name.trim().length > 0 ? name.trim() : host,
-      host,
-      port,
+      name: name.trim().length > 0 ? name.trim() : host.trim(),
+      host: host.trim(),
+      port: portNumber,
       username: username.trim(),
       authMethod: "password",
     };
@@ -147,17 +138,31 @@ export function SessionForm({
       </div>
 
       <div className="form-row">
-        <label className="form-row__label" htmlFor="session-address">
+        <label className="form-row__label" htmlFor="session-host">
           地址
         </label>
-        <input
-          id="session-address"
-          className="input"
-          value={address}
-          onChange={(event) => setAddress(event.target.value)}
-          placeholder="主机:端口（端口默认 22）"
-          spellCheck={false}
-        />
+        <div className="form-row__address">
+          <input
+            id="session-host"
+            className="input"
+            value={host}
+            onChange={(event) => setHost(event.target.value)}
+            placeholder="主机名或 IP"
+            spellCheck={false}
+          />
+          <span className="form-row__colon">:</span>
+          <input
+            id="session-port"
+            className="input form-row__port"
+            type="number"
+            min={1}
+            max={65535}
+            step={1}
+            value={port}
+            onChange={(event) => setPort(event.target.value)}
+            aria-label="端口"
+          />
+        </div>
       </div>
 
       <div className="form-row">
@@ -218,11 +223,7 @@ export function SessionForm({
           {testing ? "测试中…" : "测连通性"}
         </button>
         <span className="session-form__spacer" />
-        {onCancel && (
-          <button type="button" className="button button--ghost" onClick={onCancel} disabled={busy}>
-            取消
-          </button>
-        )}
+
         <button
           type="button"
           className="button"

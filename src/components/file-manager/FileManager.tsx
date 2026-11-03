@@ -18,7 +18,7 @@ interface FileManagerProps {
   sessionTitle: string | null;
   /** Playing the slide-up exit animation; stays mounted until it ends. */
   exiting?: boolean;
-  onBackToTerminal: () => void;
+  onOpenInTerminal?: (path: string) => void;
 }
 
 const MIN_SPLIT = 20;
@@ -32,7 +32,7 @@ export function FileManager({
   terminalId,
   sessionTitle,
   exiting = false,
-  onBackToTerminal,
+  onOpenInTerminal,
 }: FileManagerProps) {
   // Optional deep link: `?view=files&local=C%3A%5CWindows` opens the pane there.
   const initialLocal = new URLSearchParams(window.location.search).get("local") ?? undefined;
@@ -294,9 +294,7 @@ export function FileManager({
             ? "本地浏览可用；远程面板需要先在终端连接一个会话"
             : `已绑定：${sessionTitle ?? "当前会话"}${remotePath ? ` · ${remotePath}` : ""}`}
         </span>
-        <button type="button" className="button button--ghost button--sm" onClick={onBackToTerminal}>
-          返回终端
-        </button>
+
       </header>
 
       {banner !== null && (
@@ -355,6 +353,7 @@ export function FileManager({
           onPathChange={setRemotePath}
           onSelectionChange={setRemoteSelection}
           onOpenFile={(entry) => void openRemote(entry)}
+          onOpenInTerminal={onOpenInTerminal}
           onDropPaths={(paths) => void dropPaths(paths)}
         />
       </div>

@@ -106,7 +106,6 @@ export function NewSessionDialog({
               onboarding={false}
               onSaved={onSaved}
               onSavedAndConnect={onSavedAndConnect}
-              onCancel={onClose}
             />
           </section>
         </div>

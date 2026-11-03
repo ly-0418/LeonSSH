@@ -15,7 +15,7 @@ import App from "./App";
 
 // Apply the persisted theme before the first paint (no light->dark flash).
 const storedTheme = localStorage.getItem("leonssh.theme");
-document.documentElement.dataset.theme = storedTheme === "dark" ? "dark" : "light";
+document.documentElement.dataset.theme = storedTheme === "light" ? "light" : "dark";
 
 const container = document.getElementById("root");
 if (container === null) {

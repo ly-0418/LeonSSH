@@ -1427,3 +1427,25 @@ input[type="password"]::-ms-reveal {
   font-size: 10.5px;
   color: var(--text-faint);
 }
+.header-action--icon {
+  width: 30px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.form-row__address {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.form-row__colon {
+  color: var(--text-faint);
+}
+
+.form-row__port {
+  width: 92px;
+  flex: 0 0 auto;
+}

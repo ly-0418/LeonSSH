@@ -10,6 +10,7 @@ import { TerminalTab } from "./components/TerminalTab";
 import { WindowControls } from "./components/WindowControls";
 import { ConfirmDialog } from "./components/dialogs";
 import { toUserMessage } from "./lib/ipc/errors";
+import { writeTerminal } from "./lib/ipc/session";
 import { deleteSession, listSessions } from "./lib/ipc/sessions";
 import type { SessionSummary, TerminalStatus } from "./lib/ipc/types";
 import type { ThemeMode } from "./lib/terminal/theme";
@@ -32,7 +33,7 @@ interface SessionDialogState {
 const THEME_KEY = "leonssh.theme";
 
 function initialTheme(): ThemeMode {
-  return localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light";
+  return localStorage.getItem(THEME_KEY) === "light" ? "light" : "dark";
 }
 
 export default function App() {
@@ -225,6 +226,22 @@ export default function App() {
     setView("files");
   }, []);
 
+  /** Close the file manager and cd into the selected remote folder. */
+  const openInTerminal = useCallback(
+    (remotePath: string) => {
+      const terminalId = activeTab?.status.terminalId ?? null;
+      closeFiles();
+      if (terminalId === null) {
+        return;
+      }
+      const escaped = remotePath.replace(/'/g, "'\\''");
+      void writeTerminal(terminalId, new TextEncoder().encode(`cd -- '${escaped}'\n`)).catch(
+        (err) => setError(toUserMessage(err)),
+      );
+    },
+    [activeTab, closeFiles],
+  );
+
   return (
     <div className="app">
       <header className="app-header" data-tauri-drag-region>
@@ -236,19 +253,21 @@ export default function App() {
         <div className="app-header__actions">
           <button
             type="button"
-            className={`header-action${view === "files" ? " header-action--active" : ""}`}
-            title="显示/隐藏文件管理"
+            className={`header-action header-action--icon${view === "files" ? " header-action--active" : ""}`}
+            title="文件管理"
+            aria-label="文件管理"
             onClick={() => (view === "files" ? closeFiles() : openFiles())}
           >
-            文件管理
+            📁
           </button>
           <button
             type="button"
-            className={`header-action${settingsOpen ? " header-action--active" : ""}`}
+            className={`header-action header-action--icon${settingsOpen ? " header-action--active" : ""}`}
             title="设置"
+            aria-label="设置"
             onClick={() => setSettingsOpen((open) => !open)}
           >
-            设置
+            ⚙
           </button>
           <WindowControls />
         </div>
@@ -284,7 +303,6 @@ export default function App() {
                 onboarding={sessions.length === 0}
                 onSaved={(session) => void handleSaved(session)}
                 onSavedAndConnect={(session) => void handleSaved(session)}
-                onCancel={undefined}
               />
             </div>
           )}
@@ -321,7 +339,7 @@ export default function App() {
                 terminalId={activeTab?.status.terminalId ?? null}
                 sessionTitle={activeTab?.title ?? null}
                 exiting={filesExiting}
-                onBackToTerminal={closeFiles}
+                onOpenInTerminal={openInTerminal}
               />
             )}
           </div>

@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { exportSessionsJson, importSessionsJson } from "../lib/ipc/sessions";
+import { toUserMessage } from "../lib/ipc/errors";
 import { SessionForm } from "./SessionForm";
 import type { SessionSummary } from "../lib/ipc/types";
 
@@ -15,6 +17,8 @@ interface NewSessionDialogProps {
   onSaved: (session: SessionSummary) => void;
   onSavedAndConnect: (session: SessionSummary) => void;
   onClose: () => void;
+  /** Refreshes the session list after an import. */
+  onReload?: () => void;
 }
 
 /**
@@ -31,9 +35,41 @@ export function NewSessionDialog({
   onConnect,
   onSaved,
   onSavedAndConnect,
+  onReload,
   onClose,
 }: NewSessionDialogProps) {
   const [query, setQuery] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [hint, setHint] = useState<string | null>(null);
+
+  async function handleExport() {
+    setBusy(true);
+    setHint(null);
+    try {
+      const json = await exportSessionsJson();
+      await navigator.clipboard.writeText(json);
+      setHint(`已复制 ${JSON.parse(json).length} 个会话到剪贴板`);
+    } catch (err) {
+      setHint(toUserMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleImport() {
+    setBusy(true);
+    setHint(null);
+    try {
+      const json = await navigator.clipboard.readText();
+      const count = await importSessionsJson(json);
+      setHint(`已导入 ${count} 个会话`);
+      onReload?.();
+    } catch (err) {
+      setHint(toUserMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
   const keyword = query.trim().toLowerCase();
   const filtered =
     keyword.length === 0
@@ -79,6 +115,15 @@ export function NewSessionDialog({
               onChange={(event) => setQuery(event.target.value)}
               placeholder="搜索会话（名称 / 用户 / 主机 / 分组）"
             />
+            <div className="session-dialog__tools">
+              <button type="button" className="button button--ghost button--sm" disabled={busy} onClick={() => void handleImport()}>
+                导入
+              </button>
+              <button type="button" className="button button--ghost button--sm" disabled={busy} onClick={() => void handleExport()}>
+                导出
+              </button>
+              {hint !== null && <span className="session-dialog__hint">{hint}</span>}
+            </div>
             <div className="session-dialog__scroll">
               {filtered.map((session) => (
                 <div

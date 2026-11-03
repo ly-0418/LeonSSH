@@ -78,3 +78,20 @@ export async function testConnection(host: string, port: number): Promise<number
     throw normalizeError(error);
   }
 }
+/** JSON snapshot of all profiles (no secrets). */
+export async function exportSessionsJson(): Promise<string> {
+  try {
+    return await invoke<string>("session_export_json");
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+/** Imports profiles from a JSON snapshot; returns how many were added. */
+export async function importSessionsJson(json: string): Promise<number> {
+  try {
+    return await invoke<number>("session_import_json", { json });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}

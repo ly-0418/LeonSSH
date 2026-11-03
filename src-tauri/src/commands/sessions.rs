@@ -157,3 +157,69 @@ pub async fn test_connection(host: String, port: u16) -> Result<u64, AppError> {
         Err(_) => Err(AppError::Ssh(format!("连接 {target} 超时（3 秒）"))),
     }
 }
+/// Portable profile (no secrets: passwords stay in the Credential Manager).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionExport {
+    pub name: String,
+    pub host: String,
+    pub port: u16,
+    pub username: String,
+    #[serde(default)]
+    pub auth_method: Option<String>,
+    #[serde(default)]
+    pub private_key_path: Option<String>,
+    #[serde(default)]
+    pub group_name: Option<String>,
+    #[serde(default)]
+    pub color: Option<String>,
+}
+
+#[tauri::command]
+pub async fn session_export_json(state: State<'_, AppState>) -> Result<String, AppError> {
+    let records = sessions::list(state.db()).await?;
+    let items: Vec<SessionExport> = records
+        .into_iter()
+        .map(|record| SessionExport {
+            name: record.name,
+            host: record.host,
+            port: record.port.clamp(1, u16::MAX as i64) as u16,
+            username: record.username,
+            auth_method: Some(record.auth_method),
+            private_key_path: record.private_key_path,
+            group_name: record.group_name,
+            color: record.color,
+        })
+        .collect();
+    serde_json::to_string_pretty(&items)
+        .map_err(|err| AppError::Internal(format!("序列化会话失败: {err}")))
+}
+
+#[tauri::command]
+pub async fn session_import_json(
+    state: State<'_, AppState>,
+    json: String,
+) -> Result<usize, AppError> {
+    let items: Vec<SessionExport> = serde_json::from_str(&json)
+        .map_err(|err| AppError::InvalidArgument(format!("会话 JSON 格式不正确: {err}")))?;
+    let mut imported = 0usize;
+    for item in items {
+        if item.name.trim().is_empty() || item.host.trim().is_empty() {
+            continue;
+        }
+        let input = sessions::NewSession {
+            name: item.name,
+            host: item.host,
+            port: item.port,
+            username: item.username,
+            auth_method: item.auth_method,
+            private_key_path: item.private_key_path,
+            color: item.color,
+            group_name: item.group_name,
+        };
+        sessions::create(state.db(), &input).await?;
+        imported += 1;
+    }
+    tracing::info!(imported, "sessions imported");
+    Ok(imported)
+}

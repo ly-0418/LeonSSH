@@ -1650,3 +1650,14 @@ input[type="password"]::-ms-reveal {
   flex: 0 0 auto;
   margin-bottom: 2px;
 }
+.session-dialog__tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.session-dialog__hint {
+  font-size: 11.5px;
+  color: var(--text-faint);
+}

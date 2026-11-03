@@ -65,6 +65,19 @@ pub async fn sftp_list(
     sftp::list(&session, &path).await
 }
 
+/// Streams a directory listing: the first `readdir` batch arrives after one
+/// round trip, so large folders appear immediately.
+#[tauri::command]
+pub async fn sftp_list_stream(
+    state: State<'_, AppState>,
+    terminal_id: String,
+    path: String,
+    batch: Channel<Vec<sftp::FileEntry>>,
+) -> Result<usize, AppError> {
+    let handle = state.connection(&terminal_id).await?;
+    sftp::list_stream(&handle, &path, move |entries| batch.send(entries).is_ok()).await
+}
+
 #[tauri::command]
 pub async fn sftp_mkdir(
     state: State<'_, AppState>,

@@ -361,3 +361,88 @@ mod tests {
     }
 }
 
+
+/// Streams a directory listing in `readdir` batches.
+///
+/// SFTP returns ~100 entries per round trip, so a 8000-entry folder costs ~80
+/// sequential round trips. Handing each batch to the caller lets the UI paint
+/// the first entries after a single round trip instead of waiting for the end.
+pub async fn list_stream(
+    handle: &crate::ssh::client::SharedHandle,
+    path: &str,
+    mut on_batch: impl FnMut(Vec<FileEntry>) -> bool,
+) -> Result<usize, AppError> {
+    let dir = normalize_remote(path);
+    let started = std::time::Instant::now();
+    let channel = handle
+        .channel_open_session()
+        .await
+        .map_err(|err| AppError::Ssh(format!("打开 SFTP 通道失败: {err}")))?;
+    channel
+        .request_subsystem(true, "sftp")
+        .await
+        .map_err(|err| AppError::Ssh(format!("启动 SFTP 子系统失败: {err}")))?;
+
+    let raw = russh_sftp::client::rawsession::RawSftpSession::new(channel.into_stream());
+    let opened = raw
+        .opendir(dir.clone())
+        .await
+        .map_err(|err| AppError::Sftp(format!("读取目录 {dir} 失败: {err}")))?;
+
+    let mut total = 0usize;
+    let mut first_batch_ms: Option<u64> = None;
+    loop {
+        let name = match raw.readdir(opened.handle.as_str()).await {
+            Ok(name) => name,
+            Err(err) => {
+                let _ = raw.close(opened.handle.as_str()).await;
+                return Err(AppError::Sftp(format!("读取目录 {dir} 失败: {err}")));
+            }
+        };
+        if name.files.is_empty() {
+            break;
+        }
+
+        let mut batch = Vec::with_capacity(name.files.len());
+        for entry in name.files {
+            if entry.filename == "." || entry.filename == ".." {
+                continue;
+            }
+            let Ok(child) = join_remote(&dir, &entry.filename) else {
+                continue;
+            };
+            let attrs = entry.attrs;
+            batch.push(FileEntry {
+                path: child,
+                name: entry.filename,
+                is_dir: attrs.is_dir(),
+                is_symlink: attrs.is_symlink(),
+                size: attrs.size.unwrap_or(0),
+                modified: attrs.mtime.map(|value| value as i64),
+                permissions: attrs.permissions,
+            });
+        }
+        if batch.is_empty() {
+            continue;
+        }
+
+        total += batch.len();
+        if first_batch_ms.is_none() {
+            first_batch_ms = Some(started.elapsed().as_millis() as u64);
+            tracing::info!(dir = %dir, first_batch_ms = first_batch_ms.unwrap_or(0), "remote listing first batch");
+        }
+        if !on_batch(batch) {
+            break;
+        }
+    }
+
+    let _ = raw.close(opened.handle.as_str()).await;
+    tracing::info!(
+        dir = %dir,
+        entries = total,
+        first_batch_ms = first_batch_ms.unwrap_or(0),
+        elapsed_ms = started.elapsed().as_millis() as u64,
+        "remote listing streamed"
+    );
+    Ok(total)
+}

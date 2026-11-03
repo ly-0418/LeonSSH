@@ -67,6 +67,21 @@ export async function statRemote(terminalId: string, path: string): Promise<File
   }
 }
 
+/** Streams a directory listing; `onBatch` is called as each batch arrives. */
+export async function listRemoteStream(
+  terminalId: string,
+  path: string,
+  onBatch: (entries: FileEntry[]) => void,
+): Promise<number> {
+  const batch = new Channel<FileEntry[]>();
+  batch.onmessage = (entries) => onBatch(entries);
+  try {
+    return await invoke<number>("sftp_list_stream", { terminalId, path, batch });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
 export async function mkdirRemote(terminalId: string, path: string): Promise<void> {
   try {
     await invoke<void>("sftp_mkdir", { terminalId, path });

@@ -11,10 +11,21 @@ export interface SortState {
   dir: 1 | -1;
 }
 
+function sortEntries(entries: FileEntry[]): FileEntry[] {
+  return [...entries].sort((a, b) => {
+    if (a.isDir !== b.isDir) {
+      return a.isDir ? -1 : 1;
+    }
+    return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+  });
+}
+
 export interface PaneAdapter {
   list(path: string): Promise<FileEntry[]>;
   home(): Promise<string>;
   parent(path: string): string;
+  /** Optional streaming listing (remote pane): batches arrive as they are read. */
+  stream?(path: string, onBatch: (entries: FileEntry[]) => void): Promise<number>;
   /** Optional background metadata hydration (local pane). */
   enrich?(
     entries: FileEntry[],
@@ -101,6 +112,36 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string): FilePan
       setLoading(true);
       setError(null);
       try {
+        if (adapter.stream) {
+          setPath(target);
+          setEntries([]);
+          setSelected([]);
+          setFilter("");
+          anchorRef.current = null;
+          let accumulated: FileEntry[] = [];
+          let scheduled = false;
+          const commit = () => {
+            scheduled = false;
+            if (request !== requestRef.current) {
+              return;
+            }
+            setEntries(sortEntries(accumulated));
+          };
+          await adapter.stream(target, (batch) => {
+            if (request !== requestRef.current) {
+              return;
+            }
+            accumulated = accumulated.concat(batch);
+            if (!scheduled) {
+              scheduled = true;
+              window.setTimeout(commit, 120);
+            }
+          });
+          if (request === requestRef.current) {
+            setEntries(sortEntries(accumulated));
+          }
+          return;
+        }
         const list = await adapter.list(target);
         if (request !== requestRef.current) {
           return;

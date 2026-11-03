@@ -7,6 +7,7 @@ import {
   createRemoteFile,
   joinPath,
   listRemote,
+  listRemoteStream,
   mkdirRemote,
   openSftp,
   parentPath,
@@ -181,6 +182,10 @@ function RemotePaneLoaded({
   const adapter = useMemo<PaneAdapter>(
     () => ({
       list: async (path: string) => (await listRemote(terminalId, path)).map(toPaneEntry),
+      stream: async (path: string, onBatch: (entries: PaneEntry[]) => void) => {
+        await listRemoteStream(terminalId, path, (batch) => onBatch(batch.map(toPaneEntry)));
+        return 0;
+      },
       home: async () => home,
       parent: parentPath,
     }),

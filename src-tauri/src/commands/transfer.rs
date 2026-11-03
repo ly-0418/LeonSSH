@@ -98,6 +98,75 @@ pub fn transfer_cancel(state: State<'_, AppState>, id: String) -> Result<(), App
     Ok(())
 }
 
+/// Recursively uploads a local directory: every file becomes its own transfer
+/// task so the existing queue, progress and resume logic still apply.
+#[tauri::command]
+pub async fn transfer_upload_dir(
+    state: State<'_, AppState>,
+    terminal_id: String,
+    local_path: String,
+    remote_path: String,
+) -> Result<usize, AppError> {
+    let root = std::path::PathBuf::from(&local_path);
+    if !root.is_dir() {
+        return Err(AppError::InvalidArgument(format!("本地目录不存在: {local_path}")));
+    }
+    let remote_root = sftp::path::normalize_remote(&remote_path);
+    let session = ensure_sftp(&state, &terminal_id).await?;
+
+    let mut files = Vec::new();
+    let mut stack = vec![root.clone()];
+    while let Some(dir) = stack.pop() {
+        let entries = std::fs::read_dir(&dir)
+            .map_err(|err| AppError::Internal(format!("读取本地目录 {} 失败: {err}", dir.display())))?;
+        for entry in entries {
+            let entry = entry.map_err(|err| AppError::Internal(format!("读取目录项失败: {err}")))?;
+            let meta = entry
+                .metadata()
+                .map_err(|err| AppError::Internal(format!("读取元数据失败: {err}")))?;
+            if meta.is_dir() {
+                stack.push(entry.path());
+            } else if meta.is_file() {
+                files.push(entry.path());
+            }
+        }
+    }
+    files.sort();
+
+    let mut queued = 0usize;
+    for file in &files {
+        let relative = file
+            .strip_prefix(&root)
+            .map_err(|_| AppError::Internal("无法计算相对路径".into()))?;
+        let mut remote = remote_root.clone();
+        for part in relative.components() {
+            let name = part.as_os_str().to_string_lossy().to_string();
+            if name.contains("..") || name.contains('/') || name.contains('\\') {
+                return Err(AppError::InvalidArgument(format!("非法文件名: {name}")));
+            }
+            remote = sftp::path::join_remote(&remote, &name)?;
+        }
+        if let Some(parent) = std::path::Path::new(&remote).parent() {
+            let parent = parent.to_string_lossy().to_string();
+            if !parent.is_empty() && parent != "/" {
+                let _ = sftp::mkdir(&session, &parent).await;
+            }
+        }
+        state
+            .transfer_manager()
+            .start_upload(
+                session.clone(),
+                terminal_id.clone(),
+                file.clone(),
+                remote,
+                false,
+            )?;
+        queued += 1;
+    }
+    tracing::info!(local = %root.display(), remote = %remote_root, files = queued, "directory upload queued");
+    Ok(queued)
+}
+
 #[tauri::command]
 pub async fn transfer_upload(
     state: State<'_, AppState>,

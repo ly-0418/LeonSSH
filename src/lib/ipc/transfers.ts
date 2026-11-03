@@ -86,3 +86,16 @@ export async function startDownload(
 export function isActive(task: TransferTask): boolean {
   return task.status === "queued" || task.status === "running";
 }
+
+/** Recursively uploads a local directory, queueing one task per file. */
+export async function startUploadDir(
+  terminalId: string,
+  localPath: string,
+  remotePath: string,
+): Promise<number> {
+  try {
+    return await invoke<number>("transfer_upload_dir", { terminalId, localPath, remotePath });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}

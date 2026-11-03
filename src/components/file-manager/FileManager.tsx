@@ -293,7 +293,7 @@ export function FileManager({
     setQueueHeight(saved.queueHeight);
   }, [memoryKey]);
 
-  const canUpload = terminalId !== null && remotePath !== "" && localSelection.some((e) => !e.isDir);
+  const canUpload = terminalId !== null && remotePath !== "" && localSelection.length > 0;
   const canDownload =
     terminalId !== null && localPath !== "" && remoteSelection.some((e) => !e.isDir);
 

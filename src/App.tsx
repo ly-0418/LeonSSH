@@ -50,6 +50,8 @@ export default function App() {
   const [filesExiting, setFilesExiting] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [forwardOpen, setForwardOpen] = useState(false);
+  const [forwardClosing, setForwardClosing] = useState(false);
+  const [settingsClosing, setSettingsClosing] = useState(false);
   const [fontSize, setFontSize] = useState<number>(() => {
     const stored = Number.parseInt(localStorage.getItem("leonssh.fontSize") ?? "", 10);
     return Number.isFinite(stored) && stored >= 11 && stored <= 20 ? stored : 14;
@@ -230,6 +232,29 @@ export default function App() {
     window.setTimeout(() => setFilesExiting(false), 220);
   }, []);
 
+  /** Slides the settings drawer out before unmounting it. */
+  const closeSettings = useCallback(() => {
+    setSettingsClosing(true);
+    window.setTimeout(() => {
+      setSettingsOpen(false);
+      setSettingsClosing(false);
+    }, 200);
+  }, []);
+
+  /** Slides the forward sheet out to the right. */
+  const toggleForward = useCallback(() => {
+    if (forwardOpen) {
+      setForwardClosing(true);
+      window.setTimeout(() => {
+        setForwardOpen(false);
+        setForwardClosing(false);
+      }, 200);
+    } else {
+      setForwardClosing(false);
+      setForwardOpen(true);
+    }
+  }, [forwardOpen]);
+
   const openFiles = useCallback(() => {
     setFilesExiting(false);
     setView("files");
@@ -311,7 +336,7 @@ export default function App() {
             }
             onDuplicate={duplicateTab}
             forwardOpen={forwardOpen}
-            onToggleForward={() => setForwardOpen((open) => !open)}
+            onToggleForward={toggleForward}
 
           />
 
@@ -346,13 +371,15 @@ export default function App() {
                   />
                 </div>
               ))}
-              {forwardOpen && activeTab?.status.terminalId != null && (
-                <div className="sftp-overlay">
-                  <ForwardPanel
-                    terminalId={activeTab.status.terminalId}
-                    sessionId={activeTab.sessionId}
-                    title={activeTab.title}
-                  />
+              {(forwardOpen || forwardClosing) && activeTab?.status.terminalId != null && (
+                <div className={`sftp-overlay${forwardClosing ? " sftp-overlay--leave" : ""}`}>
+                  <div className="sftp-sheet">
+                    <ForwardPanel
+                      terminalId={activeTab.status.terminalId}
+                      sessionId={activeTab.sessionId}
+                      title={activeTab.title}
+                    />
+                  </div>
                 </div>
               )}
               {tabs.length === 0 && mode !== "form" && (
@@ -418,13 +445,14 @@ export default function App() {
         />
       )}
 
-      {settingsOpen && (
+      {(settingsOpen || settingsClosing) && (
         <SettingsDrawer
+          exiting={settingsClosing}
           theme={theme}
           onChangeTheme={setTheme}
           fontSize={fontSize}
           onChangeFontSize={setFontSize}
-          onClose={() => setSettingsOpen(false)}
+          onClose={closeSettings}
         />
       )}
     </div>

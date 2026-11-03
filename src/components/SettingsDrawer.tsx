@@ -8,6 +8,8 @@ import type { ThemeMode } from "../lib/terminal/theme";
 interface SettingsDrawerProps {
   theme: ThemeMode;
   onChangeTheme: (theme: ThemeMode) => void;
+  /** Playing the slide-out animation; stays mounted until it ends. */
+  exiting?: boolean;
   fontSize: number;
   onChangeFontSize: (size: number) => void;
 
@@ -26,6 +28,7 @@ const TABS: Array<{ key: SettingsTab; label: string }> = [
 export function SettingsDrawer({
   theme,
   onChangeTheme,
+  exiting = false,
   fontSize,
   onChangeFontSize,
   onClose,
@@ -66,7 +69,7 @@ export function SettingsDrawer({
 
   return (
     <div className="drawer-layer" role="presentation">
-      <aside className="drawer" role="dialog" aria-modal="false" aria-label="设置">
+      <aside className={`drawer${exiting ? " drawer--leave" : ""}`} role="dialog" aria-modal="false" aria-label="设置">
         <header className="drawer__head">
           <span className="drawer__title">设置</span>
           <button type="button" className="modal__close" onClick={onClose} aria-label="关闭设置">

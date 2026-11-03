@@ -1,10 +1,6 @@
 import type { SessionSummary } from "../lib/ipc/types";
 
-export type WorkspaceView = "terminal" | "files";
-
 interface SidebarProps {
-  view: WorkspaceView;
-  onChangeView: (view: WorkspaceView) => void;
   sessions: SessionSummary[];
   activeSessionId: number | null;
   onOpen: (session: SessionSummary) => void;
@@ -15,8 +11,6 @@ interface SidebarProps {
 }
 
 export function Sidebar({
-  view,
-  onChangeView,
   sessions,
   activeSessionId,
   onOpen,
@@ -27,23 +21,6 @@ export function Sidebar({
 }: SidebarProps) {
   return (
     <aside className="sidebar">
-      <nav className="sidebar__nav">
-        <button
-          type="button"
-          className={`sidebar__navbtn${view === "terminal" ? " sidebar__navbtn--active" : ""}`}
-          onClick={() => onChangeView("terminal")}
-        >
-          终端
-        </button>
-        <button
-          type="button"
-          className={`sidebar__navbtn${view === "files" ? " sidebar__navbtn--active" : ""}`}
-          onClick={() => onChangeView("files")}
-        >
-          文件管理
-        </button>
-      </nav>
-
       <div className="sidebar__head">
         <span className="sidebar__title">会话</span>
         <button type="button" className="button button--primary button--sm" onClick={onCreate}>
@@ -60,7 +37,7 @@ export function Sidebar({
             <button type="button" className="session-item__main" onClick={() => onOpen(session)}>
               <span
                 className="session-item__dot"
-                style={{ backgroundColor: session.color ?? "#4ade80" }}
+                style={{ backgroundColor: session.color ?? "var(--accent)" }}
               />
               <span className="session-item__text">
                 <span className="session-item__name">{session.name}</span>

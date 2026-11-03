@@ -13,7 +13,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: #0b1118;
+  background: var(--bg-panel);
   border-right: 1px solid var(--border);
   user-select: none;
 }
@@ -50,11 +50,11 @@
 }
 
 .session-item:hover {
-  background: #101a26;
+  background: var(--bg-hover);
 }
 
 .session-item--active {
-  background: #12202f;
+  background: var(--bg-selected);
   box-shadow: inset 2px 0 0 var(--accent);
 }
 
@@ -125,7 +125,7 @@
 }
 
 .session-item__actions button:hover {
-  background: #16222f;
+  background: var(--bg-hover);
   border-color: var(--border);
   color: var(--text);
 }
@@ -150,6 +150,13 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  position: relative;
+}
+
+.workspace__content {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .tab-bar {
@@ -158,7 +165,7 @@
   gap: 4px;
   padding: 6px 8px 0;
   overflow-x: auto;
-  background: #0d141d;
+  background: var(--bg-header);
   border-bottom: 1px solid var(--border);
   scrollbar-width: none;
 }
@@ -176,7 +183,7 @@
   border: 1px solid var(--border);
   border-bottom: none;
   border-radius: 7px 7px 0 0;
-  background: #0b1118;
+  background: var(--bg-panel);
   color: var(--text-dim);
   font-size: 12.5px;
   cursor: pointer;
@@ -184,7 +191,7 @@
 }
 
 .tab--active {
-  background: #111c28;
+  background: var(--bg-hover);
   color: var(--text);
   border-color: var(--border-strong);
 }
@@ -197,12 +204,12 @@
 }
 
 .tab__dot--connecting {
-  background: #fbbf24;
+  background: var(--warn);
 }
 
 .tab__dot--ready {
   background: var(--accent);
-  box-shadow: 0 0 6px #4ade8066;
+  box-shadow: 0 0 6px var(--accent-glow);
 }
 
 .tab__dot--error {
@@ -226,13 +233,13 @@
 }
 
 .tab__close:hover {
-  background: #1b2735;
+  background: var(--border);
   color: var(--text);
 }
 
 .terminals {
-  position: relative;
-  flex: 1 1 auto;
+  position: absolute;
+  inset: 0;
   min-height: 0;
 }
 
@@ -242,8 +249,12 @@
   display: none;
 }
 
+/* Keep the layout (and therefore xterm's measured size) intact; only hide it
+   visually. `display: none` resized the terminal to 0x0 and misplaced the
+   cursor / IME anchor after coming back. */
 .terminals--hidden {
-  display: none;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .sidebar__nav {
@@ -257,14 +268,14 @@
   padding: 5px 8px;
   border-radius: 7px;
   border: 1px solid var(--border);
-  background: #0b1118;
+  background: var(--bg-panel);
   color: var(--text-dim);
   font-size: 12px;
   cursor: pointer;
 }
 
 .sidebar__navbtn--active {
-  background: #12202f;
+  background: var(--bg-selected);
   border-color: var(--border-strong);
   color: var(--accent);
 }
@@ -303,7 +314,7 @@
   flex-direction: column;
   gap: 14px;
   padding: 22px;
-  background: #0f1620;
+  background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
@@ -354,7 +365,7 @@
   padding: 8px 10px;
   border-radius: 7px;
   border: 1px solid var(--border);
-  background: #0a1017;
+  background: var(--bg-input);
   color: var(--text);
   font-size: 13px;
   font-family: var(--font-ui);
@@ -363,7 +374,7 @@
 
 .input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px #4ade8018;
+  box-shadow: 0 0 0 3px var(--accent-faint);
 }
 
 .swatches {
@@ -392,7 +403,7 @@
 
 .form-error {
   margin: 0;
-  color: #fca5a5;
+  color: var(--danger-text);
   font-size: 12px;
 }
 
@@ -404,7 +415,7 @@
   font-size: 13px;
   cursor: pointer;
   border: 1px solid var(--border);
-  background: #131d29;
+  background: var(--bg-hover);
   color: var(--text);
 }
 
@@ -414,8 +425,8 @@
 }
 
 .button--primary {
-  background: #0c2417;
-  border-color: #1d4f30;
+  background: var(--accent-soft-bg);
+  border-color: var(--accent-soft-border);
   color: var(--accent);
 }
 
@@ -425,9 +436,9 @@
 }
 
 .button--danger {
-  background: #2a1215;
-  border-color: #4c1d24;
-  color: #fca5a5;
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-text);
 }
 
 .button--sm {
@@ -445,7 +456,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(4, 8, 12, 0.65);
+  background: var(--backdrop);
   backdrop-filter: blur(2px);
 }
 
@@ -454,7 +465,7 @@
   max-height: 80vh;
   overflow: auto;
   padding: 20px;
-  background: #0f1620;
+  background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
   border-radius: 12px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
@@ -501,7 +512,7 @@
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #0b1118;
+  background: var(--bg-panel);
 }
 
 .known-item__endpoint {
@@ -529,7 +540,7 @@
   padding: 4px 10px;
   border-radius: 6px;
   border: 1px solid var(--border);
-  background: #0b1118;
+  background: var(--bg-panel);
   color: var(--text-dim);
   font-size: 12px;
   cursor: pointer;
@@ -537,15 +548,15 @@
 
 .tab-bar__action--active {
   color: var(--accent);
-  border-color: #1d4f30;
-  background: #0c2417;
+  border-color: var(--accent-soft-border);
+  background: var(--accent-soft-bg);
 }
 
 .sftp-overlay {
   position: absolute;
   inset: 0;
   z-index: 20;
-  background: rgba(11, 15, 20, 0.97);
+  background: var(--overlay);
 }
 
 .sftp {
@@ -586,7 +597,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: #0b1118;
+  background: var(--bg-panel);
 }
 
 .pane__head {
@@ -640,11 +651,11 @@
 }
 
 .pane__item:hover {
-  background: #111a24;
+  background: var(--bg-hover);
 }
 
 .pane__item--active {
-  background: #12202f;
+  background: var(--bg-selected);
   box-shadow: inset 2px 0 0 var(--accent);
 }
 
@@ -669,7 +680,7 @@
   margin: 0;
   padding: 6px 10px;
   border-top: 1px solid var(--border);
-  color: #fca5a5;
+  color: var(--danger-text);
   font-size: 11.5px;
 }
 
@@ -748,19 +759,19 @@
   padding: 7px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #0b1118;
+  background: var(--bg-panel);
 }
 
 .forward__dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #55647a;
+  background: var(--text-faint);
 }
 
 .forward__dot--on {
   background: var(--accent);
-  box-shadow: 0 0 6px #4ade8066;
+  box-shadow: 0 0 6px var(--accent-glow);
 }
 
 .forward__kindlabel {
@@ -781,4 +792,111 @@
   font-size: 12px;
   line-height: 1.6;
   color: var(--text-faint);
+}
+
+/* --------------------------------------------------- new session dialog */
+
+.tab-bar__new {
+  align-self: center;
+  margin-bottom: 4px;
+  width: 26px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tab-bar__new:hover {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft-bg);
+}
+
+.new-session__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.new-session__head .modal__title {
+  margin: 0;
+}
+
+.modal__close {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.modal__close:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.new-session__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.new-session__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.new-session__item:hover {
+  border-color: var(--accent-soft-border);
+  background: var(--accent-soft-bg);
+}
+
+.new-session__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.new-session__name {
+  font-size: 13px;
+}
+
+.new-session__target {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+/* The form is a card on its own page; inside the dialog it must not nest. */
+.modal .session-form {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  width: 100%;
 }

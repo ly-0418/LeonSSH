@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { SessionForm } from "./components/SessionForm";
-import { Sidebar } from "./components/Sidebar";
 import { FileManager } from "./components/file-manager/FileManager";
 import { ForwardPanel } from "./components/ForwardPanel";
+import { NewSessionDialog } from "./components/NewSessionDialog";
+import { SessionForm } from "./components/SessionForm";
+import { Sidebar } from "./components/Sidebar";
 import { StatusBar } from "./components/StatusBar";
 import { TabBar, type TabItem } from "./components/TabBar";
 import { TerminalTab } from "./components/TerminalTab";
@@ -13,6 +14,7 @@ import { toUserMessage } from "./lib/ipc/errors";
 import { deleteSession, listSessions } from "./lib/ipc/sessions";
 import { fetchAppInfo } from "./lib/ipc/session";
 import type { AppInfo, SessionSummary, TerminalStatus } from "./lib/ipc/types";
+import type { ThemeMode } from "./lib/terminal/theme";
 
 const INITIAL_STATUS: TerminalStatus = {
   terminalId: null,
@@ -30,6 +32,20 @@ const IDLE_STATUS: TerminalStatus = {
   state: "closed",
 };
 
+type WorkspaceView = "terminal" | "files";
+
+interface SessionDialogState {
+  editing: SessionSummary | null;
+  startInForm: boolean;
+}
+
+const THEME_KEY = "leonssh.theme";
+
+function initialTheme(): ThemeMode {
+  const stored = localStorage.getItem(THEME_KEY);
+  return stored === "light" ? "light" : "dark";
+}
+
 export default function App() {
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -39,11 +55,18 @@ export default function App() {
   const [editing, setEditing] = useState<SessionSummary | null>(null);
   const [pendingDelete, setPendingDelete] = useState<SessionSummary | null>(null);
   const [knownHostsOpen, setKnownHostsOpen] = useState(false);
-  const [view, setView] = useState<"terminal" | "files">(() =>
+  const [view, setView] = useState<WorkspaceView>(() =>
     new URLSearchParams(window.location.search).get("view") === "files" ? "files" : "terminal",
   );
   const [forwardOpen, setForwardOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [theme, setTheme] = useState<ThemeMode>(initialTheme);
+  const [sessionDialog, setSessionDialog] = useState<SessionDialogState | null>(null);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
 
   const refreshSessions = useCallback(async (): Promise<SessionSummary[]> => {
     try {
@@ -136,8 +159,11 @@ export default function App() {
       if (activeKey === key) {
         setActiveKey(next.length > 0 ? next[next.length - 1].key : null);
       }
-      if (next.length === 0 && sessions.length === 0) {
-        setMode("form");
+      if (next.length === 0) {
+        setView("terminal");
+        if (sessions.length === 0) {
+          setMode("form");
+        }
       }
     },
     [tabs, activeKey, sessions.length],
@@ -157,6 +183,7 @@ export default function App() {
   async function handleSaved(session: SessionSummary) {
     setEditing(null);
     setError(null);
+    setSessionDialog(null);
     const list = await refreshSessions();
     const saved = list.find((item) => item.id === session.id) ?? session;
     openTab(saved);
@@ -179,6 +206,10 @@ export default function App() {
     }
   }
 
+  const toggleTheme = useCallback(() => {
+    setTheme((value) => (value === "dark" ? "light" : "dark"));
+  }, []);
+
   return (
     <div className="app">
       <header className="app-header" data-tauri-drag-region>
@@ -187,12 +218,18 @@ export default function App() {
           <h1 className="brand__title">LeonSSH</h1>
           <span className="brand__subtitle">多标签 · SQLite 会话 · 凭据管理器</span>
         </div>
-        <div className="app-header__meta">
-          <span>{info !== null ? `v${info.version}` : "v—"}</span>
-          <span className="app-header__sep" />
-          <span>{info !== null ? `${info.platform}/${info.arch}` : "—"}</span>
+        <div className="app-header__actions">
+          <button
+            type="button"
+            className="theme-toggle"
+            title={theme === "dark" ? "切换到亮色主题" : "切换到暗色主题"}
+            aria-label="切换主题"
+            onClick={toggleTheme}
+          >
+            {theme === "dark" ? "☀" : "☾"}
+          </button>
+          <WindowControls />
         </div>
-        <WindowControls />
       </header>
 
       {error !== null && (
@@ -203,102 +240,104 @@ export default function App() {
 
       <div className="app-body">
         <Sidebar
-          view={view}
-          onChangeView={setView}
           sessions={sessions}
           activeSessionId={activeTab?.sessionId ?? null}
           onOpen={openTab}
-          onCreate={() => {
-            setEditing(null);
-            setMode("form");
-          }}
-          onEdit={(session) => {
-            setEditing(session);
-            setMode("form");
-          }}
+          onCreate={() => setSessionDialog({ editing: null, startInForm: true })}
+          onEdit={(session) => setSessionDialog({ editing: session, startInForm: true })}
           onDelete={(session) => setPendingDelete(session)}
           onShowKnownHosts={() => setKnownHostsOpen(true)}
         />
 
         <main className="workspace">
-          {view === "terminal" && (
-            <TabBar
-              tabs={tabs}
-              activeKey={activeKey}
-              onActivate={setActiveKey}
-              onClose={closeTab}
-              forwardOpen={forwardOpen}
-              onToggleForward={() => setForwardOpen((open) => !open)}
-            />
-          )}
+          <TabBar
+            tabs={tabs}
+            activeKey={activeKey}
+            onActivate={setActiveKey}
+            onClose={closeTab}
+            onNewSession={() => setSessionDialog({ editing: null, startInForm: false })}
+            forwardOpen={forwardOpen}
+            onToggleForward={() => setForwardOpen((open) => !open)}
+          />
 
-          {mode === "form" && view === "terminal" && (
+          {mode === "form" && sessions.length === 0 && (
             <div className="workspace__form">
               <SessionForm
-                key={editing?.id ?? "new"}
                 initial={editing}
                 onboarding={sessions.length === 0}
                 onSaved={handleSaved}
-                onCancel={
-                  sessions.length === 0
-                    ? undefined
-                    : () => {
-                        setEditing(null);
-                        setMode("terminal");
-                      }
-                }
+                onCancel={undefined}
               />
             </div>
           )}
 
-          {/* Terminals stay mounted while the file manager is open so that the
-              SSH sessions (and their scrollback) survive view switches. */}
-          <div
-            className={`terminals${
-              view === "files" || mode === "form" ? " terminals--hidden" : ""
-            }`}
-          >
-            {tabs.map((tab) => (
-              <div
-                key={tab.key}
-                className={`terminal-slot${tab.key === activeKey ? " terminal-slot--active" : ""}`}
-              >
-                <TerminalTab
-                  sessionId={tab.sessionId}
-                  title={tab.title}
-                  visible={tab.key === activeKey}
-                  onStatus={makeStatusHandler(tab.key)}
-                />
-              </div>
-            ))}
-            {tabs.length === 0 && (
-              <div className="workspace__empty">
-                <p>从左侧选择一个会话，或新建一个。</p>
-              </div>
-            )}
-            {forwardOpen && activeTab?.status.terminalId != null && (
-              <div className="sftp-overlay">
-                <ForwardPanel
-                  terminalId={activeTab.status.terminalId}
-                  sessionId={activeTab.sessionId}
-                  title={activeTab.title}
-                  onClose={() => setForwardOpen(false)}
-                />
-              </div>
+          <div className="workspace__content">
+            {/* Terminals stay mounted and keep their layout while the file
+                manager is open: `visibility` (not `display`) avoids resizing
+                xterm to zero, which used to misplace the cursor/IME anchor. */}
+            <div className={`terminals${view === "files" ? " terminals--hidden" : ""}`}>
+              {tabs.map((tab) => (
+                <div
+                  key={tab.key}
+                  className={`terminal-slot${tab.key === activeKey ? " terminal-slot--active" : ""}`}
+                >
+                  <TerminalTab
+                    sessionId={tab.sessionId}
+                    title={tab.title}
+                    visible={tab.key === activeKey}
+                    connected={tab.status.state === "ready"}
+                    filesOpen={view === "files" && tab.key === activeKey}
+                    theme={theme}
+                    onToggleFiles={() =>
+                      setView((current) => (current === "files" ? "terminal" : "files"))
+                    }
+                    onStatus={makeStatusHandler(tab.key)}
+                  />
+                </div>
+              ))}
+              {tabs.length === 0 && mode !== "form" && (
+                <div className="workspace__empty">
+                  <p>点右上角「＋」新建连接，或从左侧选择一个会话。</p>
+                </div>
+              )}
+              {forwardOpen && activeTab?.status.terminalId != null && (
+                <div className="sftp-overlay">
+                  <ForwardPanel
+                    terminalId={activeTab.status.terminalId}
+                    sessionId={activeTab.sessionId}
+                    title={activeTab.title}
+                    onClose={() => setForwardOpen(false)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {view === "files" && (
+              <FileManager
+                terminalId={activeTab?.status.terminalId ?? null}
+                sessionTitle={activeTab?.title ?? null}
+                onBackToTerminal={() => setView("terminal")}
+              />
             )}
           </div>
-
-          {view === "files" && (
-            <FileManager
-              terminalId={activeTab?.status.terminalId ?? null}
-              sessionTitle={activeTab?.title ?? null}
-              onBackToTerminal={() => setView("terminal")}
-            />
-          )}
         </main>
       </div>
 
       <StatusBar status={activeTab?.status ?? IDLE_STATUS} info={info} />
+
+      {sessionDialog !== null && (
+        <NewSessionDialog
+          sessions={sessions}
+          startInForm={sessionDialog.startInForm}
+          editing={sessionDialog.editing}
+          onPick={(session) => {
+            setSessionDialog(null);
+            openTab(session);
+          }}
+          onSaved={(session) => void handleSaved(session)}
+          onClose={() => setSessionDialog(null)}
+        />
+      )}
 
       {pendingDelete !== null && (
         <ConfirmDialog

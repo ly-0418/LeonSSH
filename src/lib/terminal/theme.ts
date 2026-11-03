@@ -4,8 +4,10 @@ import type { ITheme, ITerminalOptions } from "@xterm/xterm";
 export const TERMINAL_FONT =
   '"Cascadia Mono", "Cascadia Code", Consolas, "JetBrains Mono", "Courier New", monospace';
 
+export type ThemeMode = "dark" | "light";
+
 /** Dark palette tuned for a 24-bit capable renderer. */
-export const LEONSSH_THEME: ITheme = {
+export const DARK_TERMINAL_THEME: ITheme = {
   background: "#0b0f14",
   foreground: "#d7e3ee",
   cursor: "#4ade80",
@@ -29,7 +31,36 @@ export const LEONSSH_THEME: ITheme = {
   brightWhite: "#f8fafc",
 };
 
-/** xterm options shared by every terminal session. */
+/** Light palette: keeps ANSI colours readable on white. */
+export const LIGHT_TERMINAL_THEME: ITheme = {
+  background: "#ffffff",
+  foreground: "#1f2937",
+  cursor: "#16a34a",
+  cursorAccent: "#ffffff",
+  selectionBackground: "#bfdbfe80",
+  black: "#1f2937",
+  red: "#dc2626",
+  green: "#15803d",
+  yellow: "#b45309",
+  blue: "#2563eb",
+  magenta: "#7c3aed",
+  cyan: "#0e7490",
+  white: "#e5e7eb",
+  brightBlack: "#6b7280",
+  brightRed: "#ef4444",
+  brightGreen: "#16a34a",
+  brightYellow: "#d97706",
+  brightBlue: "#3b82f6",
+  brightMagenta: "#8b5cf6",
+  brightCyan: "#0891b2",
+  brightWhite: "#111827",
+};
+
+export function terminalTheme(mode: ThemeMode): ITheme {
+  return mode === "light" ? LIGHT_TERMINAL_THEME : DARK_TERMINAL_THEME;
+}
+
+/** xterm options shared by every terminal session (theme applied per session). */
 export const TERMINAL_OPTIONS: ITerminalOptions = {
   fontFamily: TERMINAL_FONT,
   fontSize: 14,
@@ -38,7 +69,7 @@ export const TERMINAL_OPTIONS: ITerminalOptions = {
   cursorBlink: true,
   cursorStyle: "block",
   scrollback: 10_000,
-  theme: LEONSSH_THEME,
+  theme: DARK_TERMINAL_THEME,
   allowTransparency: false,
   convertEol: false,
   macOptionIsMeta: false,

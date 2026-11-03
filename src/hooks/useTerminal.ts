@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { TerminalStatus } from "../lib/ipc/types";
 import { TerminalSession } from "../lib/terminal/TerminalSession";
+import type { ThemeMode } from "../lib/terminal/theme";
 
 const INITIAL_STATUS: TerminalStatus = {
   terminalId: null,
@@ -22,16 +23,19 @@ export interface UseTerminalOptions {
   sessionId: number;
   title: string;
   visible: boolean;
+  theme: ThemeMode;
   onStatus?: (patch: Partial<TerminalStatus>) => void;
 }
 
-export function useTerminal({ sessionId, title, visible, onStatus }: UseTerminalOptions) {
+export function useTerminal({ sessionId, title, visible, theme, onStatus }: UseTerminalOptions) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sessionRef = useRef<TerminalSession | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const statusRef = useRef(onStatus);
   statusRef.current = onStatus;
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -43,6 +47,7 @@ export function useTerminal({ sessionId, title, visible, onStatus }: UseTerminal
       container,
       sessionId,
       title,
+      theme: themeRef.current,
       onStatus: (patch) => statusRef.current?.(patch),
       onNotice: (message) => setNotice(message),
     });
@@ -57,6 +62,10 @@ export function useTerminal({ sessionId, title, visible, onStatus }: UseTerminal
   useEffect(() => {
     sessionRef.current?.setVisible(visible);
   }, [visible]);
+
+  useEffect(() => {
+    sessionRef.current?.setTheme(theme);
+  }, [theme]);
 
   const clearNotice = useCallback(() => setNotice(null), []);
   const focus = useCallback(() => sessionRef.current?.focus(), []);

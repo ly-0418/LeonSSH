@@ -19,6 +19,7 @@ interface TabBarProps {
   activeKey: string | null;
   onActivate: (key: string) => void;
   onClose: (key: string) => void;
+  onNewSession: () => void;
   forwardOpen: boolean;
   onToggleForward: () => void;
 }
@@ -28,13 +29,10 @@ export function TabBar({
   activeKey,
   onActivate,
   onClose,
+  onNewSession,
   forwardOpen,
   onToggleForward,
 }: TabBarProps) {
-  if (tabs.length === 0) {
-    return null;
-  }
-
   return (
     <div className="tab-bar" role="tablist">
       {tabs.map((tab) => (
@@ -68,6 +66,17 @@ export function TabBar({
           </button>
         </div>
       ))}
+
+      <button
+        type="button"
+        className="tab-bar__new"
+        title="新建连接（选择已保存的会话或新建）"
+        aria-label="新建连接"
+        onClick={onNewSession}
+      >
+        ＋
+      </button>
+
       <span className="tab-bar__spacer" />
       <button
         type="button"

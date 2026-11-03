@@ -19,7 +19,7 @@ import { toUserMessage } from "../ipc/errors";
 import { closeTerminal, openTerminal, resizeTerminal, writeTerminal } from "../ipc/session";
 import type { RendererKind, TerminalId, TerminalStatus } from "../ipc/types";
 import { installRenderer, type RendererController } from "./renderer";
-import { TERMINAL_OPTIONS } from "./theme";
+import { TERMINAL_OPTIONS, terminalTheme, type ThemeMode } from "./theme";
 
 const FIT_DEBOUNCE_MS = 60;
 const MIN_COLS = 20;
@@ -30,6 +30,8 @@ export interface TerminalSessionOptions {
   /** SQLite row id of the connection profile. */
   sessionId: number;
   title: string;
+  /** UI theme at creation time; later changes go through `setTheme`. */
+  theme?: ThemeMode;
   onStatus?: (patch: Partial<TerminalStatus>) => void;
   onNotice?: (message: string) => void;
 }
@@ -51,7 +53,10 @@ export class TerminalSession {
   private bytesOut = 0;
 
   constructor(private readonly options: TerminalSessionOptions) {
-    this.terminal = new Terminal(TERMINAL_OPTIONS);
+    this.terminal = new Terminal({
+      ...TERMINAL_OPTIONS,
+      theme: terminalTheme(options.theme ?? "dark"),
+    });
     this.terminal.loadAddon(this.fitAddon);
     this.terminal.open(options.container);
 
@@ -159,8 +164,20 @@ export class TerminalSession {
     }
     window.requestAnimationFrame(() => {
       this.fitNow();
+      // Repaint the whole viewport so the cursor and the IME anchor are placed
+      // against the current layout, not the one from before the view switch.
+      this.terminal.refresh(0, Math.max(0, this.terminal.rows - 1));
       this.terminal.focus();
     });
+  }
+
+  /** Swaps the xterm palette without recreating the terminal. */
+  setTheme(mode: ThemeMode): void {
+    if (this.disposed) {
+      return;
+    }
+    this.terminal.options.theme = terminalTheme(mode);
+    this.terminal.refresh(0, Math.max(0, this.terminal.rows - 1));
   }
 
   // ----------------------------------------------------------- I/O plumbing

@@ -1,11 +1,13 @@
 /* Dual-pane file manager (phase A: local pane + remote placeholder). */
 
 .file-manager {
-  flex: 1 1 auto;
+  position: absolute;
+  inset: 0;
+  z-index: 5;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: #0b0f14;
+  background: var(--bg);
 }
 
 .fm-head {
@@ -15,7 +17,7 @@
   gap: 12px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
-  background: #0d141d;
+  background: var(--bg-header);
 }
 
 .fm-head__title {
@@ -46,11 +48,11 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  background: #0b1118;
+  background: var(--bg-panel);
 }
 
 .fm-pane--placeholder {
-  background: #090d12;
+  background: var(--bg-sunken);
 }
 
 /* ------------------------------------------------------------- path bar */
@@ -78,7 +80,7 @@
   padding: 5px 8px;
   border-radius: 6px;
   border: 1px solid var(--border);
-  background: #0a1017;
+  background: var(--bg-input);
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 11.5px;
@@ -97,7 +99,7 @@
   padding: 4px 6px;
   border-radius: 6px;
   border: 1px solid var(--border);
-  background: #0a1017;
+  background: var(--bg-input);
   color: var(--text-dim);
   font-size: 11.5px;
 }
@@ -107,7 +109,7 @@
   height: 26px;
   border-radius: 6px;
   border: 1px solid var(--border);
-  background: #0a1017;
+  background: var(--bg-input);
   color: var(--text-dim);
   cursor: pointer;
   font-size: 13px;
@@ -170,11 +172,11 @@
 }
 
 .fm-row:hover {
-  background: #101a26;
+  background: var(--bg-hover);
 }
 
 .fm-row--selected {
-  background: #12202f;
+  background: var(--bg-selected);
   border-left-color: var(--accent);
   color: var(--text);
 }
@@ -223,9 +225,9 @@
   margin: 0;
   padding: 6px 10px;
   border: 0;
-  border-top: 1px solid #4c1d24;
-  background: #22090c;
-  color: #fca5a5;
+  border-top: 1px solid var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger-text);
   font-size: 11.5px;
   text-align: left;
   cursor: pointer;
@@ -253,9 +255,9 @@
   margin: 0;
   padding: 6px 12px;
   border: 0;
-  border-bottom: 1px solid #4c1d24;
-  background: #22090c;
-  color: #fca5a5;
+  border-bottom: 1px solid var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger-text);
   font-size: 11.5px;
   text-align: left;
   cursor: pointer;
@@ -264,7 +266,7 @@
 .fm-pane--drop {
   outline: 2px dashed var(--accent);
   outline-offset: -3px;
-  background: #0b1a12;
+  background: var(--accent-soft-bg);
 }
 
 /* ---------------------------------------------------------- transfer queue */
@@ -272,7 +274,7 @@
 .fq {
   flex: 0 0 auto;
   border-top: 1px solid var(--border);
-  background: #0a0f15;
+  background: var(--bg-sunken);
   max-height: 190px;
   display: flex;
   flex-direction: column;
@@ -327,7 +329,7 @@
 }
 
 .fq__item:hover {
-  background: #101a26;
+  background: var(--bg-hover);
 }
 
 .fq__dir {
@@ -344,7 +346,7 @@
 .fq__resume {
   margin-left: 8px;
   font-size: 10.5px;
-  color: #fbbf24;
+  color: var(--warn);
 }
 
 .fq__dst {
@@ -357,7 +359,7 @@
 .fq__bar {
   height: 6px;
   border-radius: 3px;
-  background: #16202c;
+  background: var(--bg-track);
   overflow: hidden;
 }
 
@@ -383,20 +385,20 @@
 }
 
 .fq__item--failed .fq__status {
-  color: #fca5a5;
+  color: var(--danger-text);
 }
 
 .fq__item--completed .fq__bar-fill {
-  background: #4ade80;
+  background: var(--accent);
 }
 
 .fq__item--cancelled .fq__bar-fill {
-  background: #6b7280;
+  background: var(--muted);
 }
 
 .fq__cancel {
   border: 1px solid var(--border);
-  background: #0b1118;
+  background: var(--bg-panel);
   color: var(--text-dim);
   border-radius: 5px;
   font-size: 11px;
@@ -417,7 +419,7 @@
   z-index: 30;
   display: flex;
   flex-direction: column;
-  background: #0b0f14;
+  background: var(--bg);
 }
 
 .editor__head {
@@ -427,14 +429,14 @@
   gap: 8px;
   padding: 7px 12px;
   border-bottom: 1px solid var(--border);
-  background: #0d141d;
+  background: var(--bg-header);
 }
 
 .editor__badge {
   padding: 2px 7px;
   border-radius: 999px;
-  background: #0c2417;
-  border: 1px solid #1d4f30;
+  background: var(--accent-soft-bg);
+  border: 1px solid var(--accent-soft-border);
   color: var(--accent);
   font-size: 10.5px;
   letter-spacing: 0.04em;
@@ -456,7 +458,7 @@
 }
 
 .editor__dirty {
-  color: #fbbf24;
+  color: var(--warn);
   font-size: 11.5px;
 }
 
@@ -486,13 +488,9 @@
 }
 
 .fm-banner--warn {
-  background: #241d09;
-  border-bottom-color: #4d3a12;
-  color: #fbbf24;
-}
-
-.file-manager {
-  position: relative;
+  background: var(--warn-bg);
+  border-bottom-color: var(--warn-border);
+  color: var(--warn);
 }
 
 /* --------------------------------------------------------- placeholder */

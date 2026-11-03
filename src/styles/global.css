@@ -4,19 +4,87 @@
   --bg: #0b0f14;
   --bg-elevated: #0f1620;
   --bg-header: #0d131b;
+  --bg-panel: #0b1118;
+  --bg-input: #0a1017;
+  --bg-sunken: #090d12;
+  --bg-hover: #101a26;
+  --bg-hover-strong: #1b2836;
+  --bg-selected: #12202f;
+  --bg-track: #16202c;
+
   --border: #1b2735;
   --border-strong: #243449;
 
   --text: #d7e3ee;
   --text-dim: #7d8ea3;
   --text-faint: #55647a;
+  --muted: #6b7280;
 
   --accent: #4ade80;
   --accent-cyan: #38bdf8;
+  --accent-soft-bg: #0c2417;
+  --accent-soft-border: #1d4f30;
+  --accent-glow: #4ade8066;
+  --accent-faint: #4ade8018;
+
   --danger: #f87171;
+  --danger-text: #fca5a5;
+  --danger-bg: #22090c;
+  --danger-border: #4c1d24;
+
+  --warn: #fbbf24;
+  --warn-text: #fcd34d;
+  --warn-bg: #241d09;
+  --warn-border: #4d3a12;
+
+  --overlay: rgba(11, 15, 20, 0.97);
+  --backdrop: rgba(4, 8, 12, 0.65);
 
   --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "Cascadia Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #f6f8fb;
+  --bg-elevated: #ffffff;
+  --bg-header: #ffffff;
+  --bg-panel: #ffffff;
+  --bg-input: #ffffff;
+  --bg-sunken: #eef2f7;
+  --bg-hover: #eaeff5;
+  --bg-hover-strong: #dfe7f0;
+  --bg-selected: #dbeafe;
+  --bg-track: #e2e8f0;
+
+  --border: #d7dfe9;
+  --border-strong: #b7c4d4;
+
+  --text: #14202c;
+  --text-dim: #4a5a6c;
+  --text-faint: #7b8a9b;
+  --muted: #94a3b8;
+
+  --accent: #16a34a;
+  --accent-cyan: #0284c7;
+  --accent-soft-bg: #dcfce7;
+  --accent-soft-border: #86efac;
+  --accent-glow: #16a34a44;
+  --accent-faint: #16a34a14;
+
+  --danger: #dc2626;
+  --danger-text: #b91c1c;
+  --danger-bg: #fee2e2;
+  --danger-border: #fca5a5;
+
+  --warn: #b45309;
+  --warn-text: #92400e;
+  --warn-bg: #fef3c7;
+  --warn-border: #fcd34d;
+
+  --overlay: rgba(246, 248, 251, 0.98);
+  --backdrop: rgba(15, 23, 42, 0.35);
 }
 
 * {
@@ -56,7 +124,7 @@ body {
   gap: 16px;
   height: 44px;
   padding: 0 16px;
-  background: linear-gradient(180deg, #101a26 0%, #0d141d 100%);
+  background: linear-gradient(180deg, var(--bg-hover) 0%, var(--bg-header) 100%);
   border-bottom: 1px solid var(--border);
   user-select: none;
 }
@@ -122,6 +190,34 @@ body {
   pointer-events: auto;
 }
 
+.theme-toggle {
+  width: 34px;
+  height: 28px;
+  margin-right: 8px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.theme-toggle:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 44px;
+  margin-left: auto;
+  pointer-events: auto;
+}
+
 .window-controls__btn {
   width: 46px;
   border: 0;
@@ -133,7 +229,7 @@ body {
 }
 
 .window-controls__btn:hover {
-  background: #1b2836;
+  background: var(--bg-hover-strong);
   color: var(--text);
 }
 
@@ -145,9 +241,9 @@ body {
 .boot-error {
   flex: 0 0 auto;
   padding: 6px 16px;
-  background: #2a1215;
-  color: #fca5a5;
-  border-bottom: 1px solid #4c1d24;
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border-bottom: 1px solid var(--danger-border);
   font-family: var(--font-mono);
   font-size: 12px;
 }
@@ -173,7 +269,7 @@ body {
 .chip {
   padding: 1px 8px;
   border-radius: 999px;
-  background: #111a24;
+  background: var(--bg-hover);
   border: 1px solid var(--border);
   white-space: nowrap;
 }
@@ -187,21 +283,21 @@ body {
 }
 
 .chip--connecting {
-  color: #fbbf24;
-  border-color: #4a3a12;
-  background: #1c1608;
+  color: var(--warn);
+  border-color: var(--warn-border);
+  background: var(--warn-bg);
 }
 
 .chip--ready {
   color: var(--accent);
-  border-color: #1d4f30;
-  background: #0c2417;
+  border-color: var(--accent-soft-border);
+  background: var(--accent-soft-bg);
 }
 
 .chip--error {
   color: var(--danger);
-  border-color: #4c1d24;
-  background: #22090c;
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
 }
 
 .chip--closed {
@@ -209,9 +305,9 @@ body {
 }
 
 .chip--host {
-  color: #7dd3fc;
-  border-color: #1e3a5f;
-  background: #0b1b2a;
+  color: var(--accent-cyan);
+  border-color: var(--accent-soft-border);
+  background: var(--bg-selected);
 }
 
 .status-bar__spacer {
@@ -227,5 +323,5 @@ body {
 }
 
 .status-bar__path--warn {
-  color: #fbbf24;
+  color: var(--warn);
 }

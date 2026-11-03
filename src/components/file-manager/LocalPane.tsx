@@ -25,6 +25,7 @@ interface LocalPaneProps {
   initialPath?: string;
   refreshToken?: number;
   onPathChange?: (path: string) => void;
+  persistKey?: string;
   onSelectionChange?: (entries: FileEntry[]) => void;
   onRowPointerDown?: (entry: FileEntry, event: React.PointerEvent) => void;
 }
@@ -43,6 +44,7 @@ export function LocalPane({
   initialPath,
   refreshToken,
   onPathChange,
+  persistKey,
   onSelectionChange,
   onRowPointerDown,
 }: LocalPaneProps) {
@@ -55,7 +57,7 @@ export function LocalPane({
     }),
     [],
   );
-  const pane = useFilePane(adapter, initialPath);
+  const pane = useFilePane(adapter, initialPath, persistKey);
   const [roots, setRoots] = useState<string[]>([]);
   const [desktop, setDesktop] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; entry: FileEntry | null } | null>(null);

@@ -29,6 +29,7 @@ interface RemotePaneProps {
   dropActive?: boolean;
   refreshToken?: number;
   initialPath?: string;
+  persistKey?: string;
   onPathChange?: (path: string) => void;
   onSelectionChange?: (entries: PaneEntry[]) => void;
   onOpenFile?: (entry: PaneEntry) => void;
@@ -175,6 +176,7 @@ function RemotePaneLoaded({
   refreshToken,
   onPathChange,
   initialPath,
+  persistKey,
   onSelectionChange,
   onOpenFile,
   onDropPaths,
@@ -194,7 +196,7 @@ function RemotePaneLoaded({
     }),
     [terminalId, home],
   );
-  const pane = useFilePane(adapter, initialPath);
+  const pane = useFilePane(adapter, initialPath, persistKey);
 
   const [menu, setMenu] = useState<{ x: number; y: number; entry: PaneEntry | null } | null>(null);
   const [prompt, setPrompt] = useState<RemotePrompt | null>(null);

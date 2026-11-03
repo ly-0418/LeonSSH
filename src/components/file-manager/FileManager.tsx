@@ -351,6 +351,7 @@ export function FileManager({
       >
         <LocalPane
           key={memoryKey}
+          persistKey={"fm:" + memoryKey + ":local"}
           initialPath={localPath || initialLocal}
           refreshToken={revision + editorRevision}
           onPathChange={(path) => {
@@ -387,6 +388,9 @@ export function FileManager({
         <RemotePane
           terminalId={terminalId}
           sessionTitle={sessionTitle}
+          key={memoryKey}
+          initialPath={remotePath || undefined}
+          persistKey={"fm:" + memoryKey + ":remote"}
           dropActive={dropActive}
           refreshToken={revision + editorRevision}
           onPathChange={(path) => {

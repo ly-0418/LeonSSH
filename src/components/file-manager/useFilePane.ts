@@ -95,7 +95,7 @@ function compare(a: FileEntry, b: FileEntry, sort: SortState): number {
 }
 
 /** One instance per pane: the two panes never share path/selection state. */
-export function useFilePane(adapter: PaneAdapter, initialPath?: string): FilePaneState {
+export function useFilePane(adapter: PaneAdapter, initialPath?: string, persistKey?: string): FilePaneState {
   const [path, setPath] = useState("");
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -226,9 +226,12 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string): FilePan
 
   useEffect(() => {
     let cancelled = false;
-    const start = initialPath !== undefined && initialPath.length > 0
-      ? Promise.resolve(initialPath)
-      : adapter.home();
+    const stored = persistKey !== undefined ? localStorage.getItem(persistKey) : null;
+    const start = stored !== null && stored.length > 0
+      ? Promise.resolve(stored)
+      : initialPath !== undefined && initialPath.length > 0
+        ? Promise.resolve(initialPath)
+        : adapter.home();
     start
       .then((home) => {
         if (!cancelled) {
@@ -244,7 +247,13 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string): FilePan
     return () => {
       cancelled = true;
     };
-  }, [adapter, load, initialPath]);
+  }, [adapter, load, initialPath, persistKey]);
+
+  useEffect(() => {
+    if (persistKey !== undefined && path.length > 0) {
+      localStorage.setItem(persistKey, path);
+    }
+  }, [persistKey, path]);
 
   const select = useCallback(
     (name: string, mode: SelectionMode) => {

@@ -295,7 +295,7 @@ export function FileManager({
 
   const canUpload = terminalId !== null && remotePath !== "" && localSelection.length > 0;
   const canDownload =
-    terminalId !== null && localPath !== "" && remoteSelection.some((e) => !e.isDir);
+    terminalId !== null && localPath !== "" && remoteSelection.length > 0;
 
   return (
     <div className={`file-manager${exiting ? " file-manager--leave" : " file-manager--enter"}`}>

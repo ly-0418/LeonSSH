@@ -23,9 +23,6 @@ interface TabBarProps {
   onClose: (key: string) => void;
   onNewSession: () => void;
   onDuplicate: (key: string) => void;
-  onShowKnownHosts: () => void;
-  forwardOpen: boolean;
-  onToggleForward: () => void;
 }
 
 interface MenuState {
@@ -41,9 +38,6 @@ export function TabBar({
   onClose,
   onNewSession,
   onDuplicate,
-  onShowKnownHosts,
-  forwardOpen,
-  onToggleForward,
 }: TabBarProps) {
   const [menu, setMenu] = useState<MenuState | null>(null);
 
@@ -117,24 +111,7 @@ export function TabBar({
         ＋
       </button>
 
-      <span className="tab-bar__spacer" />
-      <button
-        type="button"
-        className="tab-bar__action"
-        onClick={onShowKnownHosts}
-        title="已知主机（主机密钥指纹）"
-      >
-        主机
-      </button>
-      <button
-        type="button"
-        className={`tab-bar__action${forwardOpen ? " tab-bar__action--active" : ""}`}
-        onClick={onToggleForward}
-        disabled={activeKey === null}
-        title="端口转发（-L / -R / -D）"
-      >
-        转发
-      </button>
+
 
       {menu !== null && (
         <div

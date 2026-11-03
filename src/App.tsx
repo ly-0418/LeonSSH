@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { FileManager } from "./components/file-manager/FileManager";
-import { ForwardPanel } from "./components/ForwardPanel";
 import { NewSessionDialog } from "./components/NewSessionDialog";
 import { SessionForm } from "./components/SessionForm";
+import { SettingsDrawer } from "./components/SettingsDrawer";
 import { StatusBar } from "./components/StatusBar";
 import { TabBar, type TabItem } from "./components/TabBar";
 import { TerminalTab } from "./components/TerminalTab";
 import { WindowControls } from "./components/WindowControls";
-import { ConfirmDialog, KnownHostsDialog } from "./components/dialogs";
+import { ConfirmDialog } from "./components/dialogs";
 import { toUserMessage } from "./lib/ipc/errors";
 import { deleteSession, listSessions } from "./lib/ipc/sessions";
 import type { SessionSummary, TerminalStatus } from "./lib/ipc/types";
@@ -42,12 +42,11 @@ export default function App() {
   const [mode, setMode] = useState<"terminal" | "form">("terminal");
   const [editing, setEditing] = useState<SessionSummary | null>(null);
   const [pendingDelete, setPendingDelete] = useState<SessionSummary | null>(null);
-  const [knownHostsOpen, setKnownHostsOpen] = useState(false);
   const [view, setView] = useState<WorkspaceView>(() =>
     new URLSearchParams(window.location.search).get("view") === "files" ? "files" : "terminal",
   );
-  const [forwardOpen, setForwardOpen] = useState(false);
   const [filesExiting, setFilesExiting] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeMode>(initialTheme);
   const [sessionDialog, setSessionDialog] = useState<SessionDialogState | null>(null);
@@ -214,10 +213,6 @@ export default function App() {
     }
   }
 
-  const toggleTheme = useCallback(() => {
-    setTheme((value) => (value === "dark" ? "light" : "dark"));
-  }, []);
-
   /** Slide the file manager out (it stays mounted until the animation ends). */
   const closeFiles = useCallback(() => {
     setFilesExiting(true);
@@ -241,12 +236,19 @@ export default function App() {
         <div className="app-header__actions">
           <button
             type="button"
-            className="theme-toggle"
-            title={theme === "dark" ? "切换到亮色主题" : "切换到暗色主题"}
-            aria-label="切换主题"
-            onClick={toggleTheme}
+            className={`header-action${view === "files" ? " header-action--active" : ""}`}
+            title="显示/隐藏文件管理"
+            onClick={() => (view === "files" ? closeFiles() : openFiles())}
           >
-            {theme === "dark" ? "☀" : "☾"}
+            文件管理
+          </button>
+          <button
+            type="button"
+            className={`header-action${settingsOpen ? " header-action--active" : ""}`}
+            title="设置"
+            onClick={() => setSettingsOpen((open) => !open)}
+          >
+            设置
           </button>
           <WindowControls />
         </div>
@@ -272,9 +274,7 @@ export default function App() {
               })
             }
             onDuplicate={duplicateTab}
-            onShowKnownHosts={() => setKnownHostsOpen(true)}
-            forwardOpen={forwardOpen}
-            onToggleForward={() => setForwardOpen((open) => !open)}
+
           />
 
           {mode === "form" && sessions.length === 0 && (
@@ -282,7 +282,8 @@ export default function App() {
               <SessionForm
                 initial={editing}
                 onboarding={sessions.length === 0}
-                onSaved={handleSaved}
+                onSaved={(session) => void handleSaved(session)}
+                onSavedAndConnect={(session) => void handleSaved(session)}
                 onCancel={undefined}
               />
             </div>
@@ -302,10 +303,7 @@ export default function App() {
                     sessionId={tab.sessionId}
                     title={tab.title}
                     visible={tab.key === activeKey}
-                    connected={tab.status.state === "ready"}
-                    filesOpen={view === "files" && tab.key === activeKey}
                     theme={theme}
-                    onToggleFiles={() => (view === "files" ? closeFiles() : openFiles())}
                     onStatus={makeStatusHandler(tab.key)}
                   />
                 </div>
@@ -315,16 +313,7 @@ export default function App() {
                   <p>点右上角「＋」新建连接，或从左侧选择一个会话。</p>
                 </div>
               )}
-              {forwardOpen && activeTab?.status.terminalId != null && (
-                <div className="sftp-overlay">
-                  <ForwardPanel
-                    terminalId={activeTab.status.terminalId}
-                    sessionId={activeTab.sessionId}
-                    title={activeTab.title}
-                    onClose={() => setForwardOpen(false)}
-                  />
-                </div>
-              )}
+
             </div>
 
             {(view === "files" || filesExiting) && (
@@ -356,11 +345,13 @@ export default function App() {
           onSelect={(session) => setSessionDialog({ creating: false, selectedId: session.id })}
           onCreate={() => setSessionDialog({ creating: true, selectedId: null })}
           onDelete={(session) => setPendingDelete(session)}
-          onConnect={(session) => {
+
+          onSaved={() => {
             setSessionDialog(null);
-            openTab(session);
+            void refreshSessions();
+            setError(null);
           }}
-          onSaved={(session) => void handleSaved(session)}
+          onSavedAndConnect={(session) => void handleSaved(session)}
           onClose={() => setSessionDialog(null)}
         />
       )}
@@ -375,7 +366,16 @@ export default function App() {
         />
       )}
 
-      {knownHostsOpen && <KnownHostsDialog onClose={() => setKnownHostsOpen(false)} />}
+      {settingsOpen && (
+        <SettingsDrawer
+          theme={theme}
+          onChangeTheme={setTheme}
+          terminalId={activeTab?.status.terminalId ?? null}
+          sessionId={activeTab?.sessionId ?? null}
+          sessionTitle={activeTab?.title ?? null}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
     </div>
   );
 }

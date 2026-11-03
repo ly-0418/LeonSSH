@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { toUserMessage } from "../lib/ipc/errors";
 import { createSession, setSessionPassword, updateSession } from "../lib/ipc/sessions";
+import { testConnection } from "../lib/ipc/sessions";
 import type { SessionInput, SessionSummary } from "../lib/ipc/types";
 
 interface SessionFormProps {
@@ -9,26 +10,42 @@ interface SessionFormProps {
   initial?: SessionSummary | null;
   /** First run: the form is shown inline instead of a modal. */
   onboarding?: boolean;
+  /** Save without connecting. */
   onSaved: (session: SessionSummary) => void;
+  /** Save and connect right away. */
+  onSavedAndConnect: (session: SessionSummary) => void;
   onCancel?: () => void;
-  /** Connect with the saved profile without persisting form edits. */
-  onConnect?: (session: SessionSummary) => void;
+}
+
+const DEFAULT_PORT = 22;
+
+/** "host" / "host:port" (IPv6 literals keep their brackets). */
+function splitAddress(value: string): { host: string; port: number } {
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(.*):(\d{1,5})$/);
+  if (match === null) {
+    return { host: trimmed, port: DEFAULT_PORT };
+  }
+  return { host: match[1].trim(), port: Number.parseInt(match[2], 10) };
 }
 
 export function SessionForm({
   initial,
   onboarding = false,
   onSaved,
+  onSavedAndConnect,
   onCancel,
-  onConnect,
 }: SessionFormProps) {
   const [name, setName] = useState(initial?.name ?? (onboarding ? "本地 Docker 测试" : ""));
-  const [host, setHost] = useState(initial?.host ?? "127.0.0.1");
-  const [port, setPort] = useState(String(initial?.port ?? 2222));
-  const [username, setUsername] = useState(initial?.username ?? "test");
+  const [address, setAddress] = useState(
+    initial ? `${initial.host}:${initial.port}` : "",
+  );
+  const [username, setUsername] = useState(initial?.username ?? "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement | null>(null);
 
@@ -37,21 +54,46 @@ export function SessionForm({
     nameRef.current?.select();
   }, []);
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
+  async function handleTest() {
+    const { host, port } = splitAddress(address);
+    if (host.length === 0) {
+      setTestResult({ ok: false, text: "请先填写地址" });
+      return;
+    }
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const millis = await testConnection(host, port);
+      setTestResult({ ok: true, text: `可达，${millis} ms` });
+    } catch (err) {
+      setTestResult({ ok: false, text: toUserMessage(err) });
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  async function submit(connect: boolean) {
     if (busy) {
       return;
     }
-    const portNumber = Number.parseInt(port, 10);
-    if (!Number.isFinite(portNumber) || portNumber < 1 || portNumber > 65535) {
-      setError("端口必须是 1-65535 之间的数字");
+    const { host, port } = splitAddress(address);
+    if (host.length === 0) {
+      setError("地址不能为空（例如 192.168.1.10:22）");
+      return;
+    }
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      setError("端口必须是 1-65535 之间的整数");
+      return;
+    }
+    if (username.trim().length === 0) {
+      setError("用户名不能为空");
       return;
     }
 
     const input: SessionInput = {
-      name: name.trim(),
-      host: host.trim(),
-      port: portNumber,
+      name: name.trim().length > 0 ? name.trim() : host,
+      host,
+      port,
       username: username.trim(),
       authMethod: "password",
     };
@@ -69,7 +111,12 @@ export function SessionForm({
         await setSessionPassword(saved.id, password);
       }
 
-      onSaved({ ...saved, hasPassword: saved.hasPassword || password.length > 0 });
+      const view = { ...saved, hasPassword: saved.hasPassword || password.length > 0 };
+      if (connect) {
+        onSavedAndConnect(view);
+      } else {
+        onSaved(view);
+      }
     } catch (err) {
       setError(toUserMessage(err));
     } finally {
@@ -78,103 +125,115 @@ export function SessionForm({
   }
 
   return (
-    <form className={`session-form${onboarding ? " session-form--onboarding" : ""}`} onSubmit={handleSubmit}>
-      <header className="session-form__head">
-        <h2>{initial ? "编辑会话" : "新建会话"}</h2>
-        {onboarding && <p>填写连接信息，密码会保存到 Windows 凭据管理器。</p>}
-      </header>
-
-      <label className="field">
-        <span className="field__label">名称</span>
+    <form
+      className={`session-form${onboarding ? " session-form--onboarding" : ""}`}
+      onSubmit={(event) => {
+        event.preventDefault();
+        void submit(true);
+      }}
+    >
+      <div className="form-row">
+        <label className="form-row__label" htmlFor="session-name">
+          名称
+        </label>
         <input
+          id="session-name"
           ref={nameRef}
           className="input"
           value={name}
           onChange={(event) => setName(event.target.value)}
-          placeholder="例如：生产环境"
-          autoComplete="off"
+          placeholder="留空则使用地址"
         />
-      </label>
-
-      <div className="field-row">
-        <label className="field field--grow">
-          <span className="field__label">主机</span>
-          <input
-            className="input"
-            value={host}
-            onChange={(event) => setHost(event.target.value)}
-            placeholder="192.168.1.10"
-            autoComplete="off"
-          />
-        </label>
-        <label className="field field--port">
-          <span className="field__label">端口</span>
-          <input
-            className="input"
-            value={port}
-            onChange={(event) => setPort(event.target.value)}
-            inputMode="numeric"
-          />
-        </label>
       </div>
 
-      <div className="field-row">
-        <label className="field field--grow">
-          <span className="field__label">用户名</span>
+      <div className="form-row">
+        <label className="form-row__label" htmlFor="session-address">
+          地址
+        </label>
+        <input
+          id="session-address"
+          className="input"
+          value={address}
+          onChange={(event) => setAddress(event.target.value)}
+          placeholder="主机:端口（端口默认 22）"
+          spellCheck={false}
+        />
+      </div>
+
+      <div className="form-row">
+        <label className="form-row__label" htmlFor="session-user">
+          用户名
+        </label>
+        <input
+          id="session-user"
+          className="input"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          autoComplete="off"
+        />
+      </div>
+
+      <div className="form-row">
+        <label className="form-row__label" htmlFor="session-password">
+          密码
+        </label>
+        <span className="field__with-action">
           <input
+            id="session-password"
             className="input"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            autoComplete="off"
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder={initial?.hasPassword ? "已保存，留空则不修改" : "保存到凭据管理器"}
+            autoComplete="new-password"
           />
-        </label>
-        <label className="field field--grow">
-          <span className="field__label">密码</span>
-          <span className="field__with-action">
-            <input
-              className="input"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder={initial?.hasPassword ? "已保存，留空则不修改" : "保存到凭据管理器"}
-              autoComplete="new-password"
-            />
-            <button
-              type="button"
-              className="field__action"
-              title={showPassword ? "隐藏密码" : "显示密码"}
-              aria-label={showPassword ? "隐藏密码" : "显示密码"}
-              tabIndex={-1}
-              onClick={() => setShowPassword((value) => !value)}
-            >
-              {showPassword ? "🙈" : "👁"}
-            </button>
-          </span>
-        </label>
+          <button
+            type="button"
+            className="field__action"
+            title={showPassword ? "隐藏密码" : "显示密码"}
+            aria-label={showPassword ? "隐藏密码" : "显示密码"}
+            tabIndex={-1}
+            onClick={() => setShowPassword((value) => !value)}
+          >
+            {showPassword ? "🙈" : "👁"}
+          </button>
+        </span>
       </div>
 
       {error !== null && <p className="form-error">{error}</p>}
+      {testResult !== null && (
+        <p className={`form-test${testResult.ok ? " form-test--ok" : " form-test--bad"}`}>
+          {testResult.ok ? "连通性正常：" : "连通性失败："}
+          {testResult.text}
+        </p>
+      )}
 
       <div className="session-form__actions">
-        <button type="submit" className="button button--primary" disabled={busy}>
-          {busy ? "保存中…" : initial ? "保存并连接" : "创建并连接"}
+        <button
+          type="button"
+          className="button button--ghost"
+          disabled={testing || busy}
+          onClick={() => void handleTest()}
+        >
+          {testing ? "测试中…" : "测连通性"}
         </button>
-        {initial !== null && initial !== undefined && onConnect !== undefined && (
-          <button
-            type="button"
-            className="button"
-            disabled={busy}
-            title="不保存当前的修改，直接用已保存的配置连接"
-            onClick={() => onConnect(initial)}
-          >
-            直接连接
-          </button>
-        )}
+        <span className="session-form__spacer" />
         {onCancel && (
-          <button type="button" className="button button--ghost" onClick={onCancel}>
+          <button type="button" className="button button--ghost" onClick={onCancel} disabled={busy}>
             取消
           </button>
         )}
+        <button
+          type="button"
+          className="button"
+          disabled={busy}
+          onClick={() => void submit(false)}
+        >
+          保存
+        </button>
+        <button type="submit" className="button button--primary" disabled={busy}>
+          {busy ? "处理中…" : "连接"}
+        </button>
       </div>
     </form>
   );

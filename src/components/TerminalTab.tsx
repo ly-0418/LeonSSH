@@ -6,11 +6,7 @@ interface TerminalTabProps {
   sessionId: number;
   title: string;
   visible: boolean;
-  /** Connection is authenticated and the shell is running. */
-  connected: boolean;
-  filesOpen: boolean;
   theme: ThemeMode;
-  onToggleFiles: () => void;
   onStatus: (patch: Partial<TerminalStatus>) => void;
 }
 
@@ -22,10 +18,7 @@ export function TerminalTab({
   sessionId,
   title,
   visible,
-  connected,
-  filesOpen,
   theme,
-  onToggleFiles,
   onStatus,
 }: TerminalTabProps) {
   const { containerRef, notice, clearNotice } = useTerminal({
@@ -38,19 +31,6 @@ export function TerminalTab({
 
   return (
     <section className="terminal-pane">
-      {/* Reserved action row: more per-session tools will land here later. */}
-      <div className="session-toolbar">
-        <button
-          type="button"
-          className={`session-toolbar__btn${filesOpen ? " session-toolbar__btn--active" : ""}`}
-          disabled={!connected}
-          title={connected ? "打开/关闭文件管理" : "连接成功后才能使用"}
-          onClick={onToggleFiles}
-        >
-          文件管理
-        </button>
-        <span className="session-toolbar__spacer" />
-      </div>
 
       <div className="terminal-host" ref={containerRef} />
 

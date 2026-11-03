@@ -9,8 +9,8 @@ interface NewSessionDialogProps {
   onSelect: (session: SessionSummary) => void;
   onCreate: () => void;
   onDelete: (session: SessionSummary) => void;
-  onConnect: (session: SessionSummary) => void;
   onSaved: (session: SessionSummary) => void;
+  onSavedAndConnect: (session: SessionSummary) => void;
   onClose: () => void;
 }
 
@@ -25,8 +25,8 @@ export function NewSessionDialog({
   onSelect,
   onCreate,
   onDelete,
-  onConnect,
   onSaved,
+  onSavedAndConnect,
   onClose,
 }: NewSessionDialogProps) {
   return (
@@ -105,8 +105,8 @@ export function NewSessionDialog({
               initial={creating ? null : selected}
               onboarding={false}
               onSaved={onSaved}
+              onSavedAndConnect={onSavedAndConnect}
               onCancel={onClose}
-              onConnect={creating ? undefined : onConnect}
             />
           </section>
         </div>

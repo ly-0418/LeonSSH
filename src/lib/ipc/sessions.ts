@@ -69,3 +69,12 @@ export async function forgetKnownHost(endpoint: string): Promise<void> {
     throw normalizeError(error);
   }
 }
+
+/** TCP reachability check (3 second timeout); returns the latency in ms. */
+export async function testConnection(host: string, port: number): Promise<number> {
+  try {
+    return await invoke<number>("test_connection", { host, port });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}

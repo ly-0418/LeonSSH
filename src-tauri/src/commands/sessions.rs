@@ -136,3 +136,20 @@ pub async fn known_hosts_forget(
     tracing::info!(endpoint = %endpoint, "host key pin removed by user");
     Ok(())
 }
+
+/// Plain TCP reachability check for the connection dialog.
+#[tauri::command]
+pub async fn test_connection(host: String, port: u16) -> Result<u64, AppError> {
+    let target = format!("{host}:{port}");
+    let started = std::time::Instant::now();
+    let attempt = tokio::time::timeout(
+        std::time::Duration::from_secs(3),
+        tokio::net::TcpStream::connect(&target),
+    )
+    .await;
+    match attempt {
+        Ok(Ok(_)) => Ok(started.elapsed().as_millis() as u64),
+        Ok(Err(err)) => Err(AppError::Ssh(format!("无法连接 {target}: {err}"))),
+        Err(_) => Err(AppError::Ssh(format!("连接 {target} 超时（3 秒）"))),
+    }
+}

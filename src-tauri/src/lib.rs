@@ -179,6 +179,7 @@ pub fn run() {
             commands::ssh::ssh_resize,
             commands::ssh::ssh_close,
             commands::sessions::session_list,
+            commands::sessions::test_connection,
             commands::sessions::session_create,
             commands::sessions::session_update,
             commands::sessions::session_delete,

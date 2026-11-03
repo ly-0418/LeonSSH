@@ -320,7 +320,13 @@ function RemotePaneLoaded({
         onRefresh={() => void pane.refresh()}
       />
       <FileTable
-persistKey={persistKey}         entries={pane.visible}
+persistKey={persistKey} onRowDragStart={(entry, event) => {
+            const names = pane.selected.includes(entry.name) ? pane.selected : [entry.name];
+            const picked = pane.entries.filter((item) => names.includes(item.name));
+            event.dataTransfer.setData("application/x-leonssh-remote", JSON.stringify(picked));
+            event.dataTransfer.effectAllowed = "copy";
+          }}
+                  entries={pane.visible}
         selected={pane.selected}
         showPermissions
         loading={pane.loading}

@@ -19,6 +19,10 @@ interface FileTableProps {
   /** `entry === null` means the empty area below the rows. */
   onContextMenu: (entry: FileEntry | null, event: React.MouseEvent) => void;
   onRowPointerDown?: (entry: FileEntry, event: React.PointerEvent) => void;
+  /** Enables HTML5 dragging of rows (remote → local download). */
+  onRowDragStart?: (entry: FileEntry, event: React.DragEvent) => void;
+  /** Accepts files dropped onto the table body (remote → local download). */
+  onDropEntries?: (entries: FileEntry[]) => void;
 }
 
 const ROW_HEIGHT = 26;
@@ -41,7 +45,9 @@ export function FileTable({
   onOpen,
   onContextMenu,
   onRowPointerDown,
-  persistKey,}: FileTableProps) {
+  persistKey,
+  onRowDragStart,
+  onDropEntries,}: FileTableProps) {
   const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === 1 ? " ▲" : " ▼") : "");
 
   // Windowing keeps 8000-entry folders responsive: only the visible rows are
@@ -112,6 +118,26 @@ export function FileTable({
       <div
         className="fm-table__body"
         ref={bodyRef}
+          onDragOver={(event) => {
+            if (onDropEntries !== undefined) {
+              event.preventDefault();
+            }
+          }}
+          onDrop={(event) => {
+            if (onDropEntries === undefined) {
+              return;
+            }
+            const raw = event.dataTransfer.getData("application/x-leonssh-remote");
+            if (raw.length === 0) {
+              return;
+            }
+            event.preventDefault();
+            try {
+              onDropEntries(JSON.parse(raw) as FileEntry[]);
+            } catch {
+              // Ignore malformed payloads.
+            }
+          }}
         onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
         onContextMenu={(event) => {
           // Only fires when the click was not on a row (rows stop propagation).
@@ -128,6 +154,8 @@ export function FileTable({
             key={entry.path}
             role="row"
             aria-selected={selected.includes(entry.name)}
+            draggable={onRowDragStart !== undefined}
+            onDragStart={(event) => onRowDragStart?.(entry, event)}
             style={{ position: "absolute", top: (firstRow + index) * ROW_HEIGHT, left: 0, right: 0 }}
             className={`fm-row${selected.includes(entry.name) ? " fm-row--selected" : ""}${
               showPermissions ? " fm-row--perm" : ""

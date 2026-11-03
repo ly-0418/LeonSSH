@@ -26,6 +26,8 @@ interface LocalPaneProps {
   refreshToken?: number;
   onPathChange?: (path: string) => void;
   persistKey?: string;
+  /** Files dragged from the remote pane: download them here. */
+  onRemoteDrop?: (entries: FileEntry[]) => void;
   onSelectionChange?: (entries: FileEntry[]) => void;
   onRowPointerDown?: (entry: FileEntry, event: React.PointerEvent) => void;
 }
@@ -45,6 +47,7 @@ export function LocalPane({
   refreshToken,
   onPathChange,
   persistKey,
+  onRemoteDrop,
   onSelectionChange,
   onRowPointerDown,
 }: LocalPaneProps) {
@@ -162,7 +165,8 @@ export function LocalPane({
         onRefresh={() => void pane.refresh()}
       />
       <FileTable
-persistKey={persistKey}         entries={pane.visible}
+persistKey={persistKey} onDropEntries={onRemoteDrop}
+                  entries={pane.visible}
         selected={pane.selected}
         loading={pane.loading}
         sort={pane.sort}

@@ -104,6 +104,7 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string): FilePan
   const [filter, setFilter] = useState("");
   const [sort, setSort] = useState<SortState>({ key: "name", dir: 1 });
   const anchorRef = useRef<string | null>(null);
+  const lastGood = useRef<{ path: string; entries: FileEntry[] }>({ path: "", entries: [] });
   const requestRef = useRef(0);
 
   const load = useCallback(
@@ -148,7 +149,9 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string): FilePan
               // A successful listing with no entries is an empty directory.
               setPath(target);
             }
-            setEntries(sortEntries(accumulated));
+            const sorted = sortEntries(accumulated);
+            lastGood.current = { path: target, entries: sorted };
+            setEntries(sorted);
           }
           return;
         }
@@ -158,6 +161,7 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string): FilePan
         }
         setPath(target);
         setEntries(list);
+        lastGood.current = { path: target, entries: list };
         setSelected([]);
         setFilter("");
         anchorRef.current = null;
@@ -201,6 +205,11 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string): FilePan
         }
       } catch (err) {
         if (request === requestRef.current) {
+          // Keep the user where they were: a denied folder must not look opened.
+          if (lastGood.current.path !== "") {
+            setPath(lastGood.current.path);
+            setEntries(lastGood.current.entries);
+          }
           setError(toUserMessage(err));
         }
       } finally {

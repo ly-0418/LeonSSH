@@ -195,6 +195,7 @@ impl SftpSession {
                         .collect();
                 }
                 Err(Error::Status(status)) if status.status_code == StatusCode::Eof => break,
+                Err(err) if err.to_string().to_lowercase().contains("eof") => break,
                 Err(err) => return Err(err),
             }
         }

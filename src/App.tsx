@@ -10,6 +10,7 @@ import { TabBar, type TabItem } from "./components/TabBar";
 import { TerminalTab } from "./components/TerminalTab";
 import { WindowControls } from "./components/WindowControls";
 import { ConfirmDialog } from "./components/dialogs";
+import { setBroadcastHandler } from "./lib/terminal/TerminalSession";
 import { startAllForwards } from "./lib/ipc/forwards";
 import { toUserMessage } from "./lib/ipc/errors";
 import { writeTerminal } from "./lib/ipc/session";
@@ -53,6 +54,9 @@ export default function App() {
   /** Tabs whose saved forward rules were already auto-started. */
   const startedForwards = useRef<Set<string>>(new Set());
   const [forwardOpen, setForwardOpen] = useState(false);
+  const [broadcast, setBroadcast] = useState<boolean>(
+    () => localStorage.getItem("leonssh.broadcast") === "1",
+  );
   const [forwardClosing, setForwardClosing] = useState(false);
   const [settingsClosing, setSettingsClosing] = useState(false);
   const [fontSize, setFontSize] = useState<number>(() => {
@@ -300,6 +304,22 @@ export default function App() {
     [activeTab, closeFiles],
   );
 
+  useEffect(() => {
+    if (!broadcast) {
+      setBroadcastHandler(null);
+      return;
+    }
+    setBroadcastHandler((data) => {
+      const bytes = new TextEncoder().encode(data);
+      for (const tab of tabs) {
+        if (tab.key !== activeKey && tab.status.terminalId !== null) {
+          void writeTerminal(tab.status.terminalId, bytes);
+        }
+      }
+    });
+    return () => setBroadcastHandler(null);
+  }, [broadcast, tabs, activeKey]);
+
   return (
     <div className="app">
       <header className="app-header" data-tauri-drag-region>
@@ -361,6 +381,13 @@ export default function App() {
             onDuplicate={duplicateTab}
             forwardOpen={forwardOpen}
             onToggleForward={toggleForward}
+            broadcast={broadcast}
+            onToggleBroadcast={() => {
+              setBroadcast((current) => {
+                localStorage.setItem("leonssh.broadcast", current ? "0" : "1");
+                return !current;
+              });
+            }}
 
           />
 

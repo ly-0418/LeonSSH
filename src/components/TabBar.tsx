@@ -25,6 +25,8 @@ interface TabBarProps {
   onDuplicate: (key: string) => void;
   forwardOpen: boolean;
   onToggleForward: () => void;
+  broadcast: boolean;
+  onToggleBroadcast: () => void;
 }
 
 interface MenuState {
@@ -42,6 +44,8 @@ export function TabBar({
   onDuplicate,
   forwardOpen,
   onToggleForward,
+  broadcast,
+  onToggleBroadcast,
 }: TabBarProps) {
   const [menu, setMenu] = useState<MenuState | null>(null);
 
@@ -118,6 +122,14 @@ export function TabBar({
 
 
       <span className="tab-bar__spacer" />
+      <button
+        type="button"
+        className={`tab-bar__action${broadcast ? " tab-bar__action--active" : ""}`}
+        onClick={onToggleBroadcast}
+        title="广播输入：在多个会话之间同步键入"
+      >
+        广播
+      </button>
       <button
         type="button"
         className={`tab-bar__action${forwardOpen ? " tab-bar__action--active" : ""}`}

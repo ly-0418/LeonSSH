@@ -38,6 +38,14 @@ export interface TerminalSessionOptions {
   onNotice?: (message: string) => void;
 }
 
+type BroadcastHandler = (data: string) => void;
+let broadcastHandler: BroadcastHandler | null = null;
+
+/** Registers the "type once, send everywhere" handler (null disables it). */
+export function setBroadcastHandler(handler: BroadcastHandler | null): void {
+  broadcastHandler = handler;
+}
+
 export class TerminalSession {
   private readonly terminal: Terminal;
   private readonly fitAddon = new FitAddon();
@@ -74,6 +82,7 @@ export class TerminalSession {
 
     this.terminal.onData((data) => {
       void this.handleInput(data);
+      broadcastHandler?.(data);
     });
 
     this.observeSize();

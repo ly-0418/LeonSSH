@@ -347,6 +347,13 @@
   color: #fbbf24;
 }
 
+.fq__dst {
+  margin-left: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
 .fq__bar {
   height: 6px;
   border-radius: 3px;

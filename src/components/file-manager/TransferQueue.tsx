@@ -41,6 +41,7 @@ export function TransferQueue({ tasks, speeds, onCancel }: TransferQueueProps) {
                   {task.resumedFrom > 0 && (
                     <span className="fq__resume">续传自 {formatSize(task.resumedFrom)}</span>
                   )}
+                  <span className="fq__dst">→ {task.dst}</span>
                 </span>
                 <span className="fq__bar">
                   <span

@@ -266,6 +266,54 @@ mod tests {
         assert!(cancel.load(Ordering::Relaxed));
     }
 
+    /// Uploading onto an existing directory must fail with a precise message
+    /// instead of the server's generic "Failure".
+    #[tokio::test]
+    #[ignore = "requires: docker run -d -p 2222:22 leonssh-sshd:test"]
+    async fn upload_to_a_directory_is_rejected() {
+        use std::sync::atomic::AtomicBool;
+
+        use crate::sftp::{self, open_subsystem};
+        use crate::ssh::config::SshConfig;
+        use crate::ssh::hostkey::KnownHosts;
+        use crate::ssh::session;
+
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let pool = crate::storage::test_db::open().await;
+        let known = Arc::new(KnownHosts::load(pool).await.unwrap());
+        let cfg = SshConfig::new("127.0.0.1", 2222, "test", "test");
+        let opened = session::open(&cfg, known, 120, 40, Default::default())
+            .await
+            .unwrap();
+        let sftp_session = open_subsystem(&opened.handle).await.unwrap();
+
+        let dir = format!("/tmp/leonssh-dir-target-{stamp}");
+        sftp::mkdir(&sftp_session, &dir).await.unwrap();
+
+        let local = std::env::temp_dir().join(format!("leonssh-dir-{stamp}.txt"));
+        std::fs::write(&local, b"x").unwrap();
+
+        let cancel = AtomicBool::new(false);
+        let err = upload::upload(&sftp_session, &local, &dir, &cancel, |_, _| {})
+            .await
+            .unwrap_err();
+        assert_eq!(err.code(), "invalid_argument");
+        assert!(err.to_string().contains("是目录"), "unexpected: {err}");
+
+        // Missing parent gives a different, equally precise message.
+        let missing = format!("{dir}/nope/file.txt");
+        let err = upload::upload(&sftp_session, &local, &missing, &cancel, |_, _| {})
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("远程目录不存在"), "unexpected: {err}");
+
+        sftp::remove(&sftp_session, &dir, true).await.unwrap();
+        let _ = std::fs::remove_file(&local);
+    }
+
     /// Phase-C acceptance: interrupt a 5 MB transfer, then resume it from the
     /// offset already present on the other side (both directions).
     #[tokio::test]

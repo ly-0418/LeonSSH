@@ -383,28 +383,15 @@ pub async fn list_stream(
         .await
         .map_err(|err| AppError::Ssh(format!("启动 SFTP 子系统失败: {err}")))?;
 
-    let raw = russh_sftp::client::rawsession::RawSftpSession::new(channel.into_stream());
-    let opened = raw
-        .opendir(dir.clone())
+    let sftp = SftpSession::new(channel.into_stream())
         .await
-        .map_err(|err| AppError::Sftp(format!("读取目录 {dir} 失败: {err}")))?;
+        .map_err(|err| AppError::Sftp(format!("启动 SFTP 会话失败: {err}")))?;
 
     let mut total = 0usize;
     let mut first_batch_ms: Option<u64> = None;
-    loop {
-        let name = match raw.readdir(opened.handle.as_str()).await {
-            Ok(name) => name,
-            Err(err) => {
-                let _ = raw.close(opened.handle.as_str()).await;
-                return Err(AppError::Sftp(format!("读取目录 {dir} 失败: {err}")));
-            }
-        };
-        if name.files.is_empty() {
-            break;
-        }
-
-        let mut batch = Vec::with_capacity(name.files.len());
-        for entry in name.files {
+    sftp.read_dir_batches(dir.clone(), |files| {
+        let mut batch = Vec::with_capacity(files.len());
+        for entry in files {
             if entry.filename == "." || entry.filename == ".." {
                 continue;
             }
@@ -423,20 +410,18 @@ pub async fn list_stream(
             });
         }
         if batch.is_empty() {
-            continue;
+            return true;
         }
-
         total += batch.len();
         if first_batch_ms.is_none() {
             first_batch_ms = Some(started.elapsed().as_millis() as u64);
             tracing::info!(dir = %dir, first_batch_ms = first_batch_ms.unwrap_or(0), "remote listing first batch");
         }
-        if !on_batch(batch) {
-            break;
-        }
-    }
+        on_batch(batch)
+    })
+    .await
+    .map_err(|err| AppError::Sftp(format!("读取目录 {dir} 失败: {err}")))?;
 
-    let _ = raw.close(opened.handle.as_str()).await;
     tracing::info!(
         dir = %dir,
         entries = total,

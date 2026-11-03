@@ -113,7 +113,8 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string): FilePan
       setError(null);
       try {
         if (adapter.stream) {
-          setPath(target);
+          // Do not switch the path until the first batch arrives: a failed
+          // listing (permission denied, missing folder) must keep the old view.
           setEntries([]);
           setSelected([]);
           setFilter("");
@@ -127,9 +128,14 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string): FilePan
             }
             setEntries(sortEntries(accumulated));
           };
+          let announced = false;
           await adapter.stream(target, (batch) => {
             if (request !== requestRef.current) {
               return;
+            }
+            if (!announced) {
+              announced = true;
+              setPath(target);
             }
             accumulated = accumulated.concat(batch);
             if (!scheduled) {
@@ -138,6 +144,10 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string): FilePan
             }
           });
           if (request === requestRef.current) {
+            if (!announced) {
+              // A successful listing with no entries is an empty directory.
+              setPath(target);
+            }
             setEntries(sortEntries(accumulated));
           }
           return;

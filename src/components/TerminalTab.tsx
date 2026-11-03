@@ -8,7 +8,9 @@ interface TerminalTabProps {
   visible: boolean;
   theme: ThemeMode;
   fontSize: number;
+  state: TerminalStatus["state"];
   onStatus: (patch: Partial<TerminalStatus>) => void;
+  onReconnect?: () => void;
 }
 
 /**
@@ -21,7 +23,9 @@ export function TerminalTab({
   visible,
   theme,
   fontSize,
+  state,
   onStatus,
+  onReconnect,
 }: TerminalTabProps) {
   const { containerRef, notice, clearNotice } = useTerminal({
     sessionId,
@@ -36,6 +40,12 @@ export function TerminalTab({
     <section className="terminal-pane">
 
       <div className="terminal-host" ref={containerRef} />
+
+      {state === "closed" && onReconnect !== undefined && (
+        <button type="button" className="terminal-reconnect" onClick={onReconnect}>
+          连接已断开，点击重新连接
+        </button>
+      )}
 
       {notice !== null && (
         <button type="button" className="terminal-notice" onClick={clearNotice}>

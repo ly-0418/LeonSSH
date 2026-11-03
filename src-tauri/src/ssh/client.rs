@@ -135,6 +135,9 @@ pub async fn connect(
 ) -> Result<Connection, SshError> {
     let client_config = Arc::new(client::Config {
         inactivity_timeout: None,
+        // Heartbeat keeps NAT/firewall mappings alive on idle sessions.
+        keepalive_interval: Some(std::time::Duration::from_secs(30)),
+        keepalive_max: 3,
         ..Default::default()
     });
 

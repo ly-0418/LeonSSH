@@ -255,6 +255,19 @@ export default function App() {
     }
   }, [forwardOpen]);
 
+  /** Re-opens a dropped tab with the same saved profile. */
+  const reconnectTab = useCallback(
+    (tab: TabItem) => {
+      const profile = sessions.find((item) => item.id === tab.sessionId);
+      if (profile === undefined) {
+        return;
+      }
+      closeTab(tab.key);
+      openTab(profile);
+    },
+    [sessions, closeTab, openTab],
+  );
+
   const openFiles = useCallback(() => {
     setFilesExiting(false);
     setView("files");
@@ -362,6 +375,8 @@ export default function App() {
                   className={`terminal-slot${tab.key === activeKey ? " terminal-slot--active" : ""}`}
                 >
                   <TerminalTab
+                    state={tab.status.state}
+                    onReconnect={() => reconnectTab(tab)}
                     sessionId={tab.sessionId}
                     title={tab.title}
                     visible={tab.key === activeKey}

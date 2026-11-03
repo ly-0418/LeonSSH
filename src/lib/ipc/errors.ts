@@ -47,6 +47,16 @@ export function normalizeError(raw: unknown): IpcError {
 
 export function toUserMessage(raw: unknown): string {
   const error = normalizeError(raw);
+  const text = `${error.message} ${String(raw)}`.toLowerCase();
+  // Windows/plugin-fs surface denials as "Access is denied" / "os error 5".
+  if (
+    text.includes("access is denied") ||
+    text.includes("os error 5") ||
+    text.includes("permission denied") ||
+    text.includes("forbidden path")
+  ) {
+    return `[${error.code}] 没有权限修改该位置：系统拒绝了这次写入/删除（${error.message}）。请检查文件夹是否只读、是否需要管理员权限，或换一个有写权限的目录。`;
+  }
   return `[${error.code}] ${error.message}`;
 }
 

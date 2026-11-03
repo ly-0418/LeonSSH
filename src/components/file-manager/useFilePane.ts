@@ -255,6 +255,34 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string, persistK
     }
   }, [persistKey, path]);
 
+  // Restore the previous selection once the first listing of a folder arrives.
+  const restoredSel = useRef(false);
+  useEffect(() => {
+    restoredSel.current = false;
+  }, [path]);
+  useEffect(() => {
+    if (restoredSel.current || persistKey === undefined || entries.length === 0) {
+      return;
+    }
+    restoredSel.current = true;
+    try {
+      const raw = localStorage.getItem(persistKey + ":sel");
+      if (raw === null) {
+        return;
+      }
+      const names = JSON.parse(raw) as string[];
+      const existing = new Set(entries.map((entry) => entry.name));
+      setSelected(names.filter((name) => existing.has(name)));
+    } catch {
+      // A corrupt entry just means "no memory".
+    }
+  }, [entries, persistKey]);
+  useEffect(() => {
+    if (persistKey !== undefined) {
+      localStorage.setItem(persistKey + ":sel", JSON.stringify(selected));
+    }
+  }, [persistKey, selected]);
+
   const select = useCallback(
     (name: string, mode: SelectionMode) => {
       const names = visibleNames(entries, filter, sort);

@@ -320,7 +320,7 @@ function RemotePaneLoaded({
         onRefresh={() => void pane.refresh()}
       />
       <FileTable
-        entries={pane.visible}
+persistKey={persistKey}         entries={pane.visible}
         selected={pane.selected}
         showPermissions
         loading={pane.loading}

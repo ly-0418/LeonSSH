@@ -9,6 +9,8 @@ interface FileTableProps {
   selected: string[];
   showPermissions?: boolean;
   loading: boolean;
+  /** Enables remembering the scroll offset for this pane. */
+  persistKey?: string;
   sort: SortState;
   onSort: (key: SortKey) => void;
   onSelect: (name: string, mode: SelectionMode) => void;
@@ -38,7 +40,7 @@ export function FileTable({
   onOpen,
   onContextMenu,
   onRowPointerDown,
-}: FileTableProps) {
+  persistKey,}: FileTableProps) {
   const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === 1 ? " ▲" : " ▼") : "");
 
   // Windowing keeps 8000-entry folders responsive: only the visible rows are
@@ -46,6 +48,29 @@ export function FileTable({
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(480);
+  const scrollKey = persistKey !== undefined ? persistKey + ":scroll" : undefined;
+  const restoreScroll = useRef(false);
+
+  useEffect(() => {
+    const element = bodyRef.current;
+    if (element === null || scrollKey === undefined || entries.length === 0) {
+      return;
+    }
+    // Restore once the rows exist (the spacer needs its height first).
+    const raw = localStorage.getItem(scrollKey);
+    const top = raw === null ? 0 : Number.parseInt(raw, 10);
+    if (Number.isFinite(top) && top > 0) {
+      element.scrollTop = top;
+      setScrollTop(top);
+    }
+    restoreScroll.current = true;
+  }, [scrollKey, entries.length]);
+
+  useEffect(() => {
+    if (scrollKey !== undefined && restoreScroll.current) {
+      localStorage.setItem(scrollKey, String(scrollTop));
+    }
+  }, [scrollKey, scrollTop]);
 
   useEffect(() => {
     const element = bodyRef.current;

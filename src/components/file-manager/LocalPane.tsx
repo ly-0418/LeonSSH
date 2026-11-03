@@ -162,7 +162,7 @@ export function LocalPane({
         onRefresh={() => void pane.refresh()}
       />
       <FileTable
-        entries={pane.visible}
+persistKey={persistKey}         entries={pane.visible}
         selected={pane.selected}
         loading={pane.loading}
         sort={pane.sort}

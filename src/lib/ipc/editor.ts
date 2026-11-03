@@ -21,6 +21,33 @@ export interface EditorSaved {
   warning: string | null;
 }
 
+export interface TempStat {
+  size: number;
+  mtime: number;
+  changed: boolean;
+}
+
+/** Downloads the remote file and opens it with the Windows default app. */
+export async function openEditorExternal(
+  terminalId: string,
+  remotePath: string,
+): Promise<EditorFile> {
+  try {
+    return await invoke<EditorFile>("editor_open_external", { terminalId, remotePath });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+/** Whether the temp copy changed since download / the last upload. */
+export async function tempStat(editId: string): Promise<TempStat> {
+  try {
+    return await invoke<TempStat>("editor_temp_stat", { editId });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
 export async function openEditor(terminalId: string, remotePath: string): Promise<EditorFile> {
   try {
     return await invoke<EditorFile>("editor_open", { terminalId, remotePath });

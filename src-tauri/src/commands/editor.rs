@@ -22,6 +22,27 @@ pub async fn editor_open(
 }
 
 #[tauri::command]
+pub async fn editor_open_external(
+    state: State<'_, AppState>,
+    terminal_id: String,
+    remote_path: String,
+) -> Result<EditorFile, AppError> {
+    let sftp = ensure_sftp(&state, &terminal_id).await?;
+    state
+        .editor_manager()
+        .open_external(&sftp, &terminal_id, &remote_path)
+        .await
+}
+
+#[tauri::command]
+pub fn editor_temp_stat(
+    state: State<'_, AppState>,
+    edit_id: String,
+) -> Result<crate::editor::TempStat, AppError> {
+    state.editor_manager().temp_stat(&edit_id)
+}
+
+#[tauri::command]
 pub async fn editor_save(state: State<'_, AppState>, edit_id: String) -> Result<EditorSaved, AppError> {
     let terminal_id = state.editor_manager().terminal_for(&edit_id)?;
     let sftp = ensure_sftp(&state, &terminal_id).await?;

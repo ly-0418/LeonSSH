@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
-import { isEditableFile } from "../../lib/editor/codemirror";
 import type { FileEntry } from "../../lib/fs/types";
 import { fileName, joinLocal } from "../../lib/fs/paths";
-import { openEditor, type EditorFile } from "../../lib/ipc/editor";
+import { openEditorExternal, type EditorFile } from "../../lib/ipc/editor";
 import { toUserMessage } from "../../lib/ipc/errors";
 import { joinPath } from "../../lib/ipc/sftp";
 import { startDownload, startUpload } from "../../lib/ipc/transfers";
-import { EditorPanel } from "./EditorPanel";
+import { ExternalEditorBar } from "./ExternalEditorBar";
 import { LocalPane } from "./LocalPane";
 import { RemotePane } from "./RemotePane";
 import { TransferQueue } from "./TransferQueue";
@@ -90,24 +89,20 @@ export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: File
     [terminalId, localPath],
   );
 
-  /** Double-click on a remote file: edit text files, download anything else. */
+  /** Double-click on a remote file: open it with the Windows default app. */
   const openRemote = useCallback(
     async (entry: FileEntry) => {
       if (terminalId === null) {
         return;
       }
-      if (!isEditableFile(entry.name)) {
-        await download([entry]);
-        return;
-      }
       try {
         setMessage(null);
-        setEditor(await openEditor(terminalId, entry.path));
+        setEditor(await openEditorExternal(terminalId, entry.path));
       } catch (err) {
         setMessage(toUserMessage(err));
       }
     },
-    [terminalId, download],
+    [terminalId],
   );
 
   /** Paths dropped from the OS (Explorer) or dragged from the local pane. */
@@ -310,15 +305,15 @@ export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: File
         />
       </div>
 
-      <TransferQueue tasks={tasks} speeds={speeds} onCancel={(id) => void cancel(id)} />
-
       {editor !== null && (
-        <EditorPanel
+        <ExternalEditorBar
           file={editor}
           onClose={() => setEditor(null)}
-          onSaved={() => setEditorRevision((value) => value + 1)}
+          onUploaded={() => setEditorRevision((value) => value + 1)}
         />
       )}
+
+      <TransferQueue tasks={tasks} speeds={speeds} onCancel={(id) => void cancel(id)} />
     </div>
   );
 }

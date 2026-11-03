@@ -19,6 +19,18 @@ use crate::transfer::upload;
 
 /// Editors are for text files: refuse anything bigger than this.
 const MAX_EDIT_BYTES: u64 = 8 * 1024 * 1024;
+/// External editors get a larger budget (they stream through the same engine).
+const MAX_EXTERNAL_BYTES: u64 = 64 * 1024 * 1024;
+
+/// State of the temp copy while an external editor is open.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TempStat {
+    pub size: u64,
+    pub mtime: i64,
+    /// The temp file differs from what was downloaded / last uploaded.
+    pub changed: bool,
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -45,6 +57,18 @@ pub struct EditorSaved {
 struct EditSession {
     file: EditorFile,
     terminal_id: String,
+    /// Size/mtime of the temp file as of download or the last upload.
+    local_size: u64,
+    local_mtime: i64,
+}
+
+fn file_mtime_ms(path: &Path) -> i64 {
+    std::fs::metadata(path)
+        .ok()
+        .and_then(|metadata| metadata.modified().ok())
+        .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|duration| duration.as_millis() as i64)
+        .unwrap_or(0)
 }
 
 pub struct EditorManager {
@@ -88,6 +112,35 @@ impl EditorManager {
         terminal_id: &str,
         remote_file: &str,
     ) -> Result<EditorFile, AppError> {
+        self.prepare(sftp, terminal_id, remote_file, MAX_EDIT_BYTES)
+            .await
+    }
+
+    /// Downloads the file and opens it with the Windows default application.
+    pub async fn open_external(
+        &self,
+        sftp: &SftpSession,
+        terminal_id: &str,
+        remote_file: &str,
+    ) -> Result<EditorFile, AppError> {
+        let file = self
+            .prepare(sftp, terminal_id, remote_file, MAX_EXTERNAL_BYTES)
+            .await?;
+        if let Err(err) = crate::commands::local::open_path(Path::new(&file.temp_path)) {
+            self.close(&file.edit_id);
+            return Err(err);
+        }
+        tracing::info!(remote = %file.remote_path, "external editor launched");
+        Ok(file)
+    }
+
+    async fn prepare(
+        &self,
+        sftp: &SftpSession,
+        terminal_id: &str,
+        remote_file: &str,
+        max_bytes: u64,
+    ) -> Result<EditorFile, AppError> {
         let remote = remote_path::normalize_remote(remote_file);
         let meta = sftp
             .metadata(remote.clone())
@@ -97,10 +150,9 @@ impl EditorManager {
             return Err(AppError::InvalidArgument(format!("{remote} 是目录，无法编辑")));
         }
         let size = meta.size.unwrap_or(0);
-        if size > MAX_EDIT_BYTES {
+        if size > max_bytes {
             return Err(AppError::InvalidArgument(format!(
-                "文件 {size} 字节，超过在线编辑上限 {} 字节",
-                MAX_EDIT_BYTES
+                "文件 {size} 字节，超过编辑上限 {max_bytes} 字节"
             )));
         }
 
@@ -137,9 +189,27 @@ impl EditorManager {
                 EditSession {
                     file: file.clone(),
                     terminal_id: terminal_id.to_string(),
+                    local_size: std::fs::metadata(&temp_path).map(|m| m.len()).unwrap_or(0),
+                    local_mtime: file_mtime_ms(&temp_path),
                 },
             );
         Ok(file)
+    }
+
+    /// Whether the temp copy changed since it was downloaded / last uploaded.
+    pub fn temp_stat(&self, edit_id: &str) -> Result<TempStat, AppError> {
+        let sessions = self.sessions.lock().expect("editor sessions poisoned");
+        let session = sessions
+            .get(edit_id)
+            .ok_or_else(|| AppError::NotFound(format!("编辑会话 {edit_id}")))?;
+        let metadata = std::fs::metadata(&session.file.temp_path)
+            .map_err(|err| AppError::Internal(format!("读取临时文件失败: {err}")))?;
+        let mtime = file_mtime_ms(Path::new(&session.file.temp_path));
+        Ok(TempStat {
+            size: metadata.len(),
+            mtime,
+            changed: mtime != session.local_mtime || metadata.len() != session.local_size,
+        })
     }
 
     fn session_for(&self, edit_id: &str) -> Result<(String, EditorFile), AppError> {
@@ -205,6 +275,9 @@ impl EditorManager {
                 session.file.remote_path = remote.clone();
                 session.file.size = size;
                 session.file.modified = modified;
+                // The temp file now mirrors the remote file.
+                session.local_size = local_size;
+                session.local_mtime = file_mtime_ms(&temp);
             }
         }
 
@@ -253,6 +326,57 @@ mod tests {
     use crate::ssh::hostkey::KnownHosts;
     use crate::ssh::session;
     use tokio::io::AsyncWriteExt;
+
+    /// The external-editor path: a temp copy that reports changes and uploads
+    /// them back through the same overwrite engine.
+    #[tokio::test]
+    #[ignore = "requires: docker run -d -p 2222:22 leonssh-sshd:test"]
+    async fn external_edit_temp_stat_and_upload() {
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let pool = crate::storage::test_db::open().await;
+        let known = std::sync::Arc::new(KnownHosts::load(pool).await.unwrap());
+        let cfg = SshConfig::new("127.0.0.1", 2222, "test", "test");
+        let opened = session::open(&cfg, known, 120, 40, Default::default())
+            .await
+            .unwrap();
+        let sftp = open_subsystem(&opened.handle).await.unwrap();
+
+        let base = format!("/tmp/leonssh-extedit-{stamp}");
+        sftp::mkdir(&sftp, &base).await.unwrap();
+        let remote = format!("{base}/note.txt");
+
+        let mut handle = sftp.create(remote.clone()).await.unwrap();
+        handle.write_all(b"first\n").await.unwrap();
+        handle.flush().await.unwrap();
+        drop(handle);
+
+        let temp_root = std::env::temp_dir().join(format!("leonssh-extedit-{stamp}"));
+        let manager = EditorManager::new(temp_root.clone());
+        let file = manager.open(&sftp, "t1", &remote).await.unwrap();
+
+        let initial = manager.temp_stat(&file.edit_id).unwrap();
+        assert!(!initial.changed, "fresh download must not look modified");
+
+        // Simulate the external editor writing the file.
+        std::fs::write(&file.temp_path, "first\nsecond\n").unwrap();
+        let modified = manager.temp_stat(&file.edit_id).unwrap();
+        assert!(modified.changed, "external modification must be detected");
+
+        let saved = manager.save(&file.edit_id, &sftp, None).await.unwrap();
+        assert!(saved.consistent, "warning: {:?}", saved.warning);
+        assert_eq!(sftp.read(remote.clone()).await.unwrap(), b"first\nsecond\n");
+
+        let after = manager.temp_stat(&file.edit_id).unwrap();
+        assert!(!after.changed, "after upload the temp copy is in sync");
+
+        manager.close(&file.edit_id);
+        sftp::remove(&sftp, &remote, false).await.unwrap();
+        sftp::remove(&sftp, &base, true).await.unwrap();
+        let _ = std::fs::remove_dir_all(&temp_root);
+    }
 
     #[tokio::test]
     #[ignore = "requires: docker run -d -p 2222:22 leonssh-sshd:test"]

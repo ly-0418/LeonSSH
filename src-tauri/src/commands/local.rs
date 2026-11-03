@@ -31,13 +31,14 @@ pub fn local_roots() -> Result<Vec<String>, AppError> {
 ///
 /// When Windows has no association for the extension (or the shell call fails)
 /// the file is opened in Notepad instead.
-#[tauri::command]
-pub fn local_open_file(path: String) -> Result<(), AppError> {
-    let target = Path::new(&path);
+pub fn open_path(target: &Path) -> Result<(), AppError> {
     if !target.is_file() {
-        return Err(AppError::InvalidArgument(format!("本地文件不存在: {path}")));
+        return Err(AppError::InvalidArgument(format!(
+            "本地文件不存在: {}",
+            target.display()
+        )));
     }
-    if path.starts_with("\\\\") {
+    if target.to_string_lossy().starts_with("\\\\") {
         return Err(AppError::InvalidArgument(
             "不从网络路径直接启动程序".into(),
         ));
@@ -53,7 +54,11 @@ pub fn local_open_file(path: String) -> Result<(), AppError> {
             value.encode_utf16().chain(std::iter::once(0)).collect()
         }
 
-        let file: Vec<u16> = target.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+        let file: Vec<u16> = target
+            .as_os_str()
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
         let operation = wide("open");
         // ShellExecuteW returns a value <= 32 on failure; 31 means "no association".
         let result = unsafe {
@@ -67,7 +72,11 @@ pub fn local_open_file(path: String) -> Result<(), AppError> {
             )
         };
         if (result as isize) <= 32 {
-            tracing::info!(%path, code = result as isize, "no shell association, falling back to notepad");
+            tracing::info!(
+                path = %target.display(),
+                code = result as isize,
+                "no shell association, falling back to notepad"
+            );
             std::process::Command::new("notepad.exe")
                 .arg(target)
                 .spawn()
@@ -80,4 +89,9 @@ pub fn local_open_file(path: String) -> Result<(), AppError> {
     {
         Err(AppError::Internal("仅支持 Windows".into()))
     }
+}
+
+#[tauri::command]
+pub fn local_open_file(path: String) -> Result<(), AppError> {
+    open_path(Path::new(&path))
 }

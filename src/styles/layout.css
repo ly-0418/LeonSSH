@@ -603,6 +603,12 @@ input[type="password"]::-ms-reveal {
   backdrop-filter: blur(1px);
 }
 
+/* Forward panel: keep the terminal readable behind the sheet. */
+.sftp-overlay--forward {
+  background: rgba(8, 12, 16, 0.18);
+  backdrop-filter: none;
+}
+
 /* Forward panel sheet: half the window, slides in from the right. */
 .sftp-sheet {
   width: 50%;

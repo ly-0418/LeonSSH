@@ -372,7 +372,7 @@ export default function App() {
                 </div>
               ))}
               {(forwardOpen || forwardClosing) && activeTab?.status.terminalId != null && (
-                <div className={`sftp-overlay${forwardClosing ? " sftp-overlay--leave" : ""}`}>
+                <div className={`sftp-overlay sftp-overlay--forward${forwardClosing ? " sftp-overlay--leave" : ""}`}>
                   <div className="sftp-sheet">
                     <ForwardPanel
                       terminalId={activeTab.status.terminalId}

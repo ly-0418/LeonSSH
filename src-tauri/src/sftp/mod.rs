@@ -389,7 +389,7 @@ pub async fn list_stream(
 
     let mut total = 0usize;
     let mut first_batch_ms: Option<u64> = None;
-    sftp.read_dir_batches(dir.clone(), |files| {
+    let result = sftp.read_dir_batches(dir.clone(), |files| {
         let mut batch = Vec::with_capacity(files.len());
         for entry in files {
             if entry.filename == "." || entry.filename == ".." {
@@ -419,8 +419,15 @@ pub async fn list_stream(
         }
         on_batch(batch)
     })
-    .await
-    .map_err(|err| AppError::Sftp(format!("读取目录 {dir} 失败: {err}")))?;
+    .await;
+    // Servers may report EOF as an error on the final READDIR; once rows have
+    // been delivered that is a normal end of listing, not a failure.
+    if let Err(err) = result {
+        if total == 0 {
+            return Err(AppError::Sftp(format!("读取目录 {dir} 失败: {err}")));
+        }
+        tracing::warn!(dir = %dir, error = %err, "remote listing stopped after partial progress");
+    }
 
     tracing::info!(
         dir = %dir,

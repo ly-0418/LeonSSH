@@ -114,12 +114,8 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string): FilePan
       setError(null);
       try {
         if (adapter.stream) {
-          // Do not switch the path until the first batch arrives: a failed
-          // listing (permission denied, missing folder) must keep the old view.
-          setEntries([]);
-          setSelected([]);
-          setFilter("");
-          anchorRef.current = null;
+          // Nothing is cleared or switched until data actually arrives, so a
+          // denied folder leaves the list (and its scroll position) untouched.
           let accumulated: FileEntry[] = [];
           let scheduled = false;
           const commit = () => {
@@ -137,6 +133,9 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string): FilePan
             if (!announced) {
               announced = true;
               setPath(target);
+              setSelected([]);
+              setFilter("");
+              anchorRef.current = null;
             }
             accumulated = accumulated.concat(batch);
             if (!scheduled) {
@@ -147,7 +146,11 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string): FilePan
           if (request === requestRef.current) {
             if (!announced) {
               // A successful listing with no entries is an empty directory.
+              announced = true;
               setPath(target);
+              setSelected([]);
+              setFilter("");
+              anchorRef.current = null;
             }
             const sorted = sortEntries(accumulated);
             lastGood.current = { path: target, entries: sorted };

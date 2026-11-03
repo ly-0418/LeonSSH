@@ -13,6 +13,8 @@ import type { FileEntry } from "./types";
 import { joinLocal, normalizeLocal } from "./paths";
 
 const STAT_CONCURRENCY = 8;
+/** Huge folders would need thousands of IPC calls; hydrate the first page only. */
+const HYDRATE_LIMIT = 300;
 
 export async function localHome(): Promise<string> {
   const home = await homeDir();
@@ -92,7 +94,7 @@ export async function hydrateLocalStats(
   entries: FileEntry[],
   onPatch: (path: string, patch: Partial<FileEntry>) => void,
 ): Promise<void> {
-  const queue = [...entries];
+  const queue = entries.slice(0, HYDRATE_LIMIT);
   if (queue.length === 0) {
     return;
   }

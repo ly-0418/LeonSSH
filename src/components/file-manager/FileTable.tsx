@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+
 import type { FileEntry } from "../../lib/fs/types";
 import type { SelectionMode, SortKey, SortState } from "./useFilePane";
 import { formatMode, formatSize, formatTime } from "./format";
@@ -15,6 +17,8 @@ interface FileTableProps {
   onContextMenu: (entry: FileEntry | null, event: React.MouseEvent) => void;
   onRowPointerDown?: (entry: FileEntry, event: React.PointerEvent) => void;
 }
+
+const ROW_HEIGHT = 26;
 
 const SORT_LABEL: Record<SortKey, string> = {
   name: "名称",
@@ -36,6 +40,27 @@ export function FileTable({
   onRowPointerDown,
 }: FileTableProps) {
   const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === 1 ? " ▲" : " ▼") : "");
+
+  // Windowing keeps 8000-entry folders responsive: only the visible rows are
+  // mounted, positioned inside a spacer that reserves the full scroll height.
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(480);
+
+  useEffect(() => {
+    const element = bodyRef.current;
+    if (element === null || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const observer = new ResizeObserver(() => setViewportHeight(element.clientHeight));
+    observer.observe(element);
+    setViewportHeight(element.clientHeight);
+    return () => observer.disconnect();
+  }, []);
+
+  const firstRow = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 6);
+  const rowCount = Math.ceil(viewportHeight / ROW_HEIGHT) + 14;
+  const windowed = entries.slice(firstRow, firstRow + rowCount);
 
   const head = (key: SortKey, label: string) => (
     <button
@@ -59,6 +84,8 @@ export function FileTable({
       </div>
       <div
         className="fm-table__body"
+        ref={bodyRef}
+        onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
         onContextMenu={(event) => {
           // Only fires when the click was not on a row (rows stop propagation).
           event.preventDefault();
@@ -68,11 +95,13 @@ export function FileTable({
         {entries.length === 0 && (
           <div className="fm-table__empty">{loading ? "加载中…" : "空目录（右键可新建）"}</div>
         )}
-        {entries.map((entry) => (
+        <div className="fm-table__spacer" style={{ height: entries.length * ROW_HEIGHT }}>
+        {windowed.map((entry, index) => (
           <div
             key={entry.path}
             role="row"
             aria-selected={selected.includes(entry.name)}
+            style={{ position: "absolute", top: (firstRow + index) * ROW_HEIGHT, left: 0, right: 0 }}
             className={`fm-row${selected.includes(entry.name) ? " fm-row--selected" : ""}${
               showPermissions ? " fm-row--perm" : ""
             }`}
@@ -101,6 +130,7 @@ export function FileTable({
             <span className="fm-row__time">{formatTime(entry.mtimeMs)}</span>
           </div>
         ))}
+        </div>
       </div>
     </div>
   );

@@ -57,6 +57,7 @@ export function LocalPane({
   );
   const pane = useFilePane(adapter, initialPath);
   const [roots, setRoots] = useState<string[]>([]);
+  const [desktop, setDesktop] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; entry: FileEntry | null } | null>(null);
   const [prompt, setPrompt] = useState<PromptState | null>(null);
   const [pendingDelete, setPendingDelete] = useState<FileEntry | null>(null);
@@ -66,6 +67,9 @@ export function LocalPane({
     localRoots()
       .then(setRoots)
       .catch(() => setRoots([]));
+    localDesktop()
+      .then(setDesktop)
+      .catch(() => setDesktop(null));
   }, []);
 
   useEffect(() => {
@@ -148,6 +152,7 @@ export function LocalPane({
         path={pane.path}
         loading={pane.loading}
         roots={roots}
+        desktop={desktop ?? undefined}
         search={pane.filter}
         onSearch={pane.setFilter}
         onNavigate={(next) => void pane.load(next)}

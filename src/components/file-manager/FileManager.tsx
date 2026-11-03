@@ -280,20 +280,16 @@ export function FileManager({
         >
           ↑ 上传
         </button>
+        <span className="fm-head__spacer" />
         <button
           type="button"
-          className="button button--sm"
+          className="fm-head__download button button--sm"
           disabled={!canDownload}
           onClick={() => void download(remoteSelection)}
           title="下载选中的远程文件到当前本地目录"
         >
           ↓ 下载
         </button>
-        <span className="fm-head__hint">
-          {terminalId === null
-            ? "本地浏览可用；远程面板需要先在终端连接一个会话"
-            : `已绑定：${sessionTitle ?? "当前会话"}${remotePath ? ` · ${remotePath}` : ""}`}
-        </span>
 
       </header>
 

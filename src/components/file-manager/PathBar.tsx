@@ -5,6 +5,7 @@ interface PathBarProps {
   path: string;
   loading: boolean;
   roots?: string[];
+  desktop?: string;
   search: string;
   onSearch: (value: string) => void;
   onNavigate: (path: string) => void;
@@ -17,6 +18,7 @@ export function PathBar({
   path,
   loading,
   roots,
+  desktop,
   search,
   onSearch,
   onNavigate,
@@ -72,6 +74,7 @@ export function PathBar({
             title="切换到其他盘符"
           >
             <option value="">盘符</option>
+            {desktop !== undefined && <option value={desktop}>桌面</option>}
             {roots.map((root) => (
               <option key={root} value={root}>
                 {root}

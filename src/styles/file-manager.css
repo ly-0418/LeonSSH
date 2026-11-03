@@ -861,3 +861,22 @@
   position: relative;
   width: 100%;
 }
+/* Thin indeterminate bar while a directory is being listed (SFTP listings of
+   very large folders take several round trips). */
+.fm-table__loadingbar {
+  flex: 0 0 2px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  background-size: 40% 100%;
+  background-repeat: no-repeat;
+  animation: fm-loading 1s linear infinite;
+}
+
+@keyframes fm-loading {
+  from {
+    background-position: -40% 0;
+  }
+  to {
+    background-position: 140% 0;
+  }
+}

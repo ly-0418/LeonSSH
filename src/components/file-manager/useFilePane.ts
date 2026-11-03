@@ -146,7 +146,7 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string): FilePan
                 window.setTimeout(flush, 200);
               }
             });
-          }, 120);
+          }, 0);
         }
       } catch (err) {
         if (request === requestRef.current) {

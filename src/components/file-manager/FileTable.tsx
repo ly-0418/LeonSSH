@@ -82,6 +82,7 @@ export function FileTable({
         {showPermissions && head("type", "权限")}
         {head("mtime", "修改时间")}
       </div>
+      {loading && <div className="fm-table__loadingbar" aria-hidden="true" />}
       <div
         className="fm-table__body"
         ref={bodyRef}

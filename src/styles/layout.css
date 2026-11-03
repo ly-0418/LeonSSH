@@ -1620,3 +1620,29 @@ input[type="password"]::-ms-reveal {
 .forward__label--target {
   margin-left: 6px;
 }
+/* Authentication method switch in the connection form. */
+.auth-switch {
+  display: flex;
+  gap: 6px;
+}
+
+.auth-switch__btn {
+  padding: 6px 14px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.auth-switch__btn:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.auth-switch__btn--active {
+  border-color: var(--accent);
+  background: var(--accent-soft-bg);
+  color: var(--accent);
+}

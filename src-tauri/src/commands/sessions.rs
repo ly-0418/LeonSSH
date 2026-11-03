@@ -21,6 +21,7 @@ pub struct SessionView {
     pub port: u16,
     pub username: String,
     pub auth_method: String,
+    pub private_key_path: Option<String>,
     pub color: Option<String>,
     /// Whether a password is currently stored in the Credential Manager.
     pub has_password: bool,
@@ -35,6 +36,7 @@ impl SessionView {
             port: record.port.clamp(1, u16::MAX as i64) as u16,
             username: record.username,
             auth_method: record.auth_method,
+            private_key_path: record.private_key_path,
             color: record.color,
             has_password,
         }

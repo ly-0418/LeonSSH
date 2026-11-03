@@ -30,6 +30,10 @@ export function SessionForm({
   const [username, setUsername] = useState(initial?.username ?? "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [authMode, setAuthMode] = useState<"password" | "key">(
+    initial?.authMethod === "key" ? "key" : "password",
+  );
+  const [keyPath, setKeyPath] = useState(initial?.privateKeyPath ?? "");
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
@@ -80,13 +84,18 @@ export function SessionForm({
       setError("用户名不能为空");
       return;
     }
+    if (authMode === "key" && keyPath.trim().length === 0) {
+      setError("请选择私钥文件");
+      return;
+    }
 
     const input: SessionInput = {
       name: name.trim().length > 0 ? name.trim() : host.trim(),
       host: host.trim(),
       port: portNumber,
       username: username.trim(),
-      authMethod: "password",
+      authMethod: authMode,
+      privateKeyPath: authMode === "key" ? keyPath.trim() : null,
     };
 
     setBusy(true);
@@ -166,6 +175,42 @@ export function SessionForm({
       </div>
 
       <div className="form-row">
+        <span className="form-row__label">认证</span>
+        <div className="auth-switch">
+          <button
+            type="button"
+            className={`auth-switch__btn${authMode === "password" ? " auth-switch__btn--active" : ""}`}
+            onClick={() => setAuthMode("password")}
+          >
+            密码
+          </button>
+          <button
+            type="button"
+            className={`auth-switch__btn${authMode === "key" ? " auth-switch__btn--active" : ""}`}
+            onClick={() => setAuthMode("key")}
+          >
+            密钥文件
+          </button>
+        </div>
+      </div>
+
+      {authMode === "key" && (
+        <div className="form-row">
+          <span className="form-row__label">私钥</span>
+          <div className="form-row__address">
+            <input
+              className="input"
+              value={keyPath}
+              onChange={(event) => setKeyPath(event.target.value)}
+              placeholder="C:\Users\你\.ssh\id_ed25519"
+              spellCheck={false}
+            />
+
+          </div>
+        </div>
+      )}
+
+      <div className="form-row">
         <label className="form-row__label" htmlFor="session-user">
           用户名
         </label>
@@ -180,7 +225,7 @@ export function SessionForm({
 
       <div className="form-row">
         <label className="form-row__label" htmlFor="session-password">
-          密码
+          {authMode === "key" ? "密钥口令" : "密码"}
         </label>
         <span className="field__with-action">
           <input
@@ -189,7 +234,7 @@ export function SessionForm({
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder={initial?.hasPassword ? "已保存，留空则不修改" : "保存到凭据管理器"}
+            placeholder={authMode === "key" ? "私钥有口令时填写（可选）" : initial?.hasPassword ? "已保存，留空则不修改" : "保存到凭据管理器"}
             autoComplete="new-password"
           />
           <button

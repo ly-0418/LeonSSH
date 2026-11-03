@@ -41,9 +41,26 @@ export interface FilePaneState {
   clearError: () => void;
 }
 
-/** Hidden entries (dotfiles and the usual Windows noise) are not listed. */
+/** Hidden entries (dotfiles plus the usual Windows system folders). */
+const HIDDEN_NAMES = new Set([
+  // Windows marks these Hidden+System, but readDir does not expose attributes,
+  // so they are filtered by name (case-insensitive).
+  "$recycle.bin",
+  "system volume information",
+  "recycler",
+  "$winreagent",
+  "$sysreset",
+  "config.msi",
+  "desktop.ini",
+  "thumbs.db",
+  "pagefile.sys",
+  "hiberfil.sys",
+  "swapfile.sys",
+  "dumpstack.log.tmp",
+]);
+
 export function isHiddenEntry(entry: FileEntry): boolean {
-  return entry.name.startsWith(".") || entry.name === "desktop.ini" || entry.name === "Thumbs.db";
+  return entry.name.startsWith(".") || HIDDEN_NAMES.has(entry.name.toLowerCase());
 }
 
 function compare(a: FileEntry, b: FileEntry, sort: SortState): number {

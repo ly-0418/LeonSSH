@@ -51,8 +51,8 @@ export function FileManager({
 
   const remembered = FM_MEMORY.get(memoryKey);
 
-  const [localPath, setLocalPath] = useState<string>("");
-  const [remotePath, setRemotePath] = useState<string>("");
+  const [localPath, setLocalPath] = useState<string>(remembered?.localPath ?? "");
+  const [remotePath, setRemotePath] = useState<string>(remembered?.remotePath ?? "");
   const [localSelection, setLocalSelection] = useState<FileEntry[]>([]);
   const [remoteSelection, setRemoteSelection] = useState<FileEntry[]>([]);
   const [dropActive, setDropActive] = useState(false);
@@ -353,7 +353,11 @@ export function FileManager({
           key={memoryKey}
           initialPath={localPath || initialLocal}
           refreshToken={revision + editorRevision}
-          onPathChange={setLocalPath}
+          onPathChange={(path) => {
+            if (path !== "") {
+              setLocalPath(path);
+            }
+          }}
           onSelectionChange={setLocalSelection}
           onRowPointerDown={beginDrag}
         />
@@ -385,7 +389,11 @@ export function FileManager({
           sessionTitle={sessionTitle}
           dropActive={dropActive}
           refreshToken={revision + editorRevision}
-          onPathChange={setRemotePath}
+          onPathChange={(path) => {
+            if (path !== "") {
+              setRemotePath(path);
+            }
+          }}
           onSelectionChange={setRemoteSelection}
           onOpenFile={(entry) => void openRemote(entry)}
           onOpenInTerminal={onOpenInTerminal}

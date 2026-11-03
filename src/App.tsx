@@ -10,6 +10,7 @@ import { TabBar, type TabItem } from "./components/TabBar";
 import { TerminalTab } from "./components/TerminalTab";
 import { WindowControls } from "./components/WindowControls";
 import { ConfirmDialog } from "./components/dialogs";
+import { startAllForwards } from "./lib/ipc/forwards";
 import { toUserMessage } from "./lib/ipc/errors";
 import { writeTerminal } from "./lib/ipc/session";
 import { deleteSession, listSessions } from "./lib/ipc/sessions";
@@ -49,6 +50,8 @@ export default function App() {
   );
   const [filesExiting, setFilesExiting] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  /** Tabs whose saved forward rules were already auto-started. */
+  const startedForwards = useRef<Set<string>>(new Set());
   const [forwardOpen, setForwardOpen] = useState(false);
   const [forwardClosing, setForwardClosing] = useState(false);
   const [settingsClosing, setSettingsClosing] = useState(false);
@@ -184,11 +187,19 @@ export default function App() {
 
   const makeStatusHandler = useCallback(
     (key: string) => (patch: Partial<TerminalStatus>) => {
-      setTabs((prev) =>
-        prev.map((tab) =>
+      setTabs((prev) => {
+        const next = prev.map((tab) =>
           tab.key === key ? { ...tab, status: { ...tab.status, ...patch } } : tab,
-        ),
-      );
+        );
+        if (patch.state === "ready") {
+          const tab = next.find((item) => item.key === key);
+          if (tab !== undefined && tab.status.terminalId !== null && !startedForwards.current.has(key)) {
+            startedForwards.current.add(key);
+            void startAllForwards(tab.status.terminalId, tab.sessionId).catch(() => undefined);
+          }
+        }
+        return next;
+      });
     },
     [],
   );

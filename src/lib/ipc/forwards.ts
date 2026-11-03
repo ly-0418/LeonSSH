@@ -63,3 +63,12 @@ export async function stopForward(id: number): Promise<ForwardView> {
     throw normalizeError(error);
   }
 }
+
+/** Starts every saved rule of the session (called once the terminal is ready). */
+export async function startAllForwards(terminalId: string, sessionId: number): Promise<number> {
+  try {
+    return await invoke<number>("forward_start_all", { terminalId, sessionId });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}

@@ -204,6 +204,7 @@ pub fn run() {
             commands::forward::forward_create,
             commands::forward::forward_delete,
             commands::forward::forward_start,
+            commands::forward::forward_start_all,
             commands::forward::forward_stop,
             commands::local::local_roots,
             commands::transfer::transfer_attach,

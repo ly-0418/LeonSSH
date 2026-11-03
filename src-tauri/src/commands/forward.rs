@@ -105,6 +105,56 @@ pub async fn forward_start(
     Ok(to_view(&state, record).await)
 }
 
+/// Starts every saved rule of a session (called once the terminal is ready).
+#[tauri::command]
+pub async fn forward_start_all(
+    state: State<'_, AppState>,
+    terminal_id: String,
+    session_id: i64,
+) -> Result<usize, AppError> {
+    let records = forwards::list_for_session(state.db(), session_id).await?;
+    let mut started = 0usize;
+    for record in records {
+        if state.forward_manager().running_ids().await.contains(&record.id) {
+            continue;
+        }
+        let Ok(handle) = state.connection(&terminal_id).await else {
+            break;
+        };
+        let manager = state.forward_manager().clone();
+        let kind = ForwardKind::parse(&record.kind)?;
+        let bind = (record.bind_host.clone(), record.bind_port as u16);
+        let target = (
+            record.target_host.clone().unwrap_or_default(),
+            record.target_port.unwrap_or(0) as u16,
+        );
+        let result = match kind {
+            ForwardKind::Local => {
+                manager
+                    .start_local(record.id, terminal_id.clone(), handle, bind, target)
+                    .await
+            }
+            ForwardKind::Dynamic => {
+                manager
+                    .start_dynamic(record.id, terminal_id.clone(), handle, bind)
+                    .await
+            }
+            ForwardKind::Remote => {
+                manager
+                    .start_remote(record.id, terminal_id.clone(), handle, bind, target)
+                    .await
+            }
+        };
+        if result.is_ok() {
+            started += 1;
+        } else if let Err(err) = result {
+            tracing::warn!(rule = record.id, error = %err, "auto-start forward failed");
+        }
+    }
+    tracing::info!(session = session_id, started, "forward auto-start finished");
+    Ok(started)
+}
+
 #[tauri::command]
 pub async fn forward_stop(state: State<'_, AppState>, id: i64) -> Result<ForwardView, AppError> {
     state.forward_manager().stop(id).await;

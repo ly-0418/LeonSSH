@@ -6,8 +6,8 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
-import { homeDir } from "@tauri-apps/api/path";
-import { mkdir, readDir, remove, rename, stat, writeTextFile } from "@tauri-apps/plugin-fs";
+import { desktopDir, homeDir } from "@tauri-apps/api/path";
+import { exists, mkdir, readDir, remove, rename, stat, writeTextFile } from "@tauri-apps/plugin-fs";
 
 import type { FileEntry } from "./types";
 import { joinLocal, normalizeLocal } from "./paths";
@@ -17,6 +17,20 @@ const STAT_CONCURRENCY = 8;
 export async function localHome(): Promise<string> {
   const home = await homeDir();
   return normalizeLocal(home.replace(/[\\/]+$/, ""));
+}
+
+/** Default browsing location of the local pane: Desktop, falling back to home. */
+export async function localDesktop(): Promise<string> {
+  try {
+    const desktop = await desktopDir();
+    const path = normalizeLocal(desktop.replace(/[\\/]+$/, ""));
+    if (await exists(path)) {
+      return path;
+    }
+  } catch {
+    // Desktop may be redirected/unavailable; fall through to the home dir.
+  }
+  return localHome();
 }
 
 export async function localRoots(): Promise<string[]> {

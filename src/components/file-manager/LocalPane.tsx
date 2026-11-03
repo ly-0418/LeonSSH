@@ -7,7 +7,7 @@ import {
   deleteLocal,
   hydrateLocalStats,
   listLocal,
-  localHome,
+  localDesktop,
   localRoots,
   openLocalFile,
   renameLocal,
@@ -49,7 +49,7 @@ export function LocalPane({
   const adapter = useMemo<PaneAdapter>(
     () => ({
       list: listLocal,
-      home: localHome,
+      home: localDesktop,
       parent: parentLocal,
       enrich: hydrateLocalStats,
     }),

@@ -130,6 +130,32 @@ pub fn ensure_writable(dir: &Path) -> std::io::Result<()> {
 ///
 /// Logs never contain credentials: phase 1 has none, and phase 3 routes every
 /// secret through the keyring without ever formatting it.
+/// Formats log lines in local wall-clock time (no network, no extra crates).
+struct LocalClock;
+
+impl tracing_subscriber::fmt::time::FormatTime for LocalClock {
+    fn format_time(
+        &self,
+        w: &mut tracing_subscriber::fmt::format::Writer<'_>,
+    ) -> std::fmt::Result {
+        #[cfg(windows)]
+        {
+            use windows_sys::Win32::System::SystemInformation::GetLocalTime;
+            let mut st: windows_sys::Win32::Foundation::SYSTEMTIME = unsafe { std::mem::zeroed() };
+            unsafe { GetLocalTime(&mut st) };
+            return write!(
+                w,
+                "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}",
+                st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds
+            );
+        }
+        #[cfg(not(windows))]
+        {
+            write!(w, "{}", "1970-01-01T00:00:00.000")
+        }
+    }
+}
+
 pub fn init_tracing(paths: &Paths) {
     use tracing_subscriber::layer::SubscriberExt;
     use tracing_subscriber::util::SubscriberInitExt;
@@ -143,12 +169,12 @@ pub fn init_tracing(paths: &Paths) {
     // The guard must outlive the process; leaking is the documented pattern.
     Box::leak(Box::new(guard));
 
-    let file_layer = tracing_subscriber::fmt::layer()
+    let file_layer = tracing_subscriber::fmt::layer().with_timer(LocalClock)
         .with_writer(file_writer)
         .with_ansi(false)
         .with_target(true);
 
-    let stderr_layer = tracing_subscriber::fmt::layer()
+    let stderr_layer = tracing_subscriber::fmt::layer().with_timer(LocalClock)
         .with_writer(std::io::stderr)
         .with_ansi(false)
         .with_target(true);

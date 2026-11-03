@@ -50,6 +50,13 @@ export default function App() {
   const [filesExiting, setFilesExiting] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [forwardOpen, setForwardOpen] = useState(false);
+  const [fontSize, setFontSize] = useState<number>(() => {
+    const stored = Number.parseInt(localStorage.getItem("leonssh.fontSize") ?? "", 10);
+    return Number.isFinite(stored) && stored >= 11 && stored <= 20 ? stored : 14;
+  });
+  useEffect(() => {
+    localStorage.setItem("leonssh.fontSize", String(fontSize));
+  }, [fontSize]);
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeMode>(initialTheme);
   const [sessionDialog, setSessionDialog] = useState<SessionDialogState | null>(null);
@@ -256,12 +263,15 @@ export default function App() {
           <button
             type="button"
             className={`header-action header-action--icon${view === "files" ? " header-action--active" : ""}`}
-            title="文件管理"
-            aria-label="文件管理"
+            title="文件传输"
+            aria-label="文件传输"
             onClick={() => (view === "files" ? closeFiles() : openFiles())}
           >
             <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.2h9A1.5 1.5 0 0 1 21 9.7v8.8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5Z" />
+              <path d="M4 8h13" />
+              <path d="m14 4.5 3.5 3.5L14 11.5" />
+              <path d="M20 16H7" />
+              <path d="M10 12.5 6.5 16l3.5 3.5" />
             </svg>
           </button>
           <button
@@ -331,6 +341,7 @@ export default function App() {
                     title={tab.title}
                     visible={tab.key === activeKey}
                     theme={theme}
+                    fontSize={fontSize}
                     onStatus={makeStatusHandler(tab.key)}
                   />
                 </div>
@@ -382,6 +393,10 @@ export default function App() {
           onSelect={(session) => setSessionDialog({ creating: false, selectedId: session.id })}
           onCreate={() => setSessionDialog({ creating: true, selectedId: null })}
           onDelete={(session) => setPendingDelete(session)}
+          onConnect={(session) => {
+            setSessionDialog(null);
+            openTab(session);
+          }}
 
           onSaved={() => {
             setSessionDialog(null);
@@ -407,6 +422,8 @@ export default function App() {
         <SettingsDrawer
           theme={theme}
           onChangeTheme={setTheme}
+          fontSize={fontSize}
+          onChangeFontSize={setFontSize}
           onClose={() => setSettingsOpen(false)}
         />
       )}

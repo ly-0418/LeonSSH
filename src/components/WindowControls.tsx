@@ -44,7 +44,7 @@ export function WindowControls() {
     <div className="window-controls">
       <button
         type="button"
-        className="window-controls__btn"
+        className="window-controls__btn window-controls__btn--min"
         title="最小化"
         aria-label="最小化"
         onClick={() => void appWindow.minimize()}
@@ -53,7 +53,7 @@ export function WindowControls() {
       </button>
       <button
         type="button"
-        className="window-controls__btn"
+        className="window-controls__btn window-controls__btn--max"
         title={maximized ? "还原" : "最大化"}
         aria-label={maximized ? "还原" : "最大化"}
         onClick={() => void appWindow.toggleMaximize()}

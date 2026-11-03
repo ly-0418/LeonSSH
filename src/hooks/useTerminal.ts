@@ -24,10 +24,11 @@ export interface UseTerminalOptions {
   title: string;
   visible: boolean;
   theme: ThemeMode;
+  fontSize: number;
   onStatus?: (patch: Partial<TerminalStatus>) => void;
 }
 
-export function useTerminal({ sessionId, title, visible, theme, onStatus }: UseTerminalOptions) {
+export function useTerminal({ sessionId, title, visible, theme, fontSize, onStatus }: UseTerminalOptions) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sessionRef = useRef<TerminalSession | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -36,6 +37,8 @@ export function useTerminal({ sessionId, title, visible, theme, onStatus }: UseT
   statusRef.current = onStatus;
   const themeRef = useRef(theme);
   themeRef.current = theme;
+  const fontSizeRef = useRef(fontSize);
+  fontSizeRef.current = fontSize;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -48,6 +51,7 @@ export function useTerminal({ sessionId, title, visible, theme, onStatus }: UseT
       sessionId,
       title,
       theme: themeRef.current,
+      fontSize: fontSizeRef.current,
       onStatus: (patch) => statusRef.current?.(patch),
       onNotice: (message) => setNotice(message),
     });
@@ -66,6 +70,10 @@ export function useTerminal({ sessionId, title, visible, theme, onStatus }: UseT
   useEffect(() => {
     sessionRef.current?.setTheme(theme);
   }, [theme]);
+
+  useEffect(() => {
+    sessionRef.current?.setFontSize(fontSize);
+  }, [fontSize]);
 
   const clearNotice = useCallback(() => setNotice(null), []);
   const focus = useCallback(() => sessionRef.current?.focus(), []);

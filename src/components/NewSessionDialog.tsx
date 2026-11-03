@@ -9,6 +9,7 @@ interface NewSessionDialogProps {
   onSelect: (session: SessionSummary) => void;
   onCreate: () => void;
   onDelete: (session: SessionSummary) => void;
+  onConnect: (session: SessionSummary) => void;
   onSaved: (session: SessionSummary) => void;
   onSavedAndConnect: (session: SessionSummary) => void;
   onClose: () => void;
@@ -25,6 +26,7 @@ export function NewSessionDialog({
   onSelect,
   onCreate,
   onDelete,
+  onConnect,
   onSaved,
   onSavedAndConnect,
   onClose,
@@ -71,7 +73,8 @@ export function NewSessionDialog({
                     type="button"
                     className="session-card__main"
                     onClick={() => onSelect(session)}
-                    title={`${session.username}@${session.host}:${session.port}`}
+                    onDoubleClick={() => onConnect(session)}
+                    title={`${session.username}@${session.host}:${session.port}（双击连接）`}
                   >
                     <span className="session-card__avatar">
                       {session.name.slice(0, 1).toUpperCase()}

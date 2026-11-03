@@ -32,6 +32,7 @@ export interface TerminalSessionOptions {
   title: string;
   /** UI theme at creation time; later changes go through `setTheme`. */
   theme?: ThemeMode;
+  fontSize?: number;
   onStatus?: (patch: Partial<TerminalStatus>) => void;
   onNotice?: (message: string) => void;
 }
@@ -55,6 +56,7 @@ export class TerminalSession {
   constructor(private readonly options: TerminalSessionOptions) {
     this.terminal = new Terminal({
       ...TERMINAL_OPTIONS,
+      fontSize: options.fontSize ?? 14,
       theme: terminalTheme(options.theme ?? "dark"),
     });
     this.terminal.loadAddon(this.fitAddon);
@@ -169,6 +171,16 @@ export class TerminalSession {
       this.terminal.refresh(0, Math.max(0, this.terminal.rows - 1));
       this.terminal.focus();
     });
+  }
+
+  /** Changes the terminal font size and refits the viewport. */
+  setFontSize(size: number): void {
+    if (this.disposed || this.terminal.options.fontSize === size) {
+      return;
+    }
+    this.terminal.options.fontSize = size;
+    this.fitNow();
+    this.terminal.refresh(0, Math.max(0, this.terminal.rows - 1));
   }
 
   /** Swaps the xterm palette without recreating the terminal. */

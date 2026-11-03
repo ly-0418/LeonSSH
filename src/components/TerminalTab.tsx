@@ -7,6 +7,7 @@ interface TerminalTabProps {
   title: string;
   visible: boolean;
   theme: ThemeMode;
+  fontSize: number;
   onStatus: (patch: Partial<TerminalStatus>) => void;
 }
 
@@ -19,6 +20,7 @@ export function TerminalTab({
   title,
   visible,
   theme,
+  fontSize,
   onStatus,
 }: TerminalTabProps) {
   const { containerRef, notice, clearNotice } = useTerminal({
@@ -26,6 +28,7 @@ export function TerminalTab({
     title,
     visible,
     theme,
+    fontSize,
     onStatus,
   });
 

@@ -1471,3 +1471,63 @@ input[type="password"]::-ms-reveal {
   width: 92px;
   flex: 0 0 auto;
 }
+/* Window caption glyphs: lower the dash, enlarge the square. */
+.window-controls__btn--min {
+  padding-top: 3px;
+}
+
+.window-controls__btn--max {
+  font-size: 15px;
+}
+
+/* Settings typography is one step larger than the rest of the UI. */
+.drawer__navbtn {
+  font-size: 13.5px;
+  padding: 10px 12px;
+}
+
+.drawer__content .modal__hint {
+  font-size: 13px;
+}
+
+.setting-group__title {
+  font-size: 15.5px;
+}
+
+.host-item__endpoint {
+  font-size: 13px;
+}
+
+.host-item__fp {
+  font-size: 11.5px;
+}
+
+.font-size-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.font-size-row input[type="range"] {
+  flex: 1 1 auto;
+  accent-color: var(--accent);
+}
+
+.font-size-value {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-dim);
+  min-width: 54px;
+  text-align: right;
+}
+
+.font-preview {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-sunken);
+  color: var(--text);
+  font-family: var(--font-mono);
+  overflow-x: auto;
+  white-space: nowrap;
+}

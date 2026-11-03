@@ -8,14 +8,17 @@ import type { ThemeMode } from "../lib/terminal/theme";
 interface SettingsDrawerProps {
   theme: ThemeMode;
   onChangeTheme: (theme: ThemeMode) => void;
+  fontSize: number;
+  onChangeFontSize: (size: number) => void;
 
   onClose: () => void;
 }
 
-type SettingsTab = "theme" | "hosts";
+type SettingsTab = "theme" | "fonts" | "hosts";
 
 const TABS: Array<{ key: SettingsTab; label: string }> = [
   { key: "theme", label: "主题" },
+  { key: "fonts", label: "字体" },
   { key: "hosts", label: "主机" },
 ];
 
@@ -23,7 +26,8 @@ const TABS: Array<{ key: SettingsTab; label: string }> = [
 export function SettingsDrawer({
   theme,
   onChangeTheme,
-
+  fontSize,
+  onChangeFontSize,
   onClose,
 }: SettingsDrawerProps) {
   const [tab, setTab] = useState<SettingsTab>("theme");
@@ -106,6 +110,27 @@ export function SettingsDrawer({
                     <span className="theme-card__icon">☾</span>
                     暗色
                   </button>
+                </div>
+              </div>
+            )}
+
+            {tab === "fonts" && (
+              <div className="setting-group">
+                <h3 className="setting-group__title">字体大小</h3>
+                <p className="modal__hint">终端字号，立即生效并随配置保存。</p>
+                <div className="font-size-row">
+                  <input
+                    type="range"
+                    min={11}
+                    max={20}
+                    step={1}
+                    value={fontSize}
+                    onChange={(event) => onChangeFontSize(Number.parseInt(event.target.value, 10))}
+                  />
+                  <span className="font-size-value">{fontSize} px</span>
+                </div>
+                <div className="font-preview" style={{ fontSize: `${fontSize}px` }}>
+                  LeonSSH@localhost:~$ echo 字体预览
                 </div>
               </div>
             )}

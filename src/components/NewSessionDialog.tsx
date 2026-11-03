@@ -10,13 +10,15 @@ interface NewSessionDialogProps {
   editing: SessionSummary | null;
   onPick: (session: SessionSummary) => void;
   onSaved: (session: SessionSummary) => void;
+  onEdit: (session: SessionSummary) => void;
+  onDelete: (session: SessionSummary) => void;
   onClose: () => void;
 }
 
 /**
- * Tab-bar "+" dialog: pick an already saved connection or create a new one.
- * The terminal keeps running behind this overlay, so closing it never disturbs
- * the session view.
+ * Tab-bar "+" dialog: pick an already saved connection, create a new one, or
+ * edit/delete an existing profile (the sidebar is gone, so this is the only
+ * place for those actions).
  */
 export function NewSessionDialog({
   sessions,
@@ -24,6 +26,8 @@ export function NewSessionDialog({
   editing,
   onPick,
   onSaved,
+  onEdit,
+  onDelete,
   onClose,
 }: NewSessionDialogProps) {
   const [showForm, setShowForm] = useState(startInForm || sessions.length === 0);
@@ -64,7 +68,7 @@ export function NewSessionDialog({
           <>
             <ul className="new-session__list">
               {sessions.map((session) => (
-                <li key={session.id}>
+                <li key={session.id} className="new-session__row">
                   <button
                     type="button"
                     className="new-session__item"
@@ -76,6 +80,14 @@ export function NewSessionDialog({
                       {session.username}@{session.host}:{session.port}
                     </span>
                   </button>
+                  <span className="new-session__actions">
+                    <button type="button" title="编辑" onClick={() => onEdit(session)}>
+                      ✎
+                    </button>
+                    <button type="button" title="删除" onClick={() => onDelete(session)}>
+                      ✕
+                    </button>
+                  </span>
                 </li>
               ))}
             </ul>

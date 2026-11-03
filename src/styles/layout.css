@@ -810,6 +810,35 @@
   cursor: pointer;
 }
 
+/* Tab context menu (right click on a session tab). */
+.tab-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 190px;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.tab-menu__item {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tab-menu__item:hover {
+  background: var(--bg-hover);
+}
+
 .tab-bar__new:hover {
   border-style: solid;
   border-color: var(--accent);
@@ -890,6 +919,36 @@
   font-family: var(--font-mono);
   font-size: 11.5px;
   color: var(--text-faint);
+}
+
+.new-session__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.new-session__row .new-session__item {
+  flex: 1 1 auto;
+}
+
+.new-session__actions {
+  display: flex;
+  gap: 2px;
+}
+
+.new-session__actions button {
+  width: 26px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.new-session__actions button:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
 }
 
 /* The form is a card on its own page; inside the dialog it must not nest. */

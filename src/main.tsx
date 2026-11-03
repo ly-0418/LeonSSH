@@ -13,6 +13,10 @@ import App from "./App";
 // IPC). The session layer itself is written to survive it, but there is no
 // value in exercising it on every reload.
 
+// Apply the persisted theme before the first paint (no light->dark flash).
+const storedTheme = localStorage.getItem("leonssh.theme");
+document.documentElement.dataset.theme = storedTheme === "dark" ? "dark" : "light";
+
 const container = document.getElementById("root");
 if (container === null) {
   throw new Error("#root element is missing");

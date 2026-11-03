@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 import { isEditableFile } from "../../lib/editor/codemirror";
@@ -20,12 +20,12 @@ interface FileManagerProps {
   onBackToTerminal: () => void;
 }
 
+const MIN_SPLIT = 20;
+const MAX_SPLIT = 80;
+
 /**
- * Dual-pane file manager.
- *
- * Phase C: streaming transfers with resume, a queue with progress/speed/cancel,
- * HTML5 drag (local pane → remote pane) and OS drag-and-drop onto the remote
- * pane. The remote side always reuses the terminal's SSH connection.
+ * Dual-pane file manager with a draggable splitter, streaming transfers,
+ * drag-and-drop and the remote editor drawer.
  */
 export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: FileManagerProps) {
   // Optional deep link: `?view=files&local=C%3A%5CWindows` opens the pane there.
@@ -39,6 +39,9 @@ export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: File
   const [message, setMessage] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorFile | null>(null);
   const [editorRevision, setEditorRevision] = useState(0);
+  const [splitPercent, setSplitPercent] = useState(50);
+  const [dragging, setDragging] = useState(false);
+  const panesRef = useRef<HTMLDivElement | null>(null);
   const { tasks, speeds, error: transferError, revision, clearError, cancel } = useTransfers();
 
   const upload = useCallback(
@@ -159,6 +162,19 @@ export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: File
     };
   }, [dropPaths]);
 
+  // Splitter drag: clamp to a usable range so neither pane can disappear.
+  const onSplitterMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (panesRef.current === null) {
+      return;
+    }
+    const rect = panesRef.current.getBoundingClientRect();
+    if (rect.width <= 0) {
+      return;
+    }
+    const percent = ((event.clientX - rect.left) / rect.width) * 100;
+    setSplitPercent(Math.min(MAX_SPLIT, Math.max(MIN_SPLIT, percent)));
+  }, []);
+
   const banner = message ?? transferError;
   const canUpload = terminalId !== null && remotePath !== "" && localSelection.some((e) => !e.isDir);
   const canDownload =
@@ -209,13 +225,40 @@ export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: File
         </button>
       )}
 
-      <div className="fm-panes">
+      <div
+        className={`fm-panes${dragging ? " fm-panes--dragging" : ""}`}
+        ref={panesRef}
+        style={{ gridTemplateColumns: `${splitPercent}% 6px 1fr` }}
+      >
         <LocalPane
           initialPath={initialLocal}
           refreshToken={revision + editorRevision}
           onPathChange={setLocalPath}
           onSelectionChange={setLocalSelection}
           onOpenFile={() => setMessage("双击本地文件不会上传；可选中后点「上传」")}
+        />
+        <div
+          className="fm-splitter"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="调整左右面板宽度"
+          onPointerDown={(event) => {
+            event.preventDefault();
+            event.currentTarget.setPointerCapture(event.pointerId);
+            setDragging(true);
+          }}
+          onPointerMove={(event) => {
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+              onSplitterMove(event);
+            }
+          }}
+          onPointerUp={(event) => {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+            setDragging(false);
+          }}
+          onPointerCancel={() => setDragging(false)}
+          onDoubleClick={() => setSplitPercent(50)}
+          title="拖动调整左右宽度（双击恢复 50/50）"
         />
         <RemotePane
           terminalId={terminalId}
@@ -241,7 +284,3 @@ export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: File
     </div>
   );
 }
-
-/** Re-exported for tests/consumers that need the task shape. */
-export type { FileEntry };
-export const __test = { joinLocal, joinPath, fileName };

@@ -1,44 +1,44 @@
 :root {
   color-scheme: dark;
 
-  --bg: #0b0f14;
-  --bg-elevated: #0f1620;
-  --bg-header: #0d131b;
-  --bg-panel: #0b1118;
-  --bg-input: #0a1017;
-  --bg-sunken: #090d12;
-  --bg-hover: #101a26;
-  --bg-hover-strong: #1b2836;
-  --bg-selected: #12202f;
-  --bg-track: #16202c;
+  --bg: #151b23;
+  --bg-elevated: #1a222c;
+  --bg-header: #1a222c;
+  --bg-panel: #1a222c;
+  --bg-input: #1d2731;
+  --bg-sunken: #121820;
+  --bg-hover: #232d3a;
+  --bg-hover-strong: #2c3846;
+  --bg-selected: #24344a;
+  --bg-track: #2a3644;
 
-  --border: #1b2735;
-  --border-strong: #243449;
+  --border: #2a3644;
+  --border-strong: #3a4859;
 
-  --text: #d7e3ee;
-  --text-dim: #7d8ea3;
-  --text-faint: #55647a;
-  --muted: #6b7280;
+  --text: #dbe5ef;
+  --text-dim: #9fb0c0;
+  --text-faint: #6f8093;
+  --muted: #8595a6;
 
   --accent: #4ade80;
   --accent-cyan: #38bdf8;
-  --accent-soft-bg: #0c2417;
-  --accent-soft-border: #1d4f30;
+  --accent-soft-bg: #173226;
+  --accent-soft-border: #2a5a3c;
   --accent-glow: #4ade8066;
   --accent-faint: #4ade8018;
 
   --danger: #f87171;
   --danger-text: #fca5a5;
-  --danger-bg: #22090c;
-  --danger-border: #4c1d24;
+  --danger-bg: #3a1518;
+  --danger-border: #6b2b32;
 
   --warn: #fbbf24;
   --warn-text: #fcd34d;
-  --warn-bg: #241d09;
-  --warn-border: #4d3a12;
+  --warn-bg: #3a2e12;
+  --warn-border: #6b5522;
 
-  --overlay: rgba(11, 15, 20, 0.97);
-  --backdrop: rgba(4, 8, 12, 0.65);
+  --overlay: rgba(21, 27, 35, 0.97);
+  --backdrop: rgba(6, 10, 15, 0.62);
 
   --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "Cascadia Mono", "Cascadia Code", Consolas, "Courier New", monospace;
@@ -264,6 +264,35 @@ body {
   color: var(--text-dim);
   user-select: none;
   overflow: hidden;
+}
+
+.status-bar__endpoint {
+  color: var(--text);
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex: 0 0 auto;
+}
+
+.status-dot--ready {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+
+.status-dot--connecting {
+  background: var(--warn);
+}
+
+.status-dot--error {
+  background: var(--danger);
 }
 
 .chip {

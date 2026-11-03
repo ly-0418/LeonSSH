@@ -37,10 +37,26 @@
 .fm-panes {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
+  /* Grid columns are set inline: `<left>% 6px 1fr` (draggable splitter). */
+  gap: 0;
   min-height: 0;
   background: var(--border);
+}
+
+.fm-splitter {
+  cursor: col-resize;
+  background: var(--border);
+  touch-action: none;
+}
+
+.fm-splitter:hover,
+.fm-panes--dragging .fm-splitter {
+  background: var(--accent);
+}
+
+.fm-panes--dragging {
+  user-select: none;
+  cursor: col-resize;
 }
 
 .fm-pane {
@@ -326,6 +342,54 @@
   border-radius: 6px;
   font-size: 11.5px;
   color: var(--text-dim);
+}
+
+.fq__error {
+  grid-column: 1 / -1;
+  padding: 2px 0 1px 24px;
+  color: var(--danger-text);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fq__tabs {
+  display: flex;
+  gap: 2px;
+  margin-left: 6px;
+}
+
+.fq__tab {
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.fq__tab:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.fq__tab--active {
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.fq__tab--alert {
+  color: var(--danger-text);
+}
+
+.fq__empty {
+  padding: 8px 10px;
+  color: var(--text-faint);
+  font-size: 11.5px;
 }
 
 .fq__item:hover {

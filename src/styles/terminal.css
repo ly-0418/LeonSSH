@@ -4,8 +4,8 @@
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
-  padding: 8px 10px 4px;
-  background: radial-gradient(1200px 620px at 18% -12%, var(--bg-hover) 0%, var(--bg) 62%);
+  padding: 2px 4px 6px;
+  background: var(--bg);
 }
 
 /* Reserved per-session action row (file manager, future tools). */
@@ -15,7 +15,7 @@
   align-items: center;
   gap: 6px;
   min-height: 26px;
-  padding: 0 2px 6px;
+  padding: 0 2px 4px;
 }
 
 .session-toolbar__spacer {
@@ -53,11 +53,14 @@
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--bg-panel);
 }
 
 .terminal-host .xterm {
   height: 100%;
-  padding: 8px 6px;
+  padding: 6px 8px;
 }
 
 .terminal-host .xterm-viewport {

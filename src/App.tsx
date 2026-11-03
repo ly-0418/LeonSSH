@@ -4,7 +4,6 @@ import { FileManager } from "./components/file-manager/FileManager";
 import { ForwardPanel } from "./components/ForwardPanel";
 import { NewSessionDialog } from "./components/NewSessionDialog";
 import { SessionForm } from "./components/SessionForm";
-import { Sidebar } from "./components/Sidebar";
 import { StatusBar } from "./components/StatusBar";
 import { TabBar, type TabItem } from "./components/TabBar";
 import { TerminalTab } from "./components/TerminalTab";
@@ -12,8 +11,7 @@ import { WindowControls } from "./components/WindowControls";
 import { ConfirmDialog, KnownHostsDialog } from "./components/dialogs";
 import { toUserMessage } from "./lib/ipc/errors";
 import { deleteSession, listSessions } from "./lib/ipc/sessions";
-import { fetchAppInfo } from "./lib/ipc/session";
-import type { AppInfo, SessionSummary, TerminalStatus } from "./lib/ipc/types";
+import type { SessionSummary, TerminalStatus } from "./lib/ipc/types";
 import type { ThemeMode } from "./lib/terminal/theme";
 
 const INITIAL_STATUS: TerminalStatus = {
@@ -22,14 +20,6 @@ const INITIAL_STATUS: TerminalStatus = {
   cols: 0,
   rows: 0,
   state: "connecting",
-};
-
-const IDLE_STATUS: TerminalStatus = {
-  terminalId: null,
-  renderer: "pending",
-  cols: 0,
-  rows: 0,
-  state: "closed",
 };
 
 type WorkspaceView = "terminal" | "files";
@@ -42,12 +32,10 @@ interface SessionDialogState {
 const THEME_KEY = "leonssh.theme";
 
 function initialTheme(): ThemeMode {
-  const stored = localStorage.getItem(THEME_KEY);
-  return stored === "light" ? "light" : "dark";
+  return localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light";
 }
 
 export default function App() {
-  const [info, setInfo] = useState<AppInfo | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [tabs, setTabs] = useState<TabItem[]>([]);
   const [activeKey, setActiveKey] = useState<string | null>(null);
@@ -84,33 +72,20 @@ export default function App() {
 
   useEffect(() => {
     void refreshSessions();
-    fetchAppInfo()
-      .then(setInfo)
-      .catch((err) => setError(toUserMessage(err)));
   }, [refreshSessions]);
+
+  // The WebView's built-in context menu (reload / inspect / print ...) is not
+  // wanted; the tab bar draws its own menu instead.
+  useEffect(() => {
+    const block = (event: MouseEvent) => event.preventDefault();
+    document.addEventListener("contextmenu", block);
+    return () => document.removeEventListener("contextmenu", block);
+  }, []);
 
   const activeTab = useMemo(
     () => tabs.find((tab) => tab.key === activeKey) ?? null,
     [tabs, activeKey],
   );
-
-  // Refresh the active-session counter once a terminal is up.
-  useEffect(() => {
-    if (activeTab?.status.state !== "ready") {
-      return;
-    }
-    let cancelled = false;
-    fetchAppInfo()
-      .then((value) => {
-        if (!cancelled) {
-          setInfo(value);
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [activeTab?.status.state]);
 
   const openTab = useCallback(
     (session: SessionSummary) => {
@@ -152,6 +127,32 @@ export default function App() {
     openTab(session);
   }, [autoConnectId, sessions, openTab]);
 
+  // Duplicate a tab: same saved session, brand new SSH connection, title gets
+  // a ` | 复制 N` suffix (N increments per source session).
+  const duplicateTab = useCallback(
+    (key: string) => {
+      const source = tabs.find((tab) => tab.key === key);
+      if (source === undefined) {
+        return;
+      }
+      const base = source.title.replace(/ \| 复制 \d+$/, "");
+      const prefix = `${base} | 复制 `;
+      const copies = tabs.filter((tab) => tab.title.startsWith(prefix)).length;
+      const newKey = `tab-${source.sessionId}-${Date.now()}`;
+      setTabs((prev) => [
+        ...prev,
+        {
+          key: newKey,
+          sessionId: source.sessionId,
+          title: `${prefix}${copies + 1}`,
+          status: { ...INITIAL_STATUS },
+        },
+      ]);
+      setActiveKey(newKey);
+    },
+    [tabs],
+  );
+
   const closeTab = useCallback(
     (key: string) => {
       const next = tabs.filter((tab) => tab.key !== key);
@@ -191,6 +192,7 @@ export default function App() {
 
   async function handleDelete(session: SessionSummary) {
     setPendingDelete(null);
+    setSessionDialog(null);
     try {
       await deleteSession(session.id);
       const tab = tabs.find((item) => item.sessionId === session.id);
@@ -239,16 +241,6 @@ export default function App() {
       )}
 
       <div className="app-body">
-        <Sidebar
-          sessions={sessions}
-          activeSessionId={activeTab?.sessionId ?? null}
-          onOpen={openTab}
-          onCreate={() => setSessionDialog({ editing: null, startInForm: true })}
-          onEdit={(session) => setSessionDialog({ editing: session, startInForm: true })}
-          onDelete={(session) => setPendingDelete(session)}
-          onShowKnownHosts={() => setKnownHostsOpen(true)}
-        />
-
         <main className="workspace">
           <TabBar
             tabs={tabs}
@@ -256,6 +248,8 @@ export default function App() {
             onActivate={setActiveKey}
             onClose={closeTab}
             onNewSession={() => setSessionDialog({ editing: null, startInForm: false })}
+            onDuplicate={duplicateTab}
+            onShowKnownHosts={() => setKnownHostsOpen(true)}
             forwardOpen={forwardOpen}
             onToggleForward={() => setForwardOpen((open) => !open)}
           />
@@ -323,7 +317,10 @@ export default function App() {
         </main>
       </div>
 
-      <StatusBar status={activeTab?.status ?? IDLE_STATUS} info={info} />
+      <StatusBar
+        endpoint={activeTab?.status.endpoint ?? null}
+        state={activeTab?.status.state ?? "closed"}
+      />
 
       {sessionDialog !== null && (
         <NewSessionDialog
@@ -335,6 +332,8 @@ export default function App() {
             openTab(session);
           }}
           onSaved={(session) => void handleSaved(session)}
+          onEdit={(session) => setSessionDialog({ editing: session, startInForm: true })}
+          onDelete={(session) => setPendingDelete(session)}
           onClose={() => setSessionDialog(null)}
         />
       )}

@@ -182,6 +182,7 @@ mod tests {
             auth_method: None,
             private_key_path: None,
             color: None,
+            group_name: None,
         }
     }
 
@@ -204,6 +205,7 @@ mod tests {
             auth_method: Some("key".into()),
             private_key_path: Some("C:/keys/id_ed25519".into()),
             color: Some("#4ade80".into()),
+            group_name: None,
         };
         let updated = update(&pool, created.id, &patch).await.unwrap();
         assert_eq!(updated.name, "prod-2");
@@ -260,6 +262,7 @@ mod tests {
                 auth_method: Some("password".into()),
                 private_key_path: None,
                 color: Some("#38bdf8".into()),
+                group_name: None,
             },
         )
         .await

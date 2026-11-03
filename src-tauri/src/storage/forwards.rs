@@ -115,6 +115,7 @@ mod tests {
                 auth_method: None,
                 private_key_path: None,
                 color: None,
+                group_name: None,
             },
         )
         .await

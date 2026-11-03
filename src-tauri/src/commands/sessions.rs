@@ -24,6 +24,7 @@ pub struct SessionView {
     pub private_key_path: Option<String>,
     pub color: Option<String>,
     pub group_name: Option<String>,
+    pub jump_session_id: Option<i64>,
     /// Whether a password is currently stored in the Credential Manager.
     pub has_password: bool,
 }
@@ -40,6 +41,7 @@ impl SessionView {
             private_key_path: record.private_key_path,
             color: record.color,
             group_name: record.group_name,
+            jump_session_id: record.jump_session_id,
             has_password,
         }
     }
@@ -171,6 +173,7 @@ pub struct SessionExport {
     pub private_key_path: Option<String>,
     #[serde(default)]
     pub group_name: Option<String>,
+    pub jump_session_id: Option<i64>,
     #[serde(default)]
     pub color: Option<String>,
 }
@@ -188,6 +191,7 @@ pub async fn session_export_json(state: State<'_, AppState>) -> Result<String, A
             auth_method: Some(record.auth_method),
             private_key_path: record.private_key_path,
             group_name: record.group_name,
+            jump_session_id: record.jump_session_id,
             color: record.color,
         })
         .collect();
@@ -216,6 +220,7 @@ pub async fn session_import_json(
             private_key_path: item.private_key_path,
             color: item.color,
             group_name: item.group_name,
+            jump_session_id: item.jump_session_id,
         };
         sessions::create(state.db(), &input).await?;
         imported += 1;

@@ -116,6 +116,7 @@ mod tests {
                 private_key_path: None,
                 color: None,
                 group_name: None,
+                jump_session_id: None,
             },
         )
         .await

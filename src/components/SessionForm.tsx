@@ -10,6 +10,8 @@ interface SessionFormProps {
   initial?: SessionSummary | null;
   /** First run: the form is shown inline instead of a modal. */
   onboarding?: boolean;
+  /** Saved profiles that can serve as a jump host. */
+  sessions?: SessionSummary[];
   /** Save without connecting. */
   onSaved: (session: SessionSummary) => void;
   /** Save and connect right away. */
@@ -21,6 +23,8 @@ const DEFAULT_PORT = 22;
 export function SessionForm({
   initial,
   onboarding = false,
+  sessions = [],
+
   onSaved,
   onSavedAndConnect,
 }: SessionFormProps) {
@@ -29,6 +33,7 @@ export function SessionForm({
   const [port, setPort] = useState(String(initial?.port ?? DEFAULT_PORT));
   const [username, setUsername] = useState(initial?.username ?? "");
   const [groupName, setGroupName] = useState(initial?.group ?? "");
+  const [jumpId, setJumpId] = useState<number | null>(initial?.jumpSessionId ?? null);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [authMode, setAuthMode] = useState<"password" | "key">(
@@ -97,6 +102,7 @@ export function SessionForm({
       username: username.trim(),
       authMethod: authMode,
       group: groupName.trim().length > 0 ? groupName.trim() : null,
+      jumpSessionId: jumpId,
       privateKeyPath: authMode === "key" ? keyPath.trim() : null,
     };
 
@@ -187,6 +193,29 @@ export function SessionForm({
           onChange={(event) => setGroupName(event.target.value)}
           placeholder="可选，例如：生产环境"
         />
+      </div>
+
+      <div className="form-row">
+        <label className="form-row__label" htmlFor="session-jump">
+          跳板机
+        </label>
+        <select
+          id="session-jump"
+          className="input"
+          value={jumpId ?? ""}
+          onChange={(event) =>
+            setJumpId(event.target.value === "" ? null : Number(event.target.value))
+          }
+        >
+          <option value="">不使用跳板机</option>
+          {sessions
+            .filter((item) => item.id !== initial?.id)
+            .map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}（{item.username}@{item.host}:{item.port}）
+              </option>
+            ))}
+        </select>
       </div>
 
       <div className="form-row">

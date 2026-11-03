@@ -103,7 +103,12 @@ async fn migrate(pool: &SqlitePool) -> Result<(), AppError> {
         .execute(pool)
         .await;
 
-    sqlx::query("PRAGMA user_version = 2").execute(pool).await?;
+    // Migration: optional jump host (ProxyJump) for a session.
+    let _ = sqlx::query("ALTER TABLE sessions ADD COLUMN jump_session_id INTEGER")
+        .execute(pool)
+        .await;
+
+    sqlx::query("PRAGMA user_version = 3").execute(pool).await?;
     Ok(())
 }
 

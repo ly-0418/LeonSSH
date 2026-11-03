@@ -168,6 +168,7 @@ export function NewSessionDialog({
           <section className="session-dialog__form">
             <SessionForm
               key={creating ? "new" : (selected?.id ?? "new")}
+              sessions={sessions}
               initial={creating ? null : selected}
               onboarding={false}
               onSaved={onSaved}

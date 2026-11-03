@@ -122,13 +122,27 @@ pub async fn ssh_open(
         Some(reference) => secure::load(reference)?,
         None => None,
     };
-    if password.is_none() {
+    if password.is_none() && record.auth_method != "key" {
         return Err(AppError::InvalidArgument(
             "该会话还没有保存密码，请先在连接设置里填写".into(),
         ));
     }
 
-    let cfg = SshConfig::from_session(&record, password);
+    let mut cfg = SshConfig::from_session(&record, password);
+    if let Some(jump_id) = record.jump_session_id {
+        if jump_id != record.id {
+            if let Ok(jump_record) = sessions::get(state.db(), jump_id).await {
+                let jump_secret = match jump_record.keyring_ref.as_deref() {
+                    Some(reference) => secure::load(reference).unwrap_or(None),
+                    None => None,
+                };
+                let mut jump_cfg = SshConfig::from_session(&jump_record, jump_secret);
+                jump_cfg.jump = None;
+                tracing::info!(jump = %jump_cfg.display_target(), target = %cfg.display_target(), "routing through jump host");
+                cfg.jump = Some(Box::new(jump_cfg));
+            }
+        }
+    }
     let terminal_id = state.allocate_session_id();
 
     let sink: Arc<dyn OutputSink> = Arc::new(ChannelSink::new(channel));

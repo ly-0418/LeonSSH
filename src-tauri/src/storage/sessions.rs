@@ -22,6 +22,7 @@ pub struct SessionRecord {
     pub private_key_path: Option<String>,
     pub color: Option<String>,
     pub group_name: Option<String>,
+    pub jump_session_id: Option<i64>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -41,6 +42,7 @@ pub struct NewSession {
     pub color: Option<String>,
     #[serde(default)]
     pub group_name: Option<String>,
+    pub jump_session_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -56,11 +58,12 @@ pub struct SessionPatch {
     pub private_key_path: Option<String>,
     #[serde(default)]
     pub color: Option<String>,  #[serde(default)]
-  pub group_name: Option<String>,
+  pub group_name: Option<String>,  #[serde(default)]
+  pub jump_session_id: Option<i64>,
 }
 
 const SELECT: &str = "SELECT id, name, host, port, username, auth_method, keyring_ref, \
-                      private_key_path, color, group_name, created_at, updated_at FROM sessions";
+                      private_key_path, color, group_name, jump_session_id, created_at, updated_at FROM sessions";
 
 pub async fn list(pool: &SqlitePool) -> Result<Vec<SessionRecord>, AppError> {
     let rows = sqlx::query_as::<_, SessionRecord>(&format!(
@@ -83,8 +86,8 @@ pub async fn create(pool: &SqlitePool, input: &NewSession) -> Result<SessionReco
     validate(&input.name, &input.host, &input.username)?;
     let auth = input.auth_method.clone().unwrap_or_else(|| "password".into());
     let result = sqlx::query(
-        "INSERT INTO sessions (name, host, port, username, auth_method, private_key_path, color, group_name) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO sessions (name, host, port, username, auth_method, private_key_path, color, group_name, jump_session_id) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(input.name.trim())
     .bind(input.host.trim())
@@ -94,6 +97,7 @@ pub async fn create(pool: &SqlitePool, input: &NewSession) -> Result<SessionReco
     .bind(input.private_key_path.as_deref())
     .bind(input.color.as_deref())
     .bind(input.group_name.as_deref())
+    .bind(input.jump_session_id)
     .execute(pool)
     .await?;
 
@@ -109,7 +113,7 @@ pub async fn update(
     let auth = input.auth_method.clone().unwrap_or_else(|| "password".into());
     let changed = sqlx::query(
         "UPDATE sessions SET name = ?, host = ?, port = ?, username = ?, auth_method = ?, \
-         private_key_path = ?, color = ?, group_name = ?, updated_at = datetime('now') WHERE id = ?",
+         private_key_path = ?, color = ?, group_name = ?, jump_session_id = ?, updated_at = datetime('now') WHERE id = ?",
     )
     .bind(input.name.trim())
     .bind(input.host.trim())
@@ -119,6 +123,7 @@ pub async fn update(
     .bind(input.private_key_path.as_deref())
     .bind(input.color.as_deref())
     .bind(input.group_name.as_deref())
+    .bind(input.jump_session_id)
     .bind(id)
     .execute(pool)
     .await?
@@ -183,6 +188,7 @@ mod tests {
             private_key_path: None,
             color: None,
             group_name: None,
+            jump_session_id: None,
         }
     }
 
@@ -206,6 +212,7 @@ mod tests {
             private_key_path: Some("C:/keys/id_ed25519".into()),
             color: Some("#4ade80".into()),
             group_name: None,
+            jump_session_id: None,
         };
         let updated = update(&pool, created.id, &patch).await.unwrap();
         assert_eq!(updated.name, "prod-2");
@@ -263,6 +270,7 @@ mod tests {
                 private_key_path: None,
                 color: Some("#38bdf8".into()),
                 group_name: None,
+                jump_session_id: None,
             },
         )
         .await

@@ -26,6 +26,17 @@ pub struct TransferProgress {
 
 /// Opens the SFTP subsystem on the terminal's existing SSH connection and
 /// returns the remote home directory.
+/// Turns a raw permission denial into an actionable Chinese explanation.
+fn zh_permission(err: AppError) -> AppError {
+    let text = err.to_string().to_lowercase();
+    if text.contains("permission denied") || text.contains("access denied") {
+        return AppError::InvalidArgument(
+            "没有权限执行该操作：服务器拒绝了写入/修改请求（Permission denied）。请检查目标文件或目录的属主与权限位（例如 chmod / chown），或改用有权限的账号。"
+                .into(),
+        );
+    }
+    err
+}
 #[tauri::command]
 pub async fn sftp_open(state: State<'_, AppState>, terminal_id: String) -> Result<String, AppError> {
     let handle = state.connection(&terminal_id).await?;
@@ -85,7 +96,7 @@ pub async fn sftp_mkdir(
     path: String,
 ) -> Result<(), AppError> {
     let session = state.sftp(&terminal_id).await?;
-    sftp::mkdir(&session, &path).await
+    sftp::mkdir(&session, &path).await.map_err(zh_permission)
 }
 
 #[tauri::command]
@@ -96,7 +107,7 @@ pub async fn sftp_remove(
     is_dir: bool,
 ) -> Result<(), AppError> {
     let session = state.sftp(&terminal_id).await?;
-    sftp::remove(&session, &path, is_dir).await
+    sftp::remove(&session, &path, is_dir).await.map_err(zh_permission)
 }
 
 #[tauri::command]
@@ -107,7 +118,7 @@ pub async fn sftp_rename(
     to: String,
 ) -> Result<(), AppError> {
     let session = state.sftp(&terminal_id).await?;
-    sftp::rename(&session, &from, &to).await
+    sftp::rename(&session, &from, &to).await.map_err(zh_permission)
 }
 
 #[tauri::command]
@@ -118,7 +129,7 @@ pub async fn sftp_chmod(
     mode: u32,
 ) -> Result<(), AppError> {
     let session = state.sftp(&terminal_id).await?;
-    sftp::chmod(&session, &path, mode).await
+    sftp::chmod(&session, &path, mode).await.map_err(zh_permission)
 }
 
 #[tauri::command]
@@ -206,7 +217,7 @@ pub async fn sftp_create_file(
     path: String,
 ) -> Result<(), AppError> {
     let session = state.sftp(&terminal_id).await?;
-    sftp::create_file(&session, &path).await
+    sftp::create_file(&session, &path).await.map_err(zh_permission)
 }
 
 /// Metadata for one remote path.

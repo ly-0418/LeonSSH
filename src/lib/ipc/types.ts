@@ -16,7 +16,7 @@ export interface SessionSummary {
   username: string;
   authMethod: "password" | "key" | string;
   color: string | null;
-  hasPassword: boolean;  privateKeyPath: string | null;
+  hasPassword: boolean;  privateKeyPath: string | null;  group?: string | null;
 }
 
 export interface SessionInput {
@@ -26,6 +26,7 @@ export interface SessionInput {
   username: string;
   authMethod?: string;
   privateKeyPath?: string | null;
+  group?: string | null;
   color?: string | null;
 }
 

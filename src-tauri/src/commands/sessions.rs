@@ -23,6 +23,7 @@ pub struct SessionView {
     pub auth_method: String,
     pub private_key_path: Option<String>,
     pub color: Option<String>,
+    pub group_name: Option<String>,
     /// Whether a password is currently stored in the Credential Manager.
     pub has_password: bool,
 }
@@ -38,6 +39,7 @@ impl SessionView {
             auth_method: record.auth_method,
             private_key_path: record.private_key_path,
             color: record.color,
+            group_name: record.group_name,
             has_password,
         }
     }

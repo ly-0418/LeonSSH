@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { SessionForm } from "./SessionForm";
 import type { SessionSummary } from "../lib/ipc/types";
 
@@ -31,6 +33,16 @@ export function NewSessionDialog({
   onSavedAndConnect,
   onClose,
 }: NewSessionDialogProps) {
+  const [query, setQuery] = useState("");
+  const keyword = query.trim().toLowerCase();
+  const filtered =
+    keyword.length === 0
+      ? sessions
+      : sessions.filter((session) =>
+          `${session.name} ${session.username} ${session.host} ${session.group ?? ""}`
+            .toLowerCase()
+            .includes(keyword),
+        );
   return (
     <div className="modal-backdrop" role="presentation">
       <div
@@ -61,8 +73,14 @@ export function NewSessionDialog({
               新建连接
             </button>
 
+            <input
+              className="input session-dialog__search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="搜索会话（名称 / 用户 / 主机 / 分组）"
+            />
             <div className="session-dialog__scroll">
-              {sessions.map((session) => (
+              {filtered.map((session) => (
                 <div
                   key={session.id}
                   className={`session-card${
@@ -96,7 +114,7 @@ export function NewSessionDialog({
                   </button>
                 </div>
               ))}
-              {sessions.length === 0 && (
+              {filtered.length === 0 && sessions.length === 0 && (
                 <p className="session-dialog__empty">还没有保存的会话，右侧直接填写即可。</p>
               )}
             </div>

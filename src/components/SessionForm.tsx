@@ -28,6 +28,7 @@ export function SessionForm({
   const [host, setHost] = useState(initial?.host ?? "");
   const [port, setPort] = useState(String(initial?.port ?? DEFAULT_PORT));
   const [username, setUsername] = useState(initial?.username ?? "");
+  const [groupName, setGroupName] = useState(initial?.group ?? "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [authMode, setAuthMode] = useState<"password" | "key">(
@@ -95,6 +96,7 @@ export function SessionForm({
       port: portNumber,
       username: username.trim(),
       authMethod: authMode,
+      group: groupName.trim().length > 0 ? groupName.trim() : null,
       privateKeyPath: authMode === "key" ? keyPath.trim() : null,
     };
 
@@ -172,6 +174,19 @@ export function SessionForm({
             aria-label="端口"
           />
         </div>
+      </div>
+
+      <div className="form-row">
+        <label className="form-row__label" htmlFor="session-group">
+          分组
+        </label>
+        <input
+          id="session-group"
+          className="input"
+          value={groupName}
+          onChange={(event) => setGroupName(event.target.value)}
+          placeholder="可选，例如：生产环境"
+        />
       </div>
 
       <div className="form-row">

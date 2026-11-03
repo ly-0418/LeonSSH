@@ -21,6 +21,7 @@ pub struct SessionRecord {
     pub keyring_ref: Option<String>,
     pub private_key_path: Option<String>,
     pub color: Option<String>,
+    pub group_name: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -38,6 +39,8 @@ pub struct NewSession {
     pub private_key_path: Option<String>,
     #[serde(default)]
     pub color: Option<String>,
+    #[serde(default)]
+    pub group_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -52,11 +55,12 @@ pub struct SessionPatch {
     #[serde(default)]
     pub private_key_path: Option<String>,
     #[serde(default)]
-    pub color: Option<String>,
+    pub color: Option<String>,  #[serde(default)]
+  pub group_name: Option<String>,
 }
 
 const SELECT: &str = "SELECT id, name, host, port, username, auth_method, keyring_ref, \
-                      private_key_path, color, created_at, updated_at FROM sessions";
+                      private_key_path, color, group_name, created_at, updated_at FROM sessions";
 
 pub async fn list(pool: &SqlitePool) -> Result<Vec<SessionRecord>, AppError> {
     let rows = sqlx::query_as::<_, SessionRecord>(&format!(
@@ -79,8 +83,8 @@ pub async fn create(pool: &SqlitePool, input: &NewSession) -> Result<SessionReco
     validate(&input.name, &input.host, &input.username)?;
     let auth = input.auth_method.clone().unwrap_or_else(|| "password".into());
     let result = sqlx::query(
-        "INSERT INTO sessions (name, host, port, username, auth_method, private_key_path, color) \
-         VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO sessions (name, host, port, username, auth_method, private_key_path, color, group_name) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(input.name.trim())
     .bind(input.host.trim())
@@ -89,6 +93,7 @@ pub async fn create(pool: &SqlitePool, input: &NewSession) -> Result<SessionReco
     .bind(auth)
     .bind(input.private_key_path.as_deref())
     .bind(input.color.as_deref())
+    .bind(input.group_name.as_deref())
     .execute(pool)
     .await?;
 
@@ -104,7 +109,7 @@ pub async fn update(
     let auth = input.auth_method.clone().unwrap_or_else(|| "password".into());
     let changed = sqlx::query(
         "UPDATE sessions SET name = ?, host = ?, port = ?, username = ?, auth_method = ?, \
-         private_key_path = ?, color = ?, updated_at = datetime('now') WHERE id = ?",
+         private_key_path = ?, color = ?, group_name = ?, updated_at = datetime('now') WHERE id = ?",
     )
     .bind(input.name.trim())
     .bind(input.host.trim())
@@ -113,6 +118,7 @@ pub async fn update(
     .bind(auth)
     .bind(input.private_key_path.as_deref())
     .bind(input.color.as_deref())
+    .bind(input.group_name.as_deref())
     .bind(id)
     .execute(pool)
     .await?

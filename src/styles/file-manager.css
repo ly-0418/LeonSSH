@@ -71,6 +71,42 @@
   justify-self: start;
 }
 
+/* Upload/download are icon buttons: muted when disabled, strongly highlighted
+   (accent fill) whenever they can act. */
+.fm-head__icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--accent-soft-border);
+  background: var(--accent-soft-bg);
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.12s ease;
+}
+
+.fm-head__icon-btn:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-elevated);
+  transform: translateY(-1px);
+}
+
+.fm-head__icon-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.fm-head__icon-btn:disabled {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-faint);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .fm-head__title {
   justify-self: center;
   font-size: 13px;

@@ -1477,7 +1477,8 @@ input[type="password"]::-ms-reveal {
 }
 
 .window-controls__btn--max {
-  font-size: 15px;
+  font-size: 19px;
+  line-height: 1;
 }
 
 /* Settings typography is one step larger than the rest of the UI. */

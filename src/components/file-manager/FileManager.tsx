@@ -272,22 +272,32 @@ export function FileManager({
       <header className="fm-head">
         <button
           type="button"
-          className="button button--primary button--sm fm-head__upload"
+          className="fm-head__icon-btn fm-head__upload"
           disabled={!canUpload}
           onClick={() => void upload(localSelection)}
           title="上传选中的本地文件到当前远程目录"
+          aria-label="上传"
         >
-          ↑ 上传
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 16V4" />
+            <path d="m7.5 8.5 4.5-4.5 4.5 4.5" />
+            <path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" />
+          </svg>
         </button>
         <span className="fm-head__title">文件传输</span>
         <button
           type="button"
-          className="fm-head__download button button--sm"
+          className="fm-head__icon-btn fm-head__download"
           disabled={!canDownload}
           onClick={() => void download(remoteSelection)}
           title="下载选中的远程文件到当前本地目录"
+          aria-label="下载"
         >
-          ↓ 下载
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 4v12" />
+            <path d="m7.5 11.5 4.5 4.5 4.5-4.5" />
+            <path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" />
+          </svg>
         </button>
       </header>
 

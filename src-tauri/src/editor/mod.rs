@@ -60,6 +60,8 @@ struct EditSession {
     /// Size/mtime of the temp file as of download or the last upload.
     local_size: u64,
     local_mtime: i64,
+    /// Process started for the external editor, when known.
+    pid: Option<u32>,
 }
 
 fn file_mtime_ms(path: &Path) -> i64 {
@@ -126,12 +128,36 @@ impl EditorManager {
         let file = self
             .prepare(sftp, terminal_id, remote_file, MAX_EXTERNAL_BYTES)
             .await?;
-        if let Err(err) = crate::commands::local::open_path(Path::new(&file.temp_path)) {
-            self.close(&file.edit_id);
-            return Err(err);
+        match crate::commands::local::open_path(Path::new(&file.temp_path)) {
+            Ok(pid) => {
+                if let Some(session) = self
+                    .sessions
+                    .lock()
+                    .expect("editor sessions poisoned")
+                    .get_mut(&file.edit_id)
+                {
+                    session.pid = pid;
+                }
+                tracing::info!(remote = %file.remote_path, ?pid, "external editor launched");
+                Ok(file)
+            }
+            Err(err) => {
+                self.close(&file.edit_id);
+                Err(err)
+            }
         }
-        tracing::info!(remote = %file.remote_path, "external editor launched");
-        Ok(file)
+    }
+
+    /// True while the external editor that opened this file is still running.
+    pub fn process_alive(&self, edit_id: &str) -> Result<bool, AppError> {
+        let sessions = self.sessions.lock().expect("editor sessions poisoned");
+        let session = sessions
+            .get(edit_id)
+            .ok_or_else(|| AppError::NotFound(format!("编辑会话 {edit_id}")))?;
+        Ok(session
+            .pid
+            .map(crate::commands::local::process_alive)
+            .unwrap_or(false))
     }
 
     async fn prepare(
@@ -191,6 +217,7 @@ impl EditorManager {
                     terminal_id: terminal_id.to_string(),
                     local_size: std::fs::metadata(&temp_path).map(|m| m.len()).unwrap_or(0),
                     local_mtime: file_mtime_ms(&temp_path),
+                    pid: None,
                 },
             );
         Ok(file)
@@ -230,6 +257,7 @@ impl EditorManager {
         edit_id: &str,
         sftp: &SftpSession,
         target: Option<&str>,
+        mut progress: impl FnMut(u64, u64),
     ) -> Result<EditorSaved, AppError> {
         let (_, file) = self.session_for(edit_id)?;
         let remote = match target {
@@ -247,7 +275,10 @@ impl EditorManager {
 
         // Editing must overwrite: resume semantics would append stale bytes.
         let cancel = AtomicBool::new(false);
-        let outcome = upload::upload_overwrite(sftp, &temp, &remote, &cancel, |_, _| {}).await?;
+        let outcome = upload::upload_overwrite(sftp, &temp, &remote, &cancel, |transferred, total| {
+            progress(transferred, total)
+        })
+        .await?;
         tracing::info!(remote = %remote, bytes = outcome.transferred, "editor saved");
 
         let after = sftp
@@ -365,7 +396,7 @@ mod tests {
         let modified = manager.temp_stat(&file.edit_id).unwrap();
         assert!(modified.changed, "external modification must be detected");
 
-        let saved = manager.save(&file.edit_id, &sftp, None).await.unwrap();
+        let saved = manager.save(&file.edit_id, &sftp, None, |_, _| {}).await.unwrap();
         assert!(saved.consistent, "warning: {:?}", saved.warning);
         assert_eq!(sftp.read(remote.clone()).await.unwrap(), b"first\nsecond\n");
 
@@ -411,7 +442,7 @@ mod tests {
         assert_eq!(original, "echo original\n");
 
         std::fs::write(&opened_file.temp_path, "echo edited\n# trailing\n").unwrap();
-        let saved = manager.save(&opened_file.edit_id, &sftp, None).await.unwrap();
+        let saved = manager.save(&opened_file.edit_id, &sftp, None, |_, _| {}).await.unwrap();
         assert!(saved.consistent, "warning: {:?}", saved.warning);
         assert_eq!(saved.size, b"echo edited\n# trailing\n".len() as u64);
 
@@ -421,7 +452,7 @@ mod tests {
         // Save-as writes a second remote file and repoints the session.
         let copy_path = format!("{base}/copy.sh");
         let saved_as = manager
-            .save(&opened_file.edit_id, &sftp, Some(&copy_path))
+            .save(&opened_file.edit_id, &sftp, Some(&copy_path), |_, _| {})
             .await
             .unwrap();
         assert_eq!(saved_as.remote_path, copy_path);

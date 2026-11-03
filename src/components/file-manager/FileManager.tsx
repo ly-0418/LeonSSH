@@ -40,6 +40,8 @@ export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: File
   const [editorRevision, setEditorRevision] = useState(0);
   const [splitPercent, setSplitPercent] = useState(50);
   const [dragging, setDragging] = useState(false);
+  const [queueHeight, setQueueHeight] = useState(150);
+  const queueDragRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const panesRef = useRef<HTMLDivElement | null>(null);
   const { tasks, speeds, error: transferError, revision, clearError, cancel } = useTransfers();
 
@@ -305,6 +307,35 @@ export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: File
         />
       </div>
 
+      <div
+        className="fq-splitter"
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="调整传输队列高度"
+        title="拖动调整下方传输队列高度（双击恢复默认）"
+        onDoubleClick={() => setQueueHeight(150)}
+        onPointerDown={(event) => {
+          event.preventDefault();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          queueDragRef.current = { startY: event.clientY, startHeight: queueHeight };
+        }}
+        onPointerMove={(event) => {
+          const drag = queueDragRef.current;
+          if (drag === null || !event.currentTarget.hasPointerCapture(event.pointerId)) {
+            return;
+          }
+          const next = drag.startHeight - (event.clientY - drag.startY);
+          setQueueHeight(Math.min(520, Math.max(60, next)));
+        }}
+        onPointerUp={(event) => {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+          queueDragRef.current = null;
+        }}
+        onPointerCancel={() => {
+          queueDragRef.current = null;
+        }}
+      />
+
       {editor !== null && (
         <ExternalEditorBar
           file={editor}
@@ -313,7 +344,12 @@ export function FileManager({ terminalId, sessionTitle, onBackToTerminal }: File
         />
       )}
 
-      <TransferQueue tasks={tasks} speeds={speeds} onCancel={(id) => void cancel(id)} />
+      <TransferQueue
+        tasks={tasks}
+        speeds={speeds}
+        height={queueHeight}
+        onCancel={(id) => void cancel(id)}
+      />
     </div>
   );
 }

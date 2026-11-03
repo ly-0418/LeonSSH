@@ -230,9 +230,11 @@
   padding: 2px 0;
 }
 
-/* Empty space below the rows: right click opens "new folder / new file". */
+/* Empty space below the rows: right click opens "new folder / new file".
+   The bottom padding keeps the last row clear of the item-count footer. */
 .fm-table__body {
-  min-height: 100%;
+  padding-bottom: 10px;
+  box-sizing: border-box;
 }
 
 /* ---------------------------------------------------------- context menu */
@@ -330,7 +332,23 @@
   color: var(--danger-text);
 }
 
-.extedit .button:first-of-type {
+.extedit__progress {
+  width: 160px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-track);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.extedit__progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.12s linear;
+}
+
+.extedit .button {
   margin-left: auto;
 }
 
@@ -446,13 +464,22 @@
   flex: 0 0 auto;
   border-top: 1px solid var(--border);
   background: var(--bg-sunken);
-  max-height: 190px;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.fq--collapsed {
-  max-height: 30px;
+/* Draggable divider between the file panes and the transfer queue. */
+.fq-splitter {
+  flex: 0 0 6px;
+  cursor: row-resize;
+  background: var(--border);
+  touch-action: none;
+}
+
+.fq-splitter:hover {
+  background: var(--accent);
 }
 
 .fq__head {

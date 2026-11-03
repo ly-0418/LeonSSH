@@ -1,6 +1,6 @@
 /** Online editing IPC: temp workspace + save back over SFTP. */
 
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 
 import { normalizeError } from "./errors";
 
@@ -25,6 +25,20 @@ export interface TempStat {
   size: number;
   mtime: number;
   changed: boolean;
+}
+
+export interface EditorProgress {
+  transferred: number;
+  total: number;
+}
+
+/** True while the external editor process is still running. */
+export async function processAlive(editId: string): Promise<boolean> {
+  try {
+    return await invoke<boolean>("editor_process_alive", { editId });
+  } catch {
+    return false;
+  }
 }
 
 /** Downloads the remote file and opens it with the Windows default app. */
@@ -56,9 +70,16 @@ export async function openEditor(terminalId: string, remotePath: string): Promis
   }
 }
 
-export async function saveEditor(editId: string): Promise<EditorSaved> {
+export async function saveEditor(
+  editId: string,
+  onProgress?: (progress: EditorProgress) => void,
+): Promise<EditorSaved> {
+  const progress = new Channel<EditorProgress>();
+  if (onProgress !== undefined) {
+    progress.onmessage = onProgress;
+  }
   try {
-    return await invoke<EditorSaved>("editor_save", { editId });
+    return await invoke<EditorSaved>("editor_save", { editId, progress });
   } catch (error) {
     throw normalizeError(error);
   }

@@ -6,6 +6,8 @@ import { formatSpeed, statusLabel, type TransferTask } from "./transferView";
 interface TransferQueueProps {
   tasks: TransferTask[];
   speeds: Record<string, number>;
+  /** Height in pixels (adjusted by the splitter above the queue). */
+  height: number;
   onCancel: (id: string) => void;
 }
 
@@ -13,7 +15,7 @@ type QueueTab = "active" | "done" | "failed";
 
 const DONE_STATES = new Set(["completed", "skipped", "cancelled"]);
 
-export function TransferQueue({ tasks, speeds, onCancel }: TransferQueueProps) {
+export function TransferQueue({ tasks, speeds, height, onCancel }: TransferQueueProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [tab, setTab] = useState<QueueTab>("active");
 
@@ -27,7 +29,10 @@ export function TransferQueue({ tasks, speeds, onCancel }: TransferQueueProps) {
   const visible = tab === "active" ? groups.active : tab === "done" ? groups.done : groups.failed;
 
   return (
-    <section className={`fq${collapsed ? " fq--collapsed" : ""}`}>
+    <section
+      className={`fq${collapsed ? " fq--collapsed" : ""}`}
+      style={{ height: collapsed ? 30 : height }}
+    >
       <header className="fq__head">
         <button type="button" className="fq__toggle" onClick={() => setCollapsed((value) => !value)}>
           {collapsed ? "▸" : "▾"} 传输队列

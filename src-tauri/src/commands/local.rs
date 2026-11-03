@@ -27,11 +27,8 @@ pub fn local_roots() -> Result<Vec<String>, AppError> {
     Ok(roots)
 }
 
-/// Opens a local file with its associated application.
-///
-/// When Windows has no association for the extension (or the shell call fails)
-/// the file is opened in Notepad instead.
-pub fn open_path(target: &Path) -> Result<(), AppError> {
+/// Opens a local file and returns the launched process id (when known).
+pub fn open_path(target: &Path) -> Result<Option<u32>, AppError> {
     if !target.is_file() {
         return Err(AppError::InvalidArgument(format!(
             "本地文件不存在: {}",
@@ -47,7 +44,9 @@ pub fn open_path(target: &Path) -> Result<(), AppError> {
     #[cfg(windows)]
     {
         use std::os::windows::ffi::OsStrExt;
-        use windows_sys::Win32::UI::Shell::ShellExecuteW;
+        use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::System::Threading::GetProcessId;
+        use windows_sys::Win32::UI::Shell::{ShellExecuteExW, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW};
         use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
 
         fn wide(value: &str) -> Vec<u16> {
@@ -60,29 +59,31 @@ pub fn open_path(target: &Path) -> Result<(), AppError> {
             .chain(std::iter::once(0))
             .collect();
         let operation = wide("open");
-        // ShellExecuteW returns a value <= 32 on failure; 31 means "no association".
-        let result = unsafe {
-            ShellExecuteW(
-                std::ptr::null_mut(),
-                operation.as_ptr(),
-                file.as_ptr(),
-                std::ptr::null(),
-                std::ptr::null(),
-                SW_SHOWNORMAL,
-            )
-        };
-        if (result as isize) <= 32 {
-            tracing::info!(
-                path = %target.display(),
-                code = result as isize,
-                "no shell association, falling back to notepad"
-            );
-            std::process::Command::new("notepad.exe")
-                .arg(target)
-                .spawn()
-                .map_err(|err| AppError::Internal(format!("启动记事本失败: {err}")))?;
+
+        let mut info: SHELLEXECUTEINFOW = unsafe { std::mem::zeroed() };
+        info.cbSize = std::mem::size_of::<SHELLEXECUTEINFOW>() as u32;
+        info.fMask = SEE_MASK_NOCLOSEPROCESS;
+        info.lpVerb = operation.as_ptr();
+        info.lpFile = file.as_ptr();
+        info.nShow = SW_SHOWNORMAL;
+
+        let launched = unsafe { ShellExecuteExW(&mut info) };
+        if launched != 0 && !info.hProcess.is_null() {
+            let pid = unsafe { GetProcessId(info.hProcess) };
+            unsafe { CloseHandle(info.hProcess) };
+            tracing::info!(path = %target.display(), pid, "opened with the default application");
+            return Ok(Some(pid));
         }
-        Ok(())
+
+        tracing::info!(
+            path = %target.display(),
+            "no shell association, falling back to notepad"
+        );
+        let child = std::process::Command::new("notepad.exe")
+            .arg(target)
+            .spawn()
+            .map_err(|err| AppError::Internal(format!("启动记事本失败: {err}")))?;
+        Ok(Some(child.id()))
     }
 
     #[cfg(not(windows))]
@@ -91,7 +92,36 @@ pub fn open_path(target: &Path) -> Result<(), AppError> {
     }
 }
 
+/// True while the process started for an edit session is still running.
+pub fn process_alive(pid: u32) -> bool {
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::System::Threading::{
+            GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
+        };
+
+        const STILL_ACTIVE: u32 = 259;
+        unsafe {
+            let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+            if handle.is_null() {
+                return false;
+            }
+            let mut code: u32 = 0;
+            let ok = GetExitCodeProcess(handle, &mut code);
+            CloseHandle(handle);
+            ok != 0 && code == STILL_ACTIVE
+        }
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = pid;
+        false
+    }
+}
+
 #[tauri::command]
 pub fn local_open_file(path: String) -> Result<(), AppError> {
-    open_path(Path::new(&path))
+    open_path(Path::new(&path)).map(|_| ())
 }

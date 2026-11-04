@@ -11,6 +11,7 @@ import { TerminalTab } from "./components/TerminalTab";
 import { WindowControls } from "./components/WindowControls";
 import { ConfirmDialog } from "./components/dialogs";
 import { setBroadcastHandler } from "./lib/terminal/TerminalSession";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { startAllForwards } from "./lib/ipc/forwards";
 import { toUserMessage } from "./lib/ipc/errors";
@@ -84,6 +85,7 @@ export default function App() {
   const [sessionDialog, setSessionDialog] = useState<SessionDialogState | null>(null);
 
   const [pendingDelete, setPendingDelete] = useState<SessionSummary | null>(null);
+  const [closeRequested, setCloseRequested] = useState(false);
   // Dialogs and drawers steal focus; hand it back to the active terminal.
   useEffect(() => {
     if (settingsOpen || sessionDialog !== null || pendingDelete !== null || view !== "terminal") {
@@ -94,6 +96,23 @@ export default function App() {
     );
     target?.focus();
   }, [settingsOpen, sessionDialog, pendingDelete, view]);
+
+  // Closing the window with live sessions asks for confirmation first.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void getCurrentWindow()
+      .onCloseRequested((event) => {
+        if (tabs.length === 0) {
+          return;
+        }
+        event.preventDefault();
+        setCloseRequested(true);
+      })
+      .then((dispose) => {
+        unlisten = dispose;
+      });
+    return () => unlisten?.();
+  }, [tabs.length]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -551,6 +570,19 @@ export default function App() {
           }}
           onSavedAndConnect={(session) => void handleSaved(session)}
           onClose={() => setSessionDialog(null)}
+        />
+      )}
+
+      {closeRequested && (
+        <ConfirmDialog
+          title="关闭 LeonSSH"
+          message={`当前有 ${tabs.length} 个会话正在进行，关闭后连接会被断开。确认关闭吗？`}
+          confirmLabel="关闭"
+          onConfirm={() => {
+            setCloseRequested(false);
+            void getCurrentWindow().destroy();
+          }}
+          onCancel={() => setCloseRequested(false)}
         />
       )}
 

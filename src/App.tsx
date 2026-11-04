@@ -88,6 +88,7 @@ export default function App() {
 
   const [pendingDelete, setPendingDelete] = useState<SessionSummary | null>(null);
   const [closeRequested, setCloseRequested] = useState(false);
+  const forceClose = useRef(false);
   const [pendingClose, setPendingClose] = useState<{ key: string; count: number; finish: () => void } | null>(null);
   // Dialogs and drawers steal focus; hand it back to the active terminal.
   useEffect(() => {
@@ -105,6 +106,9 @@ export default function App() {
     let unlisten: (() => void) | undefined;
     void getCurrentWindow()
       .onCloseRequested((event) => {
+        if (forceClose.current) {
+          return;
+        }
         if (tabs.length === 0) {
           return;
         }
@@ -605,7 +609,9 @@ export default function App() {
           confirmLabel="关闭"
           onConfirm={() => {
             setCloseRequested(false);
-            void invoke("quit_app");
+            forceClose.current = true;
+            void getCurrentWindow().close();
+            window.setTimeout(() => void invoke("quit_app"), 400);
           }}
           onCancel={() => setCloseRequested(false)}
         />

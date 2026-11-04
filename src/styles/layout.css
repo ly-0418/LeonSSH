@@ -183,9 +183,8 @@
   align-items: center;
   gap: 8px;
   max-width: 240px;
-  min-width: 96px;
-  margin-right: -12px;
-  padding: 9px 30px 9px 16px;
+  min-width: 0;
+  padding: 9px 12px 9px 15px;
   border: 1px solid transparent;
   border-bottom: none;
   border-radius: 14px 14px 0 0;
@@ -197,11 +196,16 @@
   transition: background 120ms ease, color 120ms ease;
 }
 
+/* Only neighbouring tabs overlap, so the new-tab button stays clear. */
+.tab + .tab {
+  margin-left: -14px;
+}
+
 .tab::before {
   content: "";
   position: absolute;
   top: 45%;
-  right: 0;
+  right: 7px;
   width: 1px;
   height: 18px;
   background: var(--border);
@@ -257,10 +261,11 @@
   background: transparent;
   color: var(--text-faint);
   cursor: pointer;
-  font-size: 11px;
-  border-radius: 4px;
-  width: 18px;
-  height: 18px;
+  font-size: 12px;
+  line-height: 1;
+  border-radius: 5px;
+  width: 20px;
+  height: 20px;
 }
 
 .tab__close:hover {
@@ -1095,6 +1100,7 @@ input[type="password"]::-ms-reveal {
 }
 
 .tab-bar__new {
+  margin-left: 18px;
   align-self: center;
   margin-bottom: 4px;
   width: 26px;

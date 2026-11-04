@@ -197,13 +197,25 @@
 }
 
 .tab:hover:not(.tab--active) {
-  background: color-mix(in srgb, var(--bg) 55%, transparent);
   color: var(--text-dim);
 }
 
+/* Chrome draws the hover state as an inset rounded highlight, not a full tab. */
+.tab:hover:not(.tab--active)::before {
+  content: "";
+  position: absolute;
+  inset: 5px 3px 6px;
+  z-index: -1;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-hover) 80%, transparent);
+}
+
 .tab--active {
+  margin-bottom: -1px;
+  padding-bottom: 9px;
   background: var(--bg);
   border-color: var(--border);
+  border-bottom: none;
   color: var(--text);
   box-shadow: 0 1px 0 0 var(--bg);
 }
@@ -1114,7 +1126,7 @@ input[type="password"]::-ms-reveal {
   width: 26px;
   height: 24px;
   border-radius: 6px;
-  border: 1px dashed var(--border-strong);
+  border: 0;
   background: transparent;
   color: var(--text-dim);
   font-size: 15px;
@@ -1152,6 +1164,9 @@ input[type="password"]::-ms-reveal {
 }
 
 .tab-bar__new:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
   border-style: solid;
   border-color: var(--accent);
   color: var(--accent);

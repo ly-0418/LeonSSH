@@ -13,6 +13,7 @@
 use std::sync::Arc;
 
 use tauri::ipc::{Channel, InvokeResponseBody};
+use tauri::Emitter;
 use tauri::State;
 use tokio::sync::{mpsc, watch};
 
@@ -108,6 +109,7 @@ fn resolve_size(
 /// from the Credential Manager, connects, then starts the byte pump.
 #[tauri::command]
 pub async fn ssh_open(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     session_id: i64,
     channel: Channel<InvokeResponseBody>,
@@ -175,11 +177,14 @@ pub async fn ssh_open(
     state
         .register_connection(terminal_id.clone(), opened.handle.clone())
         .await;
+    let event_app = app.clone();
     let join = tokio::spawn(async move {
         let pump_fut = pump::run(out_rx, sink, task_close.clone());
         let io_fut = session::run_io(opened, input_rx, resize_rx, task_close, out_tx);
         tokio::join!(io_fut, pump_fut);
         tracing::debug!(terminal = %task_terminal, "ssh terminal task finished");
+        // Let the UI mark the tab as disconnected (and offer a reconnect).
+        let _ = event_app.emit("terminal-closed", task_terminal.clone());
     });
 
     state

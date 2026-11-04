@@ -11,6 +11,7 @@ import { TerminalTab } from "./components/TerminalTab";
 import { WindowControls } from "./components/WindowControls";
 import { ConfirmDialog } from "./components/dialogs";
 import { setBroadcastHandler } from "./lib/terminal/TerminalSession";
+import { listen } from "@tauri-apps/api/event";
 import { startAllForwards } from "./lib/ipc/forwards";
 import { toUserMessage } from "./lib/ipc/errors";
 import { closeTerminal, writeTerminal } from "./lib/ipc/session";
@@ -318,6 +319,22 @@ export default function App() {
     },
     [activeTab, closeFiles],
   );
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void listen<string>("terminal-closed", (event) => {
+      const terminalId = event.payload;
+      setTabs((prev) =>
+        prev.map((tab) =>
+          tab.status.terminalId === terminalId
+            ? { ...tab, status: { ...tab.status, terminalId: null, state: "closed" } }
+            : tab,
+        ),
+      );
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => unlisten?.();
+  }, []);
 
   useEffect(() => {
     if (!broadcast) {

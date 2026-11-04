@@ -25,6 +25,8 @@ export interface UseTerminalOptions {
   visible: boolean;
   theme: ThemeMode;
   fontSize: number;
+  cursorStyle: "bar" | "underline";
+  cursorWidth: number;
   onInputLine?: (line: string) => void;
   onExecuted?: (line: string) => void;
   onStatus?: (patch: Partial<TerminalStatus>) => void;
@@ -36,6 +38,8 @@ export function useTerminal({
   visible,
   theme,
   fontSize,
+  cursorStyle,
+  cursorWidth,
   onInputLine,
   onExecuted,
   onStatus,
@@ -49,6 +53,8 @@ export function useTerminal({
   const themeRef = useRef(theme);
   themeRef.current = theme;
   const fontSizeRef = useRef(fontSize);
+  const cursorRef = useRef({ style: cursorStyle, width: cursorWidth });
+  cursorRef.current = { style: cursorStyle, width: cursorWidth };
   const onInputLineRef = useRef(onInputLine);
   const onExecutedRef = useRef(onExecuted);
   onExecutedRef.current = onExecuted;
@@ -91,6 +97,10 @@ export function useTerminal({
   useEffect(() => {
     sessionRef.current?.setFontSize(fontSize);
   }, [fontSize]);
+
+  useEffect(() => {
+    sessionRef.current?.setCursorStyle(cursorStyle, cursorWidth);
+  }, [cursorStyle, cursorWidth]);
 
   const clearNotice = useCallback(() => setNotice(null), []);
   const focus = useCallback(() => sessionRef.current?.focus(), []);

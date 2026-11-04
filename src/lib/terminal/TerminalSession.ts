@@ -34,6 +34,8 @@ export interface TerminalSessionOptions {
   /** UI theme at creation time; later changes go through `setTheme`. */
   theme?: ThemeMode;
   fontSize?: number;
+  cursorStyle?: "bar" | "underline";
+  cursorWidth?: number;
   onStatus?: (patch: Partial<TerminalStatus>) => void;
   onNotice?: (message: string) => void;
   /** Reports the text typed since the last Enter (for autocompletion). */
@@ -82,6 +84,8 @@ export class TerminalSession {
     this.terminal = new Terminal({
       ...TERMINAL_OPTIONS,
       fontSize: options.fontSize ?? 14,
+      cursorStyle: options.cursorStyle ?? "bar",
+      cursorWidth: options.cursorWidth ?? 2,
       theme: terminalTheme(options.theme ?? "dark"),
     });
     this.terminal.loadAddon(this.fitAddon);
@@ -294,6 +298,15 @@ export class TerminalSession {
       this.terminal.refresh(0, Math.max(0, this.terminal.rows - 1));
       this.terminal.focus();
     });
+  }
+
+  /** Applies the cursor shape/width chosen in the settings drawer. */
+  setCursorStyle(style: "bar" | "underline", width: number): void {
+    if (this.disposed) {
+      return;
+    }
+    this.terminal.options.cursorStyle = style;
+    this.terminal.options.cursorWidth = Math.min(6, Math.max(1, width));
   }
 
   /** Changes the terminal font size and refits the viewport. */

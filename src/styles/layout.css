@@ -1683,3 +1683,86 @@ input[type="password"]::-ms-reveal {
   padding-top: 16px;
   border-top: 1px solid var(--border);
 }
+/* Terminal cursor picker. */
+.cursor-options {
+  display: flex;
+  gap: 10px;
+}
+
+.cursor-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cursor-option--active {
+  border-color: var(--accent);
+  background: var(--accent-soft-bg);
+  color: var(--accent);
+}
+
+.cursor-option__preview {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 22px;
+  border-radius: 4px;
+  background: var(--bg-sunken);
+}
+
+.cursor-option__bar {
+  height: 16px;
+  background: var(--accent);
+  animation: cursor-blink 1.05s steps(1) infinite;
+}
+
+.cursor-option__underline {
+  width: 14px;
+  height: 2px;
+  background: var(--accent);
+  animation: cursor-blink 1.05s steps(1) infinite;
+}
+
+.cursor-preview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.cursor-preview__prompt {
+  color: var(--accent);
+}
+
+.cursor-preview__caret {
+  display: inline-block;
+  height: 16px;
+  background: var(--accent);
+  animation: cursor-blink 1.05s steps(1) infinite;
+}
+
+.cursor-preview__caret--line {
+  width: 14px;
+  height: 2px;
+}
+
+@keyframes cursor-blink {
+  50% {
+    opacity: 0;
+  }
+}

@@ -18,6 +18,8 @@ interface TerminalTabProps {
   visible: boolean;
   theme: ThemeMode;
   fontSize: number;
+  cursorStyle: "bar" | "underline";
+  cursorWidth: number;
   state: TerminalStatus["state"];
   /** Bumped by the tab menu to re-open the session in place. */
   reconnectAt?: number;
@@ -36,6 +38,8 @@ export function TerminalTab({
   visible,
   theme,
   fontSize,
+  cursorStyle,
+  cursorWidth,
   state,
   reconnectAt,
   onStatus,
@@ -60,6 +64,8 @@ export function TerminalTab({
     visible,
     theme,
     fontSize,
+  cursorStyle,
+  cursorWidth,
     onStatus,
     onInputLine: (value) => {
       setLine(value);

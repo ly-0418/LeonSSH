@@ -54,6 +54,13 @@ export default function App() {
   /** Tabs whose saved forward rules were already auto-started. */
   const startedForwards = useRef<Set<string>>(new Set());
   const [forwardOpen, setForwardOpen] = useState(false);
+  const [cursorStyle, setCursorStyle] = useState<"bar" | "underline">(
+    () => (localStorage.getItem("leonssh.cursorStyle") === "underline" ? "underline" : "bar"),
+  );
+  const [cursorWidth, setCursorWidth] = useState<number>(() => {
+    const stored = Number.parseInt(localStorage.getItem("leonssh.cursorWidth") ?? "", 10);
+    return Number.isFinite(stored) && stored >= 1 && stored <= 6 ? stored : 2;
+  });
   /** Incremented per tab to re-open its SSH session without remounting xterm. */
   const [reconnectTicks, setReconnectTicks] = useState<Record<string, number>>({});
   const [broadcast, setBroadcast] = useState<boolean>(
@@ -478,6 +485,8 @@ export default function App() {
                     visible={tab.key === activeKey}
                     theme={theme}
                     fontSize={fontSize}
+                    cursorStyle={cursorStyle}
+                    cursorWidth={cursorWidth}
                     onStatus={makeStatusHandler(tab.key)}
                   />
                 </div>
@@ -563,6 +572,14 @@ export default function App() {
           onChangeTheme={setTheme}
           fontSize={fontSize}
           onChangeFontSize={setFontSize}
+          cursorStyle={cursorStyle}
+          cursorWidth={cursorWidth}
+          onChangeCursorStyle={(style, width) => {
+            setCursorStyle(style);
+            setCursorWidth(width);
+            localStorage.setItem("leonssh.cursorStyle", style);
+            localStorage.setItem("leonssh.cursorWidth", String(width));
+          }}
           onClose={closeSettings}
         />
       )}

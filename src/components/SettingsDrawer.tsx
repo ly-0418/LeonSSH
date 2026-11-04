@@ -13,6 +13,9 @@ interface SettingsDrawerProps {
   exiting?: boolean;
   fontSize: number;
   onChangeFontSize: (size: number) => void;
+  cursorStyle: "bar" | "underline";
+  cursorWidth: number;
+  onChangeCursorStyle: (style: "bar" | "underline", width: number) => void;
 
   onClose: () => void;
 }
@@ -32,6 +35,9 @@ export function SettingsDrawer({
   exiting = false,
   fontSize,
   onChangeFontSize,
+  cursorStyle,
+  cursorWidth,
+  onChangeCursorStyle,
   onClose,
 }: SettingsDrawerProps) {
   const [tab, setTab] = useState<SettingsTab>("theme");
@@ -142,6 +148,59 @@ export function SettingsDrawer({
                   <span className="font-size-value">{Math.round((fontSize / 16) * 100)}%</span>
                 </div>
               </div>
+              <div className="setting-group">
+                <h3 className="setting-group__title">终端光标</h3>
+                <p className="modal__hint">选择光标形状；竖线可以调整粗细。</p>
+                <div className="cursor-options">
+                  <button
+                    type="button"
+                    className={`cursor-option${cursorStyle === "bar" ? " cursor-option--active" : ""}`}
+                    onClick={() => onChangeCursorStyle("bar", cursorWidth)}
+                  >
+                    <span className="cursor-option__preview">
+                      <span className="cursor-option__bar" style={{ width: `${cursorWidth}px` }} />
+                    </span>
+                    竖线
+                  </button>
+                  <button
+                    type="button"
+                    className={`cursor-option${cursorStyle === "underline" ? " cursor-option--active" : ""}`}
+                    onClick={() => onChangeCursorStyle("underline", cursorWidth)}
+                  >
+                    <span className="cursor-option__preview">
+                      <span className="cursor-option__underline" />
+                    </span>
+                    横线
+                  </button>
+                </div>
+                {cursorStyle === "bar" && (
+                  <div className="font-size-row">
+                    <input
+                      type="range"
+                      min={1}
+                      max={6}
+                      step={1}
+                      value={cursorWidth}
+                      onChange={(event) =>
+                        onChangeCursorStyle("bar", Number.parseInt(event.target.value, 10))
+                      }
+                    />
+                    <span className="font-size-value">{cursorWidth} px</span>
+                  </div>
+                )}
+                <div className="cursor-preview">
+                  <span className="cursor-preview__prompt">root@leonssh:~$</span>
+                  <span
+                    className={
+                      cursorStyle === "bar"
+                        ? "cursor-preview__caret"
+                        : "cursor-preview__caret cursor-preview__caret--line"
+                    }
+                    style={cursorStyle === "bar" ? { width: `${cursorWidth}px` } : undefined}
+                  />
+                </div>
+              </div>
+
               </>
             )}
 

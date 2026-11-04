@@ -43,6 +43,13 @@ export interface TerminalSessionOptions {
 }
 
 type BroadcastHandler = (data: string) => void;
+type SuggestionKeyHandler = (event: KeyboardEvent) => boolean;
+let suggestionKeyHandler: SuggestionKeyHandler | null = null;
+
+/** Lets the completion popup intercept Tab/Enter/Arrows before xterm does. */
+export function setSuggestionKeyHandler(handler: SuggestionKeyHandler | null): void {
+  suggestionKeyHandler = handler;
+}
 let broadcastHandler: BroadcastHandler | null = null;
 
 /** Registers the "type once, send everywhere" handler (null disables it). */
@@ -88,6 +95,9 @@ export class TerminalSession {
     // Clipboard: Ctrl+C copies when text is selected (otherwise it stays SIGINT),
     // Ctrl+V pastes from the system clipboard into the shell.
     this.terminal.attachCustomKeyEventHandler((event) => {
+      if (event.type === "keydown" && suggestionKeyHandler?.(event) === true) {
+        return false;
+      }
       if (event.type !== "keydown" || !event.ctrlKey || event.altKey) {
         return true;
       }

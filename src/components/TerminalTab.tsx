@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { TerminalStatus } from "../lib/ipc/types";
 import { LINUX_COMMANDS } from "../lib/terminal/commands";
+import { setSuggestionKeyHandler } from "../lib/terminal/TerminalSession";
 import { bumpCommandUsage, loadCommandUsage } from "../lib/ipc/usage";
 import { listRemoteNames } from "../lib/ipc/sftp";
 import { useTerminal } from "../hooks/useTerminal";
@@ -156,6 +157,35 @@ export function TerminalTab({
     setSuggestDismissed(true);
   }
 
+
+  // xterm's custom handler runs before its own key processing: this is the
+  // reliable place to intercept Tab/Enter/Arrows while the popup is open.
+  useEffect(() => {
+    if (!visible || activeCount === 0) {
+      setSuggestionKeyHandler(null);
+      return;
+    }
+    setSuggestionKeyHandler((event) => {
+      if (event.key === "Tab" || event.key === "Enter") {
+        acceptSuggestion(Math.min(suggestIndex, activeCount - 1));
+        return true;
+      }
+      if (event.key === "ArrowDown") {
+        setSuggestIndex((current) => (current + 1) % activeCount);
+        return true;
+      }
+      if (event.key === "ArrowUp") {
+        setSuggestIndex((current) => (current - 1 + activeCount) % activeCount);
+        return true;
+      }
+      if (event.key === "Escape") {
+        setSuggestDismissed(true);
+        return true;
+      }
+      return false;
+    });
+    return () => setSuggestionKeyHandler(null);
+  }, [visible, activeCount, suggestIndex, isPathMode, rows]);
   // Keep the highlighted candidate visible inside the scrollable popup.
   useEffect(() => {
     const list = suggestListRef.current;

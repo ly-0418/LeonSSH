@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { TerminalStatus } from "../lib/ipc/types";
 import { LINUX_COMMANDS } from "../lib/terminal/commands";
@@ -47,6 +47,7 @@ export function TerminalTab({
   const [usage, setUsage] = useState<Record<string, number>>({});
   const [pathItems, setPathItems] = useState<Array<{ name: string; isDir: boolean }>>([]);
   const [pathDir, setPathDir] = useState<string | null>(null);
+  const suggestListRef = useRef<HTMLDivElement | null>(null);
   const { containerRef, notice, clearNotice, reconnect, insertText, replaceSuffix, cursorBox, findNext, findPrevious } = useTerminal({
     sessionId,
     title,
@@ -144,6 +145,16 @@ export function TerminalTab({
     }
     setSuggestDismissed(true);
   }
+
+  // Keep the highlighted candidate visible inside the scrollable popup.
+  useEffect(() => {
+    const list = suggestListRef.current;
+    if (list === null) {
+      return;
+    }
+    const items = list.querySelectorAll<HTMLElement>(".terminal-suggest__item");
+    items[Math.min(suggestIndex, items.length - 1)]?.scrollIntoView({ block: "nearest" });
+  }, [suggestIndex, activeCount, isPathMode]);
   // Anchor the popup to the caret: below it when there is room, above otherwise.
   // Usage counters come from SQLite: they persist across restarts and upgrades.
   useEffect(() => {
@@ -301,7 +312,7 @@ export function TerminalTab({
       <div className="terminal-host" ref={containerRef} />
 
       {activeCount > 0 && (
-        <div className="terminal-suggest" style={panelStyle ?? undefined}>
+        <div className="terminal-suggest" ref={suggestListRef} style={panelStyle ?? undefined}>
           <div className="terminal-suggest__head">
             <span className="terminal-suggest__pick">
               {rows[Math.min(suggestIndex, activeCount - 1)]?.name}

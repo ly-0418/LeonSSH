@@ -985,86 +985,87 @@
 
 
 
+
 /* Larger file-manager surface: bigger text, taller rows, bigger inputs/icons. */
 .sftp-sheet {
-  font-size: 29px;
+  font-size: 34px;
 }
 
 .sftp-sheet .fm-row {
-  height: 80px;
-  padding: 16px 28px;
-  font-size: 27px;
-  grid-template-columns: 64px minmax(0, 1fr) 210px 290px;
+  height: 94px;
+  padding: 19px 32px;
+  font-size: 32px;
+  grid-template-columns: 75px minmax(0, 1fr) 246px 340px;
 }
 
 .sftp-sheet .fm-row--perm {
-  grid-template-columns: 64px minmax(0, 1fr) 194px 102px 280px;
+  grid-template-columns: 75px minmax(0, 1fr) 228px 120px 328px;
 }
 
 .sftp-sheet .fm-row__size,
 .sftp-sheet .fm-row__mode,
 .sftp-sheet .fm-row__time {
-  font-size: 25px;
+  font-size: 29px;
 }
 
 .sftp-sheet .fm-row__name {
-  gap: 22px;
+  gap: 26px;
 }
 
 .sftp-sheet .fm-icon-img {
-  width: 50px;
-  height: 50px;
+  width: 58px;
+  height: 58px;
 }
 
 .sftp-sheet .fm-icon {
-  width: 52px;
-  height: 52px;
-  font-size: 22px;
+  width: 61px;
+  height: 61px;
+  font-size: 26px;
 }
 
 .sftp-sheet .fm-icon--dir {
-  width: 56px;
+  width: 66px;
 }
 
 .sftp-sheet .fm-pathbar {
-  padding: 22px 26px;
-  gap: 18px;
+  padding: 26px 30px;
+  gap: 21px;
 }
 
 .sftp-sheet .fm-pathbar__label {
-  font-size: 24px;
+  font-size: 28px;
 }
 
 .sftp-sheet .fm-pathbar__input,
 .sftp-sheet .fm-pathbar__search {
-  height: 80px;
-  padding: 22px 188px 22px 26px;
-  font-size: 28px;
+  height: 94px;
+  padding: 26px 220px 26px 30px;
+  font-size: 33px;
 }
 
 .sftp-sheet .fm-pathbar__search {
-  width: 440px;
-  padding-right: 26px;
+  width: 515px;
+  padding-right: 30px;
 }
 
 .sftp-sheet .fm-iconbtn {
-  width: 70px;
-  height: 70px;
-  font-size: 30px;
+  width: 82px;
+  height: 82px;
+  font-size: 35px;
 }
 
 .sftp-sheet .fm-toolbar button,
 .sftp-sheet .fm-tabs button {
-  font-size: 27px;
+  font-size: 32px;
 }
 
 .sftp-sheet .fm-table__head {
-  font-size: 27px;
-  height: 78px;
+  font-size: 32px;
+  height: 92px;
 }
 
 .sftp-sheet .fm-table__row-check,
 .sftp-sheet input[type="checkbox"] {
-  width: 30px;
-  height: 30px;
+  width: 35px;
+  height: 35px;
 }

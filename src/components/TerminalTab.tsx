@@ -4,7 +4,6 @@ import type { TerminalStatus } from "../lib/ipc/types";
 import { LINUX_COMMANDS } from "../lib/terminal/commands";
 import { setSuggestionKeyHandler } from "../lib/terminal/TerminalSession";
 import { bumpCommandUsage, loadCommandUsage } from "../lib/ipc/usage";
-import { listRemoteNames } from "../lib/ipc/sftp";
 import { useTerminal } from "../hooks/useTerminal";
 import type { ThemeMode } from "../lib/terminal/theme";
 
@@ -34,7 +33,6 @@ interface TerminalTabProps {
 export function TerminalTab({
   sessionId,
   title,
-  terminalId,
   visible,
   theme,
   fontSize,
@@ -52,8 +50,6 @@ export function TerminalTab({
   const [suggestDismissed, setSuggestDismissed] = useState(false);
   const [panelStyle, setPanelStyle] = useState<{ left: number; top: number } | null>(null);
   const [usage, setUsage] = useState<Record<string, number>>({});
-  const [pathItems, setPathItems] = useState<Array<{ name: string; isDir: boolean }>>([]);
-  const [pathDir, setPathDir] = useState<string | null>(null);
   const suggestListRef = useRef<HTMLDivElement | null>(null);
   const paneRef = useRef<HTMLElement | null>(null);
   /** Keeps the popup closed after accepting a file (no deeper level). */
@@ -61,7 +57,7 @@ export function TerminalTab({
   const previousLineRef = useRef("");
   /** Synchronous mirror of suggestDismissed so the key handler never acts on a closed popup. */
   const dismissedRef = useRef(false);
-  const { containerRef, notice, clearNotice, reconnect, insertText, backspace, findNext, findPrevious, focus } = useTerminal({
+  const { containerRef, notice, clearNotice, reconnect, insertText, findNext, findPrevious, focus } = useTerminal({
     sessionId,
     title,
     visible,
@@ -108,49 +104,7 @@ export function TerminalTab({
       : [];
 
 
-  // Path mode: completing the last token when it contains a slash.
-  const lastToken = typed.split(" ").pop() ?? "";
-  const isPathMode = lastToken.includes("/") && (typed.includes(" ") || lastToken.startsWith("/") || lastToken.startsWith("./"));
-  const slashIndex = lastToken.lastIndexOf("/");
-  const dirPart = isPathMode ? lastToken.slice(0, slashIndex + 1) : "";
-  const prefixPart = isPathMode ? lastToken.slice(slashIndex + 1) : "";
-
-  useEffect(() => {
-    if (!isPathMode || terminalId === undefined) {
-      setPathItems([]);
-      setPathDir(null);
-      return;
-    }
-    const dir = dirPart.length === 0 ? "/" : dirPart;
-    if (pathDir === dir && pathItems.length > 0) {
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      void listRemoteNames(terminalId, dir, 400)
-        .then((items) => {
-          setPathItems(items.map((item) => ({ name: item.name, isDir: item.isDir })));
-          setPathDir(dir);
-        })
-        .catch(() => {
-          setPathItems([]);
-          setPathDir(dir);
-        });
-    }, 160);
-    return () => window.clearTimeout(timer);
-  }, [isPathMode, terminalId, dirPart, pathDir]);
-
-  const pathSuggestions = isPathMode
-    ? pathItems
-        .filter((entry) => entry.name.startsWith(prefixPart))
-        .filter((entry) => !entry.name.startsWith(".") || prefixPart.startsWith("."))
-        .filter((entry) => entry.name !== prefixPart)
-        .sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name))
-        .slice(0, 8)
-    : [];
-
-  const rows = isPathMode
-    ? pathSuggestions.map((item) => ({ name: item.name, desc: item.isDir ? "目录" : "文件", isDir: item.isDir }))
-    : candidates.map((item) => ({ name: item.name, desc: item.desc, isDir: false }));
+  const rows = candidates.map((item) => ({ name: item.name, desc: item.desc }));
   const activeCount = rows.length;
 
   function bumpUsageLocal(name: string): void {
@@ -160,28 +114,6 @@ export function TerminalTab({
   }
 
   function acceptSuggestion(index: number): void {
-    void import("@tauri-apps/api/core").then(({ invoke }) =>
-      invoke("frontend_error", {
-        message: `accept idx=${index} path=${String(isPathMode)} cand=${pathSuggestions.length} rows=${rows.length} prefix=${JSON.stringify(prefixPart)} typed=${JSON.stringify(typed)}`,
-      }),
-    );
-    if (isPathMode) {
-      const pick = pathSuggestions[index];
-      if (pick !== undefined) {
-        if (prefixPart.length > 0) {
-          backspace(prefixPart.length);
-        }
-        if (true) {
-          ignoreNextLineRef.current = true;
-        }
-        insertText(pick.name);
-        dismissedRef.current = true;
-        setSuggestionKeyHandler(null);
-        setSuggestDismissed(true);
-        focus();
-      }
-      return;
-    }
     const pick = candidates[index];
     if (pick !== undefined) {
       bumpUsageLocal(pick.name);
@@ -198,9 +130,6 @@ export function TerminalTab({
       setSuggestionKeyHandler(null);
       return;
     }
-    void import("@tauri-apps/api/core").then(({ invoke }) =>
-      invoke("frontend_error", { message: `suggest-register active=${activeCount} path=${String(isPathMode)}` }),
-    );
     setSuggestionKeyHandler((event) => {
       if (dismissedRef.current) {
         return false;
@@ -230,7 +159,7 @@ export function TerminalTab({
       return false;
     });
     return () => setSuggestionKeyHandler(null);
-  }, [visible, activeCount, suggestIndex, isPathMode, rows]);
+  }, [visible, activeCount, suggestIndex, rows]);
   // Keep the highlighted candidate visible inside the scrollable popup.
   useEffect(() => {
     const list = suggestListRef.current;
@@ -248,7 +177,7 @@ export function TerminalTab({
       list.scrollTop = 0;
     }
     active.scrollIntoView({ block: "nearest" });
-  }, [suggestIndex, activeCount, isPathMode]);
+  }, [suggestIndex, activeCount]);
   // Anchor the popup to the real caret: the hidden textarea sits exactly on the
   // cursor cell, so its rect is a reliable anchor inside the pane.
   useLayoutEffect(() => {
@@ -398,7 +327,7 @@ export function TerminalTab({
         focus();
               }}
             >
-              <span className={`terminal-suggest__name${command.isDir ? " terminal-suggest__name--dir" : ""}`}>{command.name}</span>
+              <span className={`terminal-suggest__name`}>{command.name}</span>
               <span className="terminal-suggest__desc">{command.desc}</span>
             </button>
           ))}

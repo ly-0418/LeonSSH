@@ -250,6 +250,7 @@ pub async fn sftp_list_names(
     path: String,
     limit: Option<usize>,
 ) -> Result<Vec<sftp::FileEntry>, AppError> {
-    let session = state.sftp(&terminal_id).await?;
-    sftp::list_names(&session, &path, limit.unwrap_or(200)).await
+    // Completion may be the first SFTP user of the connection: open lazily.
+    let session = super::transfer::ensure_sftp(&state, &terminal_id).await?;
+    sftp::list_names(&session, &path, limit.unwrap_or(400)).await
 }

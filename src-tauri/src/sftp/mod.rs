@@ -507,7 +507,12 @@ async fn copy_dir(sftp: &SftpSession, from: &str, to: &str) -> Result<u64, AppEr
 /// Names only, bounded: used by path completion. Stops reading once `limit`
 /// entries were collected, so huge folders stay fast.
 pub async fn list_names(sftp: &SftpSession, path: &str, limit: usize) -> Result<Vec<FileEntry>, AppError> {
-    let dir = normalize_remote(path);
+    // Resolve relative paths ("./", "../", "dir/") against the login directory.
+    let dir = sftp
+        .canonicalize(path.to_string())
+        .await
+        .map(|resolved| normalize_remote(&resolved))
+        .unwrap_or_else(|_| normalize_remote(path));
     let started = std::time::Instant::now();
     let mut names: Vec<FileEntry> = Vec::new();
     sftp.read_dir_batches(dir.clone(), |files| {

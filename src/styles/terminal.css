@@ -4,7 +4,7 @@
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
-  padding: 12px;
+  padding: 12px 22px;
   background: var(--bg);
 }
 

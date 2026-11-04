@@ -1167,12 +1167,13 @@ input[type="password"]::-ms-reveal {
   background: var(--bg-hover);
   color: var(--text);
 }
+
+.tab-bar__action--active {
   border-style: solid;
   border-color: var(--accent);
   color: var(--accent);
   background: var(--accent-soft-bg);
 }
-
 .new-session__head {
   display: flex;
   align-items: center;

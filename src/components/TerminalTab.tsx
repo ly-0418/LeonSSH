@@ -153,7 +153,16 @@ export function TerminalTab({
       return;
     }
     const items = list.querySelectorAll<HTMLElement>(".terminal-suggest__item");
-    items[Math.min(suggestIndex, items.length - 1)]?.scrollIntoView({ block: "nearest" });
+    const active = items[Math.min(suggestIndex, items.length - 1)];
+    if (active === undefined) {
+      return;
+    }
+    // Wrapping to the first item must clear the sticky header, otherwise the
+    // highlighted row hides underneath it.
+    if (suggestIndex === 0) {
+      list.scrollTop = 0;
+    }
+    active.scrollIntoView({ block: "nearest" });
   }, [suggestIndex, activeCount, isPathMode]);
   // Anchor the popup to the caret: below it when there is room, above otherwise.
   // Usage counters come from SQLite: they persist across restarts and upgrades.

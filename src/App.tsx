@@ -12,6 +12,7 @@ import { WindowControls } from "./components/WindowControls";
 import { ConfirmDialog } from "./components/dialogs";
 import { setBroadcastHandler } from "./lib/terminal/TerminalSession";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listTransfers } from "./lib/ipc/transfers";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { startAllForwards } from "./lib/ipc/forwards";
@@ -87,6 +88,7 @@ export default function App() {
 
   const [pendingDelete, setPendingDelete] = useState<SessionSummary | null>(null);
   const [closeRequested, setCloseRequested] = useState(false);
+  const [pendingClose, setPendingClose] = useState<{ key: string; count: number; finish: () => void } | null>(null);
   // Dialogs and drawers steal focus; hand it back to the active terminal.
   useEffect(() => {
     if (settingsOpen || sessionDialog !== null || pendingDelete !== null || view !== "terminal") {
@@ -219,17 +221,39 @@ export default function App() {
 
   const closeTab = useCallback(
     (key: string) => {
-      const next = tabs.filter((tab) => tab.key !== key);
-      setTabs(next);
-      if (activeKey === key) {
-        setActiveKey(next.length > 0 ? next[next.length - 1].key : null);
-      }
-      if (next.length === 0) {
-        setView("terminal");
-        if (sessions.length === 0) {
-          setMode("form");
+      const tab = tabs.find((item) => item.key === key);
+      const finish = () => {
+        const next = tabs.filter((item) => item.key !== key);
+        setTabs(next);
+        if (activeKey === key) {
+          setActiveKey(next.length > 0 ? next[next.length - 1].key : null);
         }
+        if (next.length === 0) {
+          setView("terminal");
+          if (sessions.length === 0) {
+            setMode("form");
+          }
+        }
+      };
+      const terminalId = tab?.status.terminalId ?? null;
+      if (terminalId === null) {
+        finish();
+        return;
       }
+      void listTransfers()
+        .then((tasks) => {
+          const active = tasks.filter(
+            (task) =>
+              task.terminalId === terminalId &&
+              (task.status === "running" || task.status === "queued"),
+          );
+          if (active.length === 0) {
+            finish();
+            return;
+          }
+          setPendingClose({ key, count: active.length, finish });
+        })
+        .catch(() => finish());
     },
     [tabs, activeKey, sessions.length],
   );
@@ -584,6 +608,20 @@ export default function App() {
             void invoke("quit_app");
           }}
           onCancel={() => setCloseRequested(false)}
+        />
+      )}
+
+      {pendingClose !== null && (
+        <ConfirmDialog
+          title="关闭会话"
+          message={`该会话有 ${pendingClose.count} 个传输正在进行，关闭会中断它们。确认关闭吗？`}
+          confirmLabel="关闭"
+          onConfirm={() => {
+            const action = pendingClose.finish;
+            setPendingClose(null);
+            action();
+          }}
+          onCancel={() => setPendingClose(null)}
         />
       )}
 

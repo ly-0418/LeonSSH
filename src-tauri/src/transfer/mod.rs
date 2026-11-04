@@ -76,6 +76,35 @@ impl TransferManager {
         }
     }
 
+    /// Marks every queued/running task of a terminal as failed. Used when the
+    /// session is closed: its SFTP subsystem is about to be dropped.
+    pub fn cancel_for_terminal(&self, terminal: &str, reason: &str) {
+        let ids: Vec<String> = {
+            let tasks = self.tasks.lock().expect("transfer tasks poisoned");
+            tasks
+                .values()
+                .filter(|task| {
+                    task.terminal_id == terminal
+                        && matches!(
+                            task.status,
+                            TransferStatus::Queued | TransferStatus::Running
+                        )
+                })
+                .map(|task| task.id.clone())
+                .collect()
+        };
+        for id in ids {
+            if let Some(flag) = self.cancels.lock().expect("transfer cancels poisoned").get(&id) {
+                flag.store(true, Ordering::Relaxed);
+            }
+            self.update(&id, |task| {
+                task.status = TransferStatus::Failed;
+                task.error = Some(reason.to_string());
+                task.finished_at = Some(now_secs());
+            });
+        }
+    }
+
     fn emit(&self, task: &TransferTask) {
         if let Some(channel) = self.sink.lock().expect("transfer sink poisoned").as_ref() {
             let _ = channel.send(task.clone());

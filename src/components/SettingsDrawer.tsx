@@ -17,11 +17,10 @@ interface SettingsDrawerProps {
   onClose: () => void;
 }
 
-type SettingsTab = "theme" | "fonts" | "hosts" | "about";
+type SettingsTab = "theme" | "hosts" | "about";
 
 const TABS: Array<{ key: SettingsTab; label: string }> = [
-  { key: "theme", label: "主题" },
-  { key: "fonts", label: "字体" },
+  { key: "theme", label: "界面样式" },
   { key: "hosts", label: "主机" },
   { key: "about", label: "关于" },
 ];
@@ -102,6 +101,7 @@ export function SettingsDrawer({
 
           <section className="drawer__content">
             {tab === "theme" && (
+              <>
               <div className="setting-group">
                 <h3 className="setting-group__title">主题</h3>
                 <p className="modal__hint">同时作用于界面与终端配色。</p>
@@ -124,12 +124,12 @@ export function SettingsDrawer({
                   </button>
                 </div>
               </div>
-            )}
 
-            {tab === "fonts" && (
               <div className="setting-group">
-                <h3 className="setting-group__title">字体大小</h3>
-                <p className="modal__hint">终端字号，立即生效并随配置保存。</p>
+                <h3 className="setting-group__title">界面缩放</h3>
+                <p className="modal__hint">
+                  整体放大或缩小界面与终端字号，16px 为标准大小（{Math.round((fontSize / 16) * 100)}%）。
+                </p>
                 <div className="font-size-row">
                   <input
                     type="range"
@@ -142,9 +142,10 @@ export function SettingsDrawer({
                   <span className="font-size-value">{fontSize} px</span>
                 </div>
                 <div className="font-preview" style={{ fontSize: `${fontSize}px` }}>
-                  LeonSSH@localhost:~$ echo 字体预览
+                  LeonSSH@localhost:~$ echo 界面缩放预览
                 </div>
               </div>
+              </>
             )}
 
             {tab === "about" && (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import type { TerminalStatus } from "../lib/ipc/types";
+import { LINUX_COMMANDS } from "../lib/terminal/commands";
 import { useTerminal } from "../hooks/useTerminal";
 import type { ThemeMode } from "../lib/terminal/theme";
 
@@ -34,14 +35,60 @@ export function TerminalTab({
 }: TerminalTabProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const { containerRef, notice, clearNotice, reconnect, findNext, findPrevious } = useTerminal({
+  const [line, setLine] = useState("");
+  const [suggestIndex, setSuggestIndex] = useState(0);
+  const [suggestDismissed, setSuggestDismissed] = useState(false);
+  const { containerRef, notice, clearNotice, reconnect, insertText, findNext, findPrevious } = useTerminal({
     sessionId,
     title,
     visible,
     theme,
     fontSize,
     onStatus,
+    onInputLine: (value) => {
+      setLine(value);
+      setSuggestDismissed(false);
+      setSuggestIndex(0);
+    },
   });
+
+  const typed = line.trimStart();
+  const candidates =
+    !suggestDismissed && typed.length > 0 && !typed.includes(" ")
+      ? LINUX_COMMANDS.filter(
+          (command) => command.name.startsWith(typed) && command.name !== typed,
+        ).slice(0, 8)
+      : [];
+
+  useEffect(() => {
+    if (!visible || candidates.length === 0) {
+      return;
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Tab" || event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        const pick = candidates[Math.min(suggestIndex, candidates.length - 1)];
+        if (pick !== undefined) {
+          insertText(pick.name.slice(typed.length));
+        }
+        setSuggestDismissed(true);
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        event.stopPropagation();
+        setSuggestIndex((current) => (current + 1) % candidates.length);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        event.stopPropagation();
+        setSuggestIndex((current) => (current - 1 + candidates.length) % candidates.length);
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        setSuggestDismissed(true);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [visible, candidates, suggestIndex, insertText, typed]);
 
   useEffect(() => {
     if (reconnectAt !== undefined && reconnectAt > 0) {
@@ -50,6 +97,7 @@ export function TerminalTab({
     // Reconnect only when the tick changes, never on first render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reconnectAt]);
+
 
   useEffect(() => {
     if (!visible) {
@@ -96,6 +144,34 @@ export function TerminalTab({
       )}
 
       <div className="terminal-host" ref={containerRef} />
+
+      {candidates.length > 0 && (
+        <div className="terminal-suggest">
+          <div className="terminal-suggest__head">
+            <span className="terminal-suggest__pick">
+              {candidates[Math.min(suggestIndex, candidates.length - 1)].name}
+            </span>
+            <span className="terminal-suggest__keys">Tab 填入 · ↑↓ 选择 · Enter 确认 · Esc 关闭</span>
+          </div>
+          {candidates.map((command, index) => (
+            <button
+              type="button"
+              key={command.name}
+              className={`terminal-suggest__item${
+                index === suggestIndex ? " terminal-suggest__item--active" : ""
+              }`}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                insertText(command.name.slice(typed.length));
+                setSuggestDismissed(true);
+              }}
+            >
+              <span className="terminal-suggest__name">{command.name}</span>
+              <span className="terminal-suggest__desc">{command.desc}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {state === "closed" && onReconnect !== undefined && (
         <button type="button" className="terminal-reconnect" onClick={onReconnect}>

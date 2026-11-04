@@ -25,10 +25,19 @@ export interface UseTerminalOptions {
   visible: boolean;
   theme: ThemeMode;
   fontSize: number;
+  onInputLine?: (line: string) => void;
   onStatus?: (patch: Partial<TerminalStatus>) => void;
 }
 
-export function useTerminal({ sessionId, title, visible, theme, fontSize, onStatus }: UseTerminalOptions) {
+export function useTerminal({
+  sessionId,
+  title,
+  visible,
+  theme,
+  fontSize,
+  onInputLine,
+  onStatus,
+}: UseTerminalOptions) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sessionRef = useRef<TerminalSession | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -38,6 +47,8 @@ export function useTerminal({ sessionId, title, visible, theme, fontSize, onStat
   const themeRef = useRef(theme);
   themeRef.current = theme;
   const fontSizeRef = useRef(fontSize);
+  const onInputLineRef = useRef(onInputLine);
+  onInputLineRef.current = onInputLine;
   fontSizeRef.current = fontSize;
 
   useEffect(() => {
@@ -82,6 +93,10 @@ export function useTerminal({ sessionId, title, visible, theme, fontSize, onStat
     void sessionRef.current?.reconnect();
   }, []);
 
+  const insertText = useCallback((text: string) => {
+    void sessionRef.current?.insertText(text);
+  }, []);
+
   const findNext = useCallback((text: string) => {
     sessionRef.current?.findNext(text);
   }, []);
@@ -89,5 +104,5 @@ export function useTerminal({ sessionId, title, visible, theme, fontSize, onStat
     sessionRef.current?.findPrevious(text);
   }, []);
 
-  return { containerRef, notice, clearNotice, reconnect, findNext, findPrevious, focus, initialStatus: INITIAL_STATUS };
+  return { containerRef, notice, clearNotice, reconnect, insertText, findNext, findPrevious, focus, initialStatus: INITIAL_STATUS };
 }

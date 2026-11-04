@@ -36,6 +36,8 @@ export interface TerminalSessionOptions {
   fontSize?: number;
   onStatus?: (patch: Partial<TerminalStatus>) => void;
   onNotice?: (message: string) => void;
+  /** Reports the text typed since the last Enter (for autocompletion). */
+  onInputLine?: (line: string) => void;
 }
 
 type BroadcastHandler = (data: string) => void;
@@ -50,6 +52,7 @@ export class TerminalSession {
   private readonly terminal: Terminal;
   private readonly fitAddon = new FitAddon();
   private readonly searchAddon = new SearchAddon();
+  private inputLine = "";
   /** A fresh channel per connection: reusing one after close drops output. */
   private channel: Channel<ArrayBuffer> | null = null;
   private readonly encoder = new TextEncoder();
@@ -110,6 +113,7 @@ export class TerminalSession {
     });
 
     this.terminal.onData((data) => {
+      this.trackInput(data);
       void this.handleInput(data);
       broadcastHandler?.(data);
     });
@@ -265,6 +269,30 @@ export class TerminalSession {
   }
 
   // ----------------------------------------------------------- I/O plumbing
+
+  /** Keeps a rough copy of the line being typed so the UI can suggest commands. */
+  private trackInput(data: string): void {
+    for (const char of data) {
+      if (char === "\r" || char === "\n" || char === "\x03") {
+        this.inputLine = "";
+      } else if (char === "\x7f") {
+        this.inputLine = this.inputLine.slice(0, -1);
+      } else if (char >= " ") {
+        this.inputLine += char;
+      }
+    }
+    this.options.onInputLine?.(this.inputLine);
+  }
+
+  /** Writes text into the shell and keeps the tracked line in sync. */
+  async insertText(text: string): Promise<void> {
+    if (this.disposed || text.length === 0) {
+      return;
+    }
+    this.inputLine += text;
+    this.options.onInputLine?.(this.inputLine);
+    await this.handleInput(text);
+  }
 
   private handleOutput(payload: ArrayBuffer): void {
     if (this.disposed) {

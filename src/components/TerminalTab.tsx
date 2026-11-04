@@ -49,7 +49,7 @@ export function TerminalTab({
   const [pathDir, setPathDir] = useState<string | null>(null);
   const suggestListRef = useRef<HTMLDivElement | null>(null);
   const paneRef = useRef<HTMLElement | null>(null);
-  const { containerRef, notice, clearNotice, reconnect, insertText, replaceSuffix, findNext, findPrevious } = useTerminal({
+  const { containerRef, notice, clearNotice, reconnect, insertText, backspace, findNext, findPrevious } = useTerminal({
     sessionId,
     title,
     visible,
@@ -135,7 +135,10 @@ export function TerminalTab({
     if (isPathMode) {
       const pick = pathSuggestions[index];
       if (pick !== undefined) {
-        replaceSuffix(prefixPart.length, pick.name + (pick.isDir ? "/" : ""));
+        if (prefixPart.length > 0) {
+          backspace(prefixPart.length);
+        }
+        insertText(pick.name + (pick.isDir ? "/" : ""));
         setSuggestDismissed(true);
       }
       return;

@@ -99,6 +99,10 @@ export function useTerminal({
     void sessionRef.current?.reconnect();
   }, []);
 
+  const backspace = useCallback((count: number) => {
+    void sessionRef.current?.backspace(count);
+  }, []);
+
   const replaceSuffix = useCallback((remove: number, text: string) => {
     void sessionRef.current?.replaceSuffix(remove, text);
   }, []);
@@ -116,5 +120,5 @@ export function useTerminal({
     sessionRef.current?.findPrevious(text);
   }, []);
 
-  return { containerRef, notice, clearNotice, reconnect, insertText, replaceSuffix, cursorBox, findNext, findPrevious, focus, initialStatus: INITIAL_STATUS };
+  return { containerRef, notice, clearNotice, reconnect, insertText, backspace, replaceSuffix, cursorBox, findNext, findPrevious, focus, initialStatus: INITIAL_STATUS };
 }

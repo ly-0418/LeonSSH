@@ -314,6 +314,16 @@ export class TerminalSession {
     this.options.onInputLine?.(this.inputLine);
   }
 
+  /** Sends `count` backspaces to the shell and trims the tracked line. */
+  async backspace(count: number): Promise<void> {
+    if (this.disposed || count <= 0 || this.terminalId === null) {
+      return;
+    }
+    this.inputLine = this.inputLine.slice(0, Math.max(0, this.inputLine.length - count));
+    this.options.onInputLine?.(this.inputLine);
+    await this.handleInput("\x7f".repeat(count));
+  }
+
   /** Replaces the last `remove` characters of the current line with `text`. */
   async replaceSuffix(remove: number, text: string): Promise<void> {
     if (this.disposed) {

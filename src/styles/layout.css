@@ -162,8 +162,9 @@
 .tab-bar {
   flex: 0 0 auto;
   display: flex;
-  gap: 4px;
-  padding: 6px 8px 0;
+  align-items: flex-end;
+  gap: 0;
+  padding: 8px 10px 0;
   overflow-x: auto;
   background: var(--bg-header);
   border-bottom: 1px solid var(--border);
@@ -174,26 +175,55 @@
   display: none;
 }
 
+/* Chrome-style tabs: overlapping rounded tops, the active one merges with the
+   page below and sits above its neighbours. */
 .tab {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 7px;
-  max-width: 220px;
-  padding: 6px 8px 6px 10px;
-  border: 1px solid var(--border);
+  gap: 8px;
+  max-width: 240px;
+  min-width: 96px;
+  margin-right: -12px;
+  padding: 9px 30px 9px 16px;
+  border: 1px solid transparent;
   border-bottom: none;
-  border-radius: 7px 7px 0 0;
-  background: var(--bg-panel);
-  color: var(--text-dim);
+  border-radius: 14px 14px 0 0;
+  background: transparent;
+  color: var(--text-faint);
   font-size: 12.5px;
   cursor: pointer;
   white-space: nowrap;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.tab::before {
+  content: "";
+  position: absolute;
+  top: 45%;
+  right: 0;
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  transform: translateY(-50%);
+}
+
+.tab:hover:not(.tab--active) {
+  background: var(--bg-hover);
+  color: var(--text-dim);
 }
 
 .tab--active {
-  background: var(--bg-hover);
+  z-index: 2;
+  background: var(--bg);
+  border-color: var(--border);
   color: var(--text);
-  border-color: var(--border-strong);
+  box-shadow: 0 1px 0 0 var(--bg);
+}
+
+.tab--active::before,
+.tab--active + .tab::before {
+  opacity: 0;
 }
 
 .tab__dot {
@@ -222,6 +252,7 @@
 }
 
 .tab__close {
+  margin-left: auto;
   border: 0;
   background: transparent;
   color: var(--text-faint);

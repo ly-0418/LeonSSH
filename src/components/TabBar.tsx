@@ -150,16 +150,6 @@ export function TabBar({
           style={{ left: menu.x, top: menu.y }}
           onClick={(event) => event.stopPropagation()}
         >
-          <button
-            type="button"
-            className="tab-menu__item"
-            onClick={() => {
-              onDuplicate(menu.key);
-              setMenu(null);
-            }}
-          >
-            复制连接到新会话
-          </button>
                     {(() => {
               const target = tabs.find((tab) => tab.key === menu.key);
               const connected = target !== undefined && target.status.terminalId !== null;
@@ -187,6 +177,16 @@ export function TabBar({
                 </button>
               );
             })()}
+          <button
+            type="button"
+            className="tab-menu__item"
+            onClick={() => {
+              onDuplicate(menu.key);
+              setMenu(null);
+            }}
+          >
+            复制连接到新会话
+          </button>
         </div>
       )}
     </div>

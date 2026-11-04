@@ -26,6 +26,7 @@ export interface UseTerminalOptions {
   theme: ThemeMode;
   fontSize: number;
   onInputLine?: (line: string) => void;
+  onExecuted?: (line: string) => void;
   onStatus?: (patch: Partial<TerminalStatus>) => void;
 }
 
@@ -36,6 +37,7 @@ export function useTerminal({
   theme,
   fontSize,
   onInputLine,
+  onExecuted,
   onStatus,
 }: UseTerminalOptions) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -48,6 +50,8 @@ export function useTerminal({
   themeRef.current = theme;
   const fontSizeRef = useRef(fontSize);
   const onInputLineRef = useRef(onInputLine);
+  const onExecutedRef = useRef(onExecuted);
+  onExecutedRef.current = onExecuted;
   onInputLineRef.current = onInputLine;
   fontSizeRef.current = fontSize;
 
@@ -66,6 +70,7 @@ export function useTerminal({
       onStatus: (patch) => statusRef.current?.(patch),
       onNotice: (message) => setNotice(message),
         onInputLine: (value) => onInputLineRef.current?.(value),
+        onExecuted: (line) => onExecutedRef.current?.(line),
     });
     sessionRef.current = session;
 

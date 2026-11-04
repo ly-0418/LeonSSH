@@ -38,6 +38,8 @@ export interface TerminalSessionOptions {
   onNotice?: (message: string) => void;
   /** Reports the text typed since the last Enter (for autocompletion). */
   onInputLine?: (line: string) => void;
+  /** Fires when Enter submits a non-empty line (for usage counting). */
+  onExecuted?: (line: string) => void;
 }
 
 type BroadcastHandler = (data: string) => void;
@@ -296,7 +298,12 @@ export class TerminalSession {
   /** Keeps a rough copy of the line being typed so the UI can suggest commands. */
   private trackInput(data: string): void {
     for (const char of data) {
-      if (char === "\r" || char === "\n" || char === "\x03") {
+      if (char === "\r" || char === "\n") {
+        if (this.inputLine.trim().length > 0) {
+          this.options.onExecuted?.(this.inputLine);
+        }
+        this.inputLine = "";
+      } else if (char === "\x03") {
         this.inputLine = "";
       } else if (char === "\x7f") {
         this.inputLine = this.inputLine.slice(0, -1);

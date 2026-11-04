@@ -175,68 +175,61 @@
   display: none;
 }
 
-/* Chrome-style tabs: slanted (skewed) shapes that touch without ever covering
-   a neighbour's text, and an active tab that merges with the page below. */
+/* Chrome-style tabs: rounded top corners that meet without covering each
+   other, an active tab that merges with the page, and a subtle hover. */
 .tab {
   position: relative;
-  isolation: isolate;
   display: flex;
   align-items: center;
   gap: 8px;
   max-width: 240px;
   min-width: 0;
-  padding: 9px 13px 8px 16px;
-  border: 0;
+  padding: 8px 12px 8px 14px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
   background: transparent;
   color: var(--text-faint);
   font-size: 12.5px;
   cursor: pointer;
   white-space: nowrap;
-  transition: color 120ms ease;
+  transition: background 120ms ease, color 120ms ease;
 }
 
-.tab::before {
-  content: "";
-  position: absolute;
-  inset: 5px 1px 0;
-  z-index: -1;
-  transform: skewX(-7deg);
-  border-radius: 9px 9px 0 0;
-  background: transparent;
-  box-shadow: inset 1px 0 0 transparent;
-  transition: background 120ms ease;
-}
-
-.tab:hover:not(.tab--active)::before {
-  background: var(--bg-hover);
+.tab:hover:not(.tab--active) {
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  color: var(--text-dim);
 }
 
 .tab--active {
-  color: var(--text);
-  z-index: 2;
-}
-
-.tab--active::before {
   background: var(--bg);
-  box-shadow:
-    inset 1px 1px 0 var(--border),
-    inset -1px 0 0 var(--border),
-    0 1px 0 0 var(--bg);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: 0 1px 0 0 var(--bg);
 }
 
-/* Hairline between two inactive tabs, hidden next to the active one. */
-.tab + .tab::after {
+.tab--active::after {
   content: "";
   position: absolute;
   left: 0;
-  bottom: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--bg);
+}
+
+/* Hairline between two inactive tabs; hidden around the active one. */
+.tab + .tab:not(.tab--active)::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  bottom: 10px;
   width: 1px;
-  height: 22px;
+  height: 16px;
   background: var(--border);
 }
 
-.tab--active::after,
-.tab--active + .tab::after {
+.tab--active + .tab::before {
   display: none;
 }
 .tab__dot {
@@ -1115,7 +1108,7 @@ input[type="password"]::-ms-reveal {
 }
 
 .tab-bar__new {
-  margin-left: 18px;
+  margin-left: 6px;
   align-self: center;
   margin-bottom: 4px;
   width: 26px;

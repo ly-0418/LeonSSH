@@ -91,7 +91,7 @@ export function NewSessionDialog({
         <header className="session-dialog__head">
           <div className="session-dialog__titles">
             <h2 className="modal__title">连接</h2>
-            <p className="modal__hint">选择左侧已保存的会话，或新建一个连接。</p>
+            <p className="modal__hint">双击左侧已保存的会话即可直接连接；也可以点「新建连接」填写新的服务器信息。</p>
           </div>
           <button type="button" className="modal__close" onClick={onClose} aria-label="关闭">
             ✕
@@ -137,7 +137,7 @@ export function NewSessionDialog({
                     className="session-card__main"
                     onClick={() => onSelect(session)}
                     onDoubleClick={() => onConnect(session)}
-                    title={`${session.username}@${session.host}:${session.port}（双击连接）`}
+                    title={`${session.username}@${session.host}:${session.port}`}
                   >
                     <span className="session-card__avatar">
                       {session.name.slice(0, 1).toUpperCase()}

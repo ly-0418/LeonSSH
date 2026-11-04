@@ -137,7 +137,7 @@ export function TerminalTab({
       }
       insertText(pick.insert ?? pick.name);
         if (execute) {
-          window.setTimeout(() => insertText("\r"), 40);
+          window.setTimeout(() => sendEnter(), 40);
         }
     }
     setSuggestDismissed(true);
@@ -302,8 +302,8 @@ export function TerminalTab({
     event.stopPropagation();
     if (key === "Tab" || key === "Enter") {
       const index = Math.min(suggestIndex, activeCount - 1);
-      const pending = (rows[index]?.name ?? "").trim();
-      if (pending === typed) {
+        const pending = (rows[index]?.insert ?? rows[index]?.name ?? "").trim();
+      if (pending === typed.trim()) {
         setSuggestDismissed(true);
         if (key === "Tab") {
           focus();

@@ -128,7 +128,7 @@ export function SettingsDrawer({
               <div className="setting-group">
                 <h3 className="setting-group__title">界面缩放</h3>
                 <p className="modal__hint">
-                  整体放大或缩小界面与终端字号，16px 为标准大小（{Math.round((fontSize / 16) * 100)}%）。
+                  整体放大或缩小界面与终端字号。
                 </p>
                 <div className="font-size-row">
                   <input
@@ -139,7 +139,7 @@ export function SettingsDrawer({
                     value={fontSize}
                     onChange={(event) => onChangeFontSize(Number.parseInt(event.target.value, 10))}
                   />
-                  <span className="font-size-value">{fontSize} px</span>
+                  <span className="font-size-value">{Math.round((fontSize / 16) * 100)}%</span>
                 </div>
                 <div className="font-preview" style={{ fontSize: `${fontSize}px` }}>
                   LeonSSH@localhost:~$ echo 界面缩放预览

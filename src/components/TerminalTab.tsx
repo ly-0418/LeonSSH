@@ -182,10 +182,19 @@ export function TerminalTab({
     const panelHeight = 46 + Math.min(rows.length, 5) * 26;
     const below = caretRect.bottom - paneRect.top + 4;
     const above = caretRect.top - paneRect.top - panelHeight - 4;
-    setPanelStyle({
+    const next = {
       left: Math.max(8, Math.min(caretRect.left - paneRect.left, paneRect.width - 360)),
       top: below + panelHeight < paneRect.height ? below : Math.max(4, above),
-    });
+    };
+    // Only update when the position really moved; otherwise React would loop
+    // (effect → state → render → effect).
+    setPanelStyle((current) =>
+      current !== null &&
+      Math.abs(current.left - next.left) < 1 &&
+      Math.abs(current.top - next.top) < 1
+        ? current
+        : next,
+    );
   }, [rows, containerRef]);
 
   // Usage counters come from SQLite: they persist across restarts and upgrades.

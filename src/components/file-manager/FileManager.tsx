@@ -6,7 +6,12 @@ import { fileName, joinLocal } from "../../lib/fs/paths";
 import { openEditorExternal, type EditorFile } from "../../lib/ipc/editor";
 import { toUserMessage } from "../../lib/ipc/errors";
 import { joinPath, statRemote } from "../../lib/ipc/sftp";
-import { startDownload, startUpload } from "../../lib/ipc/transfers";
+import {
+  startDownload,
+  startDownloadDir,
+  startUpload,
+  startUploadDir,
+} from "../../lib/ipc/transfers";
 import { ExternalEditorBar } from "./ExternalEditorBar";
 import { LocalPane } from "./LocalPane";
 import { RemotePane } from "./RemotePane";
@@ -117,11 +122,25 @@ export function FileManager({
         return;
       }
       const files = sources.filter((entry) => !entry.isDir);
-      if (files.length === 0) {
-        setMessage("请选择文件（目录暂不支持上传）");
+      const folders = sources.filter((entry) => entry.isDir);
+      if (files.length === 0 && folders.length === 0) {
+        setMessage("请选择要上传的文件或文件夹");
         return;
       }
       setMessage(null);
+      for (const folder of folders) {
+        try {
+          const count = await startUploadDir(
+            terminalId,
+            folder.path,
+            joinPath(remotePath, folder.name),
+          );
+          setMessage(`已加入队列：${folder.name}（${count} 个文件）`);
+        } catch (err) {
+          setMessage(toUserMessage(err));
+          return;
+        }
+      }
       for (const file of files) {
         try {
           await uploadOne(file.path, file.name);
@@ -140,11 +159,25 @@ export function FileManager({
         return;
       }
       const files = sources.filter((entry) => !entry.isDir);
-      if (files.length === 0) {
-        setMessage("请选择远程文件（目录暂不支持下载）");
+      const folders = sources.filter((entry) => entry.isDir);
+      if (files.length === 0 && folders.length === 0) {
+        setMessage("请选择要下载的文件或文件夹");
         return;
       }
       setMessage(null);
+      for (const folder of folders) {
+        try {
+          const count = await startDownloadDir(
+            terminalId,
+            folder.path,
+            joinLocal(localPath, folder.name),
+          );
+          setMessage(`已加入队列：${folder.name}（${count} 个文件）`);
+        } catch (err) {
+          setMessage(toUserMessage(err));
+          return;
+        }
+      }
       for (const file of files) {
         try {
           await startDownload(terminalId, file.path, joinLocal(localPath, file.name));

@@ -251,36 +251,6 @@ export function TerminalTab({
     };
   }, []);
 
-  useEffect(() => {
-    if (!visible || activeCount === 0) {
-      return;
-    }
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Tab" || event.key === "Enter") {
-        event.preventDefault();
-        event.stopPropagation();
-        const pick = candidates[Math.min(suggestIndex, candidates.length - 1)];
-        if (pick !== undefined) {
-          void bumpCommandUsage(pick.name).then(() => setUsage((current) => ({ ...current, [pick.name]: (current[pick.name] ?? 0) + 1 })));
-          insertText(pick.name.slice(typed.length));
-        }
-        setSuggestDismissed(true);
-      } else if (event.key === "ArrowDown") {
-        event.preventDefault();
-        event.stopPropagation();
-        setSuggestIndex((current) => (current + 1) % activeCount);
-      } else if (event.key === "ArrowUp") {
-        event.preventDefault();
-        event.stopPropagation();
-        setSuggestIndex((current) => (current - 1 + activeCount) % activeCount);
-      } else if (event.key === "Escape") {
-        event.preventDefault();
-        setSuggestDismissed(true);
-      }
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [visible, activeCount, rows, suggestIndex, typed, isPathMode, acceptSuggestion]);
 
   // Usage counters come from SQLite: they persist across restarts and upgrades.
   useEffect(() => {

@@ -980,3 +980,80 @@
   vertical-align: -3px;
   image-rendering: auto;
 }
+/* Larger file-manager surface: bigger text, taller rows, bigger inputs/icons. */
+.sftp-sheet {
+  font-size: 14px;
+}
+
+.sftp-sheet .fm-row {
+  height: 34px;
+  padding: 6px 12px;
+  font-size: 13px;
+  grid-template-columns: 30px minmax(0, 1fr) 100px 148px;
+}
+
+.sftp-sheet .fm-row--perm {
+  grid-template-columns: 30px minmax(0, 1fr) 92px 52px 140px;
+}
+
+.sftp-sheet .fm-row__size,
+.sftp-sheet .fm-row__mode,
+.sftp-sheet .fm-row__time {
+  font-size: 12.5px;
+}
+
+.sftp-sheet .fm-row__name {
+  gap: 9px;
+}
+
+.sftp-sheet .fm-icon-img {
+  width: 20px;
+  height: 20px;
+}
+
+.sftp-sheet .fm-icon {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+}
+
+.sftp-sheet .fm-icon--dir {
+  width: 24px;
+}
+
+.sftp-sheet .fm-pathbar {
+  padding: 9px 10px;
+  gap: 8px;
+}
+
+.sftp-sheet .fm-pathbar__label {
+  font-size: 12px;
+}
+
+.sftp-sheet .fm-pathbar__input,
+.sftp-sheet .fm-pathbar__search {
+  height: 34px;
+  padding: 8px 84px 8px 10px;
+  font-size: 13.5px;
+}
+
+.sftp-sheet .fm-pathbar__search {
+  width: 190px;
+  padding-right: 10px;
+}
+
+.sftp-sheet .fm-iconbtn {
+  width: 32px;
+  height: 32px;
+  font-size: 15px;
+}
+
+.sftp-sheet .fm-toolbar button,
+.sftp-sheet .fm-tabs button {
+  font-size: 13px;
+}
+
+.sftp-sheet .fm-table__head {
+  font-size: 12.5px;
+  height: 32px;
+}

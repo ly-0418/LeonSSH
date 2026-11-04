@@ -40,10 +40,15 @@ fn zh_permission(err: AppError) -> AppError {
 #[tauri::command]
 pub async fn sftp_open(state: State<'_, AppState>, terminal_id: String) -> Result<String, AppError> {
     let handle = state.connection(&terminal_id).await?;
-    // Re-opening the panel must not leak the previous subsystem session.
-    if let Ok(previous) = state.sftp(&terminal_id).await {
-        let _ = previous.close().await;
-        state.drop_sftp(&terminal_id).await;
+    // Reuse the subsystem that is already open: re-entering the panel while
+    // a transfer is running used to close it and abort every in-flight task
+    // ("sender dropped"). Only open a fresh one when none exists.
+    if let Ok(existing) = state.sftp(&terminal_id).await {
+        let home = existing
+            .canonicalize(".")
+            .await
+            .unwrap_or_else(|_| "/".to_string());
+        return Ok(home);
     }
     let session = sftp::open_subsystem(&handle).await?;
     let home = session

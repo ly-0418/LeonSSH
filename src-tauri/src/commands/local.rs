@@ -169,3 +169,8 @@ pub fn open_external_url(url: String) -> Result<(), AppError> {
         Err(AppError::Internal("仅支持 Windows".into()))
     }
 }
+/// Frontend crashes would otherwise be invisible; mirror them into the log.
+#[tauri::command]
+pub fn frontend_error(message: String) {
+    tracing::error!(target: "frontend", "{message}");
+}

@@ -1,3 +1,16 @@
+import { invoke as __invoke } from "@tauri-apps/api/core";
+
+function reportFrontendError(kind: string, detail: unknown): void {
+  const text = kind + ": " + (detail instanceof Error ? detail.message + "\n" + (detail.stack ?? "") : String(detail));
+  void __invoke("frontend_error", { message: text }).catch(() => undefined);
+}
+
+window.addEventListener("error", (event) => {
+  reportFrontendError("error", event.error ?? event.message);
+});
+window.addEventListener("unhandledrejection", (event) => {
+  reportFrontendError("unhandledrejection", event.reason);
+});
 import ReactDOM from "react-dom/client";
 
 import "@xterm/xterm/css/xterm.css";

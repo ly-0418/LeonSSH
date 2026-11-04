@@ -68,7 +68,8 @@ export default function App() {
 
   // The font-size setting scales the whole UI (16px == 100%).
   useEffect(() => {
-    document.documentElement.style.setProperty("--ui-scale", String(fontSize / 16));
+    const scale = Number.isFinite(fontSize) ? Math.min(1.6, Math.max(0.6, fontSize / 16)) : 1;
+    document.documentElement.style.setProperty("--ui-scale", String(scale));
   }, [fontSize]);
   useEffect(() => {
     localStorage.setItem("leonssh.fontSize", String(fontSize));

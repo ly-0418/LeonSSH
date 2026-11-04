@@ -4,7 +4,7 @@
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
-  padding: 2px 4px 0;
+  padding: 0;
   background: var(--bg);
 }
 
@@ -49,18 +49,21 @@
 }
 
 /* xterm measures this element, so it must have a real height. */
+/* The host carries the inset on all four sides so the xterm grid starts at the
+   same distance from every edge (FitAddon subtracts this padding itself). */
 .terminal-host {
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
   overflow: hidden;
+  padding: 6px;
   border-radius: 10px;
   background: var(--bg-panel);
 }
 
 .terminal-host .xterm {
   height: 100%;
-  padding: 6px 8px;
+  padding: 0;
 }
 
 .terminal-host .xterm-viewport {

@@ -159,6 +159,9 @@ impl TransferManager {
     }
 
     fn finish(&self, id: &str, result: Result<TransferOutcome, AppError>) {
+        if let Err(error) = &result {
+            tracing::warn!(task = id, error = %error, "transfer failed");
+        }
         self.cancels.lock().expect("transfer cancels poisoned").remove(id);
         match result {
             Ok(outcome) if outcome.skipped => self.update(id, |task| {

@@ -44,6 +44,7 @@ pub async fn sftp_open(state: State<'_, AppState>, terminal_id: String) -> Resul
     // a transfer is running used to close it and abort every in-flight task
     // ("sender dropped"). Only open a fresh one when none exists.
     if let Ok(existing) = state.sftp(&terminal_id).await {
+        tracing::info!(terminal = %terminal_id, "reusing open sftp subsystem");
         let home = existing
             .canonicalize(".")
             .await

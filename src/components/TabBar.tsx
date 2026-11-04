@@ -27,6 +27,8 @@ interface TabBarProps {
   onToggleForward: () => void;
   broadcast: boolean;
   onToggleBroadcast: () => void;
+  onReconnect: (key: string) => void;
+  onDisconnect: (key: string) => void;
 }
 
 interface MenuState {
@@ -46,6 +48,8 @@ export function TabBar({
   onToggleForward,
   broadcast,
   onToggleBroadcast,
+  onReconnect,
+  onDisconnect,
 }: TabBarProps) {
   const [menu, setMenu] = useState<MenuState | null>(null);
 
@@ -141,7 +145,7 @@ export function TabBar({
       </button>
 
       {menu !== null && (
-        <div
+          <div
           className="tab-menu"
           style={{ left: menu.x, top: menu.y }}
           onClick={(event) => event.stopPropagation()}
@@ -156,6 +160,33 @@ export function TabBar({
           >
             复制连接到新会话
           </button>
+                    {(() => {
+              const target = tabs.find((tab) => tab.key === menu.key);
+              const connected = target !== undefined && target.status.terminalId !== null;
+              return connected ? (
+                <button
+                  type="button"
+                  className="tab-menu__item"
+                  onClick={() => {
+                    onDisconnect(menu.key);
+                    setMenu(null);
+                  }}
+                >
+                  断开连接
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="tab-menu__item"
+                  onClick={() => {
+                    onReconnect(menu.key);
+                    setMenu(null);
+                  }}
+                >
+                  重新连接
+                </button>
+              );
+            })()}
         </div>
       )}
     </div>

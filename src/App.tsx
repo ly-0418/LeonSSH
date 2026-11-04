@@ -13,7 +13,7 @@ import { ConfirmDialog } from "./components/dialogs";
 import { setBroadcastHandler } from "./lib/terminal/TerminalSession";
 import { startAllForwards } from "./lib/ipc/forwards";
 import { toUserMessage } from "./lib/ipc/errors";
-import { writeTerminal } from "./lib/ipc/session";
+import { closeTerminal, writeTerminal } from "./lib/ipc/session";
 import { deleteSession, listSessions } from "./lib/ipc/sessions";
 import type { SessionSummary, TerminalStatus } from "./lib/ipc/types";
 import type { ThemeMode } from "./lib/terminal/theme";
@@ -283,6 +283,26 @@ export default function App() {
     [sessions, closeTab, openTab],
   );
 
+  /** Closes the SSH channel of one tab and leaves the tab in the "closed" state. */
+  const disconnectTab = useCallback(
+    (key: string) => {
+      const tab = tabs.find((item) => item.key === key);
+      if (tab === undefined || tab.status.terminalId === null) {
+        return;
+      }
+      const terminalId = tab.status.terminalId;
+      setTabs((prev) =>
+        prev.map((item) =>
+          item.key === key
+            ? { ...item, status: { ...item.status, terminalId: null, state: "closed" } }
+            : item,
+        ),
+      );
+      void closeTerminal(terminalId).catch(() => undefined);
+    },
+    [tabs],
+  );
+
   const openFiles = useCallback(() => {
     setFilesExiting(false);
     setView("files");
@@ -382,6 +402,13 @@ export default function App() {
             forwardOpen={forwardOpen}
             onToggleForward={toggleForward}
             broadcast={broadcast}
+            onReconnect={(key) => {
+              const tab = tabs.find((item) => item.key === key);
+              if (tab !== undefined) {
+                reconnectTab(tab);
+              }
+            }}
+            onDisconnect={disconnectTab}
             onToggleBroadcast={() => {
               setBroadcast((current) => {
                 localStorage.setItem("leonssh.broadcast", current ? "0" : "1");

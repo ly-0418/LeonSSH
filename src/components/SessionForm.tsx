@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 
 import { toUserMessage } from "../lib/ipc/errors";
 import { createSession, setSessionPassword, updateSession } from "../lib/ipc/sessions";
-import { testConnection } from "../lib/ipc/sessions";
 import type { SessionInput, SessionSummary } from "../lib/ipc/types";
 
 interface SessionFormProps {
@@ -41,8 +40,6 @@ export function SessionForm({
   );
   const [keyPath, setKeyPath] = useState(initial?.privateKeyPath ?? "");
   const [busy, setBusy] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement | null>(null);
 
@@ -51,27 +48,6 @@ export function SessionForm({
     nameRef.current?.select();
   }, []);
 
-  async function handleTest() {
-    const portNumber = Number.parseInt(port, 10);
-    if (host.trim().length === 0) {
-      setTestResult({ ok: false, text: "请先填写主机地址" });
-      return;
-    }
-    if (!Number.isInteger(portNumber) || portNumber < 1 || portNumber > 65535) {
-      setTestResult({ ok: false, text: "端口必须是 1-65535 的整数" });
-      return;
-    }
-    setTesting(true);
-    setTestResult(null);
-    try {
-      const millis = await testConnection(host.trim(), portNumber);
-      setTestResult({ ok: true, text: `可达，${millis} ms` });
-    } catch (err) {
-      setTestResult({ ok: false, text: toUserMessage(err) });
-    } finally {
-      setTesting(false);
-    }
-  }
 
   async function submit(connect: boolean) {
     if (busy) {
@@ -295,22 +271,9 @@ export function SessionForm({
       </div>
 
       {error !== null && <p className="form-error">{error}</p>}
-      {testResult !== null && (
-        <p className={`form-test${testResult.ok ? " form-test--ok" : " form-test--bad"}`}>
-          {testResult.ok ? "连通性正常：" : "连通性失败："}
-          {testResult.text}
-        </p>
-      )}
+
 
       <div className="session-form__actions">
-        <button
-          type="button"
-          className="button button--ghost"
-          disabled={testing || busy}
-          onClick={() => void handleTest()}
-        >
-          {testing ? "测试中…" : "测连通性"}
-        </button>
         <span className="session-form__spacer" />
 
         <button

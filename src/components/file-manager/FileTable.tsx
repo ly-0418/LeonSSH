@@ -109,6 +109,7 @@ export function FileTable({
   return (
     <div className="fm-table" role="grid">
       <div className={`fm-table__head${showPermissions ? " fm-table__head--perm" : ""}`}>
+        <span className="fm-table__check" aria-hidden="true" />
         {head("name", "名称")}
         {head("size", "大小")}
         {showPermissions && head("type", "权限")}
@@ -176,6 +177,15 @@ export function FileTable({
             onPointerDown={(event) => onRowPointerDown?.(entry, event)}
             title={entry.path}
           >
+            <span className="fm-row__check">
+              <input
+                type="checkbox"
+                checked={selected.includes(entry.name)}
+                onChange={() => onSelect(entry.name, "toggle")}
+                onClick={(event) => event.stopPropagation()}
+                aria-label={`选择 ${entry.name}`}
+              />
+            </span>
             <span className={`fm-row__name${entry.isDir ? " fm-row__name--dir" : ""}`}>
               <span className="fm-row__icon">{entry.isDir ? "📁" : entry.isSymlink ? "🔗" : "📄"}</span>
               {entry.name}

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { TerminalStatus } from "../lib/ipc/types";
 import { LINUX_COMMANDS, canonicalCommand, describeCommand } from "../lib/terminal/commands";
+import { snippetInsertion, snippetTemplate } from "../lib/terminal/snippet";
 import { setSuggestionKeyHandler } from "../lib/terminal/TerminalSession";
 import { bumpCommandUsage, bumpSnippet, loadCommandUsage, loadSnippets } from "../lib/ipc/usage";
 import { useTerminal } from "../hooks/useTerminal";
@@ -97,9 +98,12 @@ export function TerminalTab({
         );
       }
       if (raw.includes(" ") || raw.includes("|")) {
-        void bumpSnippet(raw).then(() =>
-          setSnippets((current) => ({ ...current, [raw]: (current[raw] ?? 0) + 1 })),
-        );
+        const template = snippetTemplate(raw);
+        if (template !== null) {
+          void bumpSnippet(template).then(() =>
+            setSnippets((current) => ({ ...current, [template]: (current[template] ?? 0) + 1 })),
+          );
+        }
       }
     },
   });
@@ -126,8 +130,8 @@ export function TerminalTab({
           .sort((a, b) => b[1] - a[1])
           .slice(0, 8)
       : [];
-  const rows = isCompound
-    ? snippetMatches.map(([item]) => ({ name: item, desc: "常用命令组合" }))
+  const rows: Array<{ name: string; desc: string; insert?: string }> = isCompound
+    ? snippetMatches.map(([item]) => ({ name: item, desc: "常用命令组合", insert: snippetInsertion(item) }))
     : commandMatches.map((item) => ({ name: item.name, desc: describeCommand(item) }));
   const activeCount = rows.length;
 
@@ -147,7 +151,7 @@ export function TerminalTab({
       if (typed.length > 0) {
         backspace(typed.length);
       }
-      insertText(pick.name);
+      insertText(pick.insert ?? pick.name);
     }
     setSuggestDismissed(true);
   }

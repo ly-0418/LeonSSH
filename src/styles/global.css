@@ -1,6 +1,5 @@
 :root {
   /* Whole-UI scale, driven by the font-size setting (1 = 16px). */
-  --ui-scale: 1;
   color-scheme: dark;
 
   --bg: #1c242e;
@@ -357,12 +356,3 @@ body {
   color: var(--warn);
 }
 
-/* Scale every surface proportionally; terminals keep 1:1 metrics so xterm
-   stays pixel-crisp and the fit addon keeps working. */
-#root {
-  zoom: var(--ui-scale, 1);
-}
-
-.terminal-pane {
-  zoom: calc(1 / var(--ui-scale, 1));
-}

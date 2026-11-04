@@ -73,11 +73,6 @@ export default function App() {
     return Number.isFinite(stored) && stored >= 11 && stored <= 20 ? stored : 16;
   });
 
-  // The font-size setting scales the whole UI (16px == 100%).
-  useEffect(() => {
-    const scale = Number.isFinite(fontSize) ? Math.min(1.6, Math.max(0.6, fontSize / 16)) : 1;
-    document.documentElement.style.setProperty("--ui-scale", String(scale));
-  }, [fontSize]);
   useEffect(() => {
     localStorage.setItem("leonssh.fontSize", String(fontSize));
   }, [fontSize]);

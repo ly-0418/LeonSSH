@@ -132,9 +132,9 @@ export function SettingsDrawer({
               </div>
 
               <div className="setting-group">
-                <h3 className="setting-group__title">界面缩放</h3>
+                <h3 className="setting-group__title">终端字号</h3>
                 <p className="modal__hint">
-                  整体放大或缩小界面与终端字号。
+                  只调整终端内的文字大小，界面布局保持不变。
                 </p>
                 <div className="font-size-row">
                   <input
@@ -145,7 +145,7 @@ export function SettingsDrawer({
                     value={fontSize}
                     onChange={(event) => onChangeFontSize(Number.parseInt(event.target.value, 10))}
                   />
-                  <span className="font-size-value">{Math.round((fontSize / 16) * 100)}%</span>
+                  <span className="font-size-value">{fontSize} px</span>
                 </div>
               </div>
               <div className="setting-group">

@@ -65,6 +65,7 @@ export function useTerminal({
       fontSize: fontSizeRef.current,
       onStatus: (patch) => statusRef.current?.(patch),
       onNotice: (message) => setNotice(message),
+        onInputLine: (value) => onInputLineRef.current?.(value),
     });
     sessionRef.current = session;
 

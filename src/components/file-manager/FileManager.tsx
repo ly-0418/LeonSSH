@@ -130,12 +130,11 @@ export function FileManager({
       setMessage(null);
       for (const folder of folders) {
         try {
-          const count = await startUploadDir(
+          await startUploadDir(
             terminalId,
             folder.path,
             joinPath(remotePath, folder.name),
           );
-          setMessage(`已加入队列：${folder.name}（${count} 个文件）`);
         } catch (err) {
           setMessage(toUserMessage(err));
           return;
@@ -167,12 +166,11 @@ export function FileManager({
       setMessage(null);
       for (const folder of folders) {
         try {
-          const count = await startDownloadDir(
+          await startDownloadDir(
             terminalId,
             folder.path,
             joinLocal(localPath, folder.name),
           );
-          setMessage(`已加入队列：${folder.name}（${count} 个文件）`);
         } catch (err) {
           setMessage(toUserMessage(err));
           return;

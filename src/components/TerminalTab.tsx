@@ -114,7 +114,6 @@ export function TerminalTab({
     !suggestDismissed && typed.length > 0 && !isCompound
       ? LINUX_COMMANDS.filter(
           (command) =>
-            command.name !== typed &&
             (command.name.startsWith(typed) ||
               (command.aliases ?? []).some(
                 (alias) => alias.startsWith(typed) && alias !== typed,
@@ -173,7 +172,15 @@ export function TerminalTab({
         event.stopPropagation();
       }
       if (event.key === "Tab" || event.key === "Enter") {
-        acceptSuggestion(Math.min(suggestIndex, activeCount - 1));
+        const index = Math.min(suggestIndex, activeCount - 1);
+        const pending = (rows[index]?.name ?? "").trim();
+        if (pending === typed) {
+          dismissedRef.current = true;
+          setSuggestionKeyHandler(null);
+          setSuggestDismissed(true);
+          return event.key === "Tab";
+        }
+        acceptSuggestion(index);
         return true;
       }
       if (event.key === "ArrowDown") {
@@ -342,7 +349,16 @@ export function TerminalTab({
   }, [visible]);
 
   return (
-    <section className="terminal-pane" data-visible={visible} ref={paneRef}>
+    <section
+        className="terminal-pane"
+        data-visible={visible}
+        ref={paneRef}
+        onPointerDown={() => focus()}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          focus();
+        }}
+      >
 
       {searchOpen && (
         <div className="terminal-search">

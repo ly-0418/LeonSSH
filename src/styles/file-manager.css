@@ -930,3 +930,47 @@
 .chmod-row__item input[type="checkbox"] {
   accent-color: var(--accent);
 }
+/* File type badges (IDE-like, colour coded per language/format). */
+.fm-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  vertical-align: -3px;
+}
+
+.fm-icon--dir {
+  background: linear-gradient(180deg, #f6c66b, #e0a33c);
+  clip-path: polygon(0 22%, 38% 22%, 46% 8%, 100% 8%, 100% 100%, 0 100%);
+  border-radius: 2px;
+  width: 20px;
+}
+
+.fm-icon--link {
+  color: var(--accent-cyan);
+  background: transparent;
+  font-size: 13px;
+}
+
+.fm-icon--file {
+  color: #fff;
+  background: var(--icon-tone, #64748b);
+}
+
+.fm-icon--blue { --icon-tone: #3b82f6; }
+.fm-icon--yellow { --icon-tone: #d97706; }
+.fm-icon--green { --icon-tone: #16a34a; }
+.fm-icon--orange { --icon-tone: #ea580c; }
+.fm-icon--red { --icon-tone: #dc2626; }
+.fm-icon--pink { --icon-tone: #db2777; }
+.fm-icon--purple { --icon-tone: #7c3aed; }
+.fm-icon--cyan { --icon-tone: #0891b2; }
+.fm-icon--slate { --icon-tone: #64748b; }

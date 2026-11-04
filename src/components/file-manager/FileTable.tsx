@@ -1,6 +1,7 @@
 import { memGet, memSet } from "../../lib/fs/fmMemory";
 import { useEffect, useRef, useState } from "react";
 
+import { fileIcon } from "../../lib/fs/fileIcon";
 import type { FileEntry } from "../../lib/fs/types";
 import type { SelectionMode, SortKey, SortState } from "./useFilePane";
 import { formatMode, formatSize, formatTime } from "./format";
@@ -209,7 +210,24 @@ export function FileTable({
               />
             </span>
             <span className={`fm-row__name${entry.isDir ? " fm-row__name--dir" : ""}`}>
-              <span className="fm-row__icon">{entry.isDir ? "📁" : entry.isSymlink ? "🔗" : "📄"}</span>
+              {(() => {
+                const icon = fileIcon(entry.name, entry.isDir, entry.isSymlink);
+                if (icon.kind === "dir") {
+                  return <span className="fm-icon fm-icon--dir" aria-hidden="true" />;
+                }
+                if (icon.kind === "link") {
+                  return (
+                    <span className="fm-icon fm-icon--link" aria-hidden="true">
+                      {icon.label}
+                    </span>
+                  );
+                }
+                return (
+                  <span className={`fm-icon fm-icon--file fm-icon--${icon.tone}`} aria-hidden="true">
+                    {icon.label}
+                  </span>
+                );
+              })()}
               {entry.name}
             </span>
             <span className="fm-row__size">{entry.isDir ? "" : formatSize(entry.size)}</span>

@@ -456,7 +456,19 @@ pub async fn copy_path(sftp: &SftpSession, from: &str, to: &str) -> Result<u64, 
     }
 }
 
+/// Creates every missing parent directory of `path` (mkdir -p, errors ignored).
+async fn ensure_parent_dirs(sftp: &SftpSession, path: &str) {
+    let mut current = String::from("/");
+    let parts: Vec<&str> = path.split('/').filter(|part| !part.is_empty()).collect();
+    for part in parts.iter().take(parts.len().saturating_sub(1)) {
+        current = format!("{current}{part}");
+        let _ = mkdir(sftp, &current).await;
+        current.push('/');
+    }
+}
+
 async fn copy_file(sftp: &SftpSession, from: &str, to: &str) -> Result<u64, AppError> {
+    ensure_parent_dirs(sftp, to).await;
     let mut source = sftp
         .open(from.to_string())
         .await

@@ -246,39 +246,8 @@ function RemotePaneLoaded({
         { label: "在终端中打开", onSelect: () => onOpenInTerminal?.(pane.path) },
       ];
     }
-    if (entry.isDir) {
-      return [
-        {
-          label: "在终端中打开",
-          onSelect: () => onOpenInTerminal?.(entry.path),
-        },
-        { label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
-        {
-          label: "复制到当前目录",
-          onSelect: () => {
-            void run(async () => {
-              await copyRemote(terminalId, entry.path, joinPath(pane.path, `${entry.name} 副本`));
-            });
-          },
-        },
-        {
-          label: "复制到…",
-          onSelect: () => {
-            setCopyPath(joinPath(pane.path, `${entry.name} 副本`));
-            setCopyTarget(entry);
-          },
-        },
-        {
-          label: "权限…",
-          onSelect: () => {
-            setChmodMode(entry.permissions ?? 0o644);
-            setChmodTarget(entry);
-          },
-        },
-        { label: "删除文件夹", danger: true, onSelect: () => setPendingDelete(entry) },
-      ];
-    }
-    return [
+
+    const copyItems: FileMenuItem[] = [
       {
         label: "复制到当前目录",
         onSelect: () => {
@@ -288,22 +257,35 @@ function RemotePaneLoaded({
         },
       },
       {
-        label: "复制到…",
+        label: "复制到...",
         onSelect: () => {
           setCopyPath(joinPath(pane.path, `${entry.name} 副本`));
           setCopyTarget(entry);
         },
       },
       {
-        label: "权限…",
+        label: "权限",
         onSelect: () => {
           setChmodMode(entry.permissions ?? 0o644);
           setChmodTarget(entry);
         },
       },
+    ];
+
+    if (entry.isDir) {
+      return [
+        { label: "在终端中打开", onSelect: () => onOpenInTerminal?.(entry.path) },
+        { label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
+        { label: "删除文件夹", danger: true, onSelect: () => setPendingDelete(entry) },
+        ...copyItems,
+      ];
+    }
+
+    return [
       { label: "编辑", onSelect: () => onOpenFile?.(entry) },
       { label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
       { label: "删除", danger: true, onSelect: () => setPendingDelete(entry) },
+      ...copyItems,
     ];
   }
 
@@ -468,9 +450,13 @@ onSelectAll={pane.selectAll} persistKey={persistKey} onRowDragStart={(entry, eve
       {chmodTarget !== null && (
         <div className="modal-backdrop" role="presentation">
           <div className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-            <h2 className="modal__title">权限 · {chmodTarget.name}</h2>
-            <p className="modal__hint">r=读取/列出，w=写入/创建/删除，x=执行/进入目录</p>
-            {(["属主", "同组", "其他"] as const).map((label, row) => (
+            <h2 className="modal__title">权限设置 · {chmodTarget.name}</h2>
+            <p className="modal__hint">
+              「你」= 文件创建者；「同组用户」= 与创建者同一用户组的账号；「其他所有人」= 其余任何账号。
+              <br />
+              r：读取内容 / 列出目录　w：修改内容 / 新建或删除文件　x：执行程序 / 进入目录
+            </p>
+            {(["你（创建者）", "同组用户", "其他所有人"] as const).map((label, row) => (
               <div className="chmod-row" key={label}>
                 <span className="chmod-row__label">{label}</span>
                 {[0, 1, 2].map((bit) => {

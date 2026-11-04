@@ -181,6 +181,8 @@ pub fn run() {
             commands::sessions::session_list,
             commands::usage::command_usage_list,
             commands::usage::command_usage_bump,
+            commands::usage::command_snippet_list,
+            commands::usage::command_snippet_bump,
             commands::sessions::session_export_json,
             commands::sessions::session_import_json,
             commands::sessions::test_connection,

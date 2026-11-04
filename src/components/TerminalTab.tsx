@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { TerminalStatus } from "../lib/ipc/types";
-import { LINUX_COMMANDS } from "../lib/terminal/commands";
+import { LINUX_COMMANDS, canonicalCommand, describeCommand } from "../lib/terminal/commands";
 import { setSuggestionKeyHandler } from "../lib/terminal/TerminalSession";
-import { bumpCommandUsage, loadCommandUsage } from "../lib/ipc/usage";
+import { bumpCommandUsage, bumpSnippet, loadCommandUsage, loadSnippets } from "../lib/ipc/usage";
 import { useTerminal } from "../hooks/useTerminal";
 import type { ThemeMode } from "../lib/terminal/theme";
 
@@ -50,6 +50,7 @@ export function TerminalTab({
   const [suggestDismissed, setSuggestDismissed] = useState(false);
   const [panelStyle, setPanelStyle] = useState<{ left: number; top: number } | null>(null);
   const [usage, setUsage] = useState<Record<string, number>>({});
+  const [snippets, setSnippets] = useState<Record<string, number>>({});
   const suggestListRef = useRef<HTMLDivElement | null>(null);
   const paneRef = useRef<HTMLElement | null>(null);
   /** Keeps the popup closed after accepting a file (no deeper level). */
@@ -57,7 +58,7 @@ export function TerminalTab({
   const previousLineRef = useRef("");
   /** Synchronous mirror of suggestDismissed so the key handler never acts on a closed popup. */
   const dismissedRef = useRef(false);
-  const { containerRef, notice, clearNotice, reconnect, insertText, findNext, findPrevious, focus } = useTerminal({
+  const { containerRef, notice, clearNotice, reconnect, insertText, backspace, findNext, findPrevious, focus } = useTerminal({
     sessionId,
     title,
     visible,
@@ -84,27 +85,50 @@ export function TerminalTab({
       setSuggestIndex(0);
     },
     onExecuted: (value) => {
-      const name = value.trim().split(/\s+/)[0] ?? "";
-      if (LINUX_COMMANDS.some((command) => command.name === name)) {
-        void bumpCommandUsage(name).then(() =>
-          setUsage((current) => ({ ...current, [name]: (current[name] ?? 0) + 1 })),
+      const raw = value.trim();
+      if (raw.length === 0) {
+        return;
+      }
+      const first = raw.split(/\s+/)[0] ?? "";
+      const canonical = canonicalCommand(first);
+      if (canonical !== null) {
+        void bumpCommandUsage(canonical).then(() =>
+          setUsage((current) => ({ ...current, [canonical]: (current[canonical] ?? 0) + 1 })),
+        );
+      }
+      if (raw.includes(" ") || raw.includes("|")) {
+        void bumpSnippet(raw).then(() =>
+          setSnippets((current) => ({ ...current, [raw]: (current[raw] ?? 0) + 1 })),
         );
       }
     },
   });
 
   const typed = line.trimStart();
-  const candidates =
-    !suggestDismissed && typed.length > 0 && !typed.includes(" ")
+  const isCompound = typed.includes(" ") || typed.includes("|");
+  const commandMatches =
+    !suggestDismissed && typed.length > 0 && !isCompound
       ? LINUX_COMMANDS.filter(
-          (command) => command.name.startsWith(typed) && command.name !== typed,
+          (command) =>
+            command.name !== typed &&
+            (command.name.startsWith(typed) ||
+              (command.aliases ?? []).some(
+                (alias) => alias.startsWith(typed) && alias !== typed,
+              )),
         )
           .sort((a, b) => (usage[b.name] ?? 0) - (usage[a.name] ?? 0) || a.name.localeCompare(b.name))
           .slice(0, 8)
       : [];
-
-
-  const rows = candidates.map((item) => ({ name: item.name, desc: item.desc }));
+  const snippetMatches =
+    !suggestDismissed && isCompound
+      ? Object.entries(snippets)
+          .filter(([item]) => item.startsWith(typed) && item !== typed)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 8)
+      : [];
+  const rows = isCompound
+    ? snippetMatches.map(([item]) => ({ name: item, desc: "常用命令组合" }))
+    : commandMatches.map((item) => ({ name: item.name, desc: describeCommand(item) }));
   const activeCount = rows.length;
 
   function bumpUsageLocal(name: string): void {
@@ -114,10 +138,16 @@ export function TerminalTab({
   }
 
   function acceptSuggestion(index: number): void {
-    const pick = candidates[index];
+    const pick = rows[index];
     if (pick !== undefined) {
-      bumpUsageLocal(pick.name);
-      insertText(pick.name.slice(typed.length));
+      const canonical = canonicalCommand(pick.name.split(/\s+/)[0] ?? pick.name);
+      if (canonical !== null) {
+        bumpUsageLocal(canonical);
+      }
+      if (typed.length > 0) {
+        backspace(typed.length);
+      }
+      insertText(pick.name);
     }
     setSuggestDismissed(true);
   }
@@ -212,6 +242,17 @@ export function TerminalTab({
   // Usage counters come from SQLite: they persist across restarts and upgrades.
   useEffect(() => {
     let cancelled = false;
+    void loadSnippets().then((counts) => {
+      if (!cancelled) {
+        setSnippets(counts);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
     void loadCommandUsage().then((counts) => {
       if (!cancelled) {
         setUsage(counts);
@@ -224,6 +265,17 @@ export function TerminalTab({
 
 
   // Usage counters come from SQLite: they persist across restarts and upgrades.
+  useEffect(() => {
+    let cancelled = false;
+    void loadSnippets().then((counts) => {
+      if (!cancelled) {
+        setSnippets(counts);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   useEffect(() => {
     let cancelled = false;
     void loadCommandUsage().then((counts) => {
@@ -246,6 +298,17 @@ export function TerminalTab({
 
 
   // Usage counters come from SQLite: they persist across restarts and upgrades.
+  useEffect(() => {
+    let cancelled = false;
+    void loadSnippets().then((counts) => {
+      if (!cancelled) {
+        setSnippets(counts);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   useEffect(() => {
     let cancelled = false;
     void loadCommandUsage().then((counts) => {

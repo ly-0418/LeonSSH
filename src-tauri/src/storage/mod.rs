@@ -119,7 +119,18 @@ async fn migrate(pool: &SqlitePool) -> Result<(), AppError> {
     .execute(pool)
     .await?;
 
-    sqlx::query("PRAGMA user_version = 4").execute(pool).await?;
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS command_snippets (
+            line  TEXT PRIMARY KEY,
+            count INTEGER NOT NULL DEFAULT 0
+        );
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("PRAGMA user_version = 5").execute(pool).await?;
     Ok(())
 }
 

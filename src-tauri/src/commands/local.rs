@@ -296,3 +296,10 @@ pub fn shell_icon(name: String, is_dir: bool) -> Result<ShellIcon, AppError> {
         Err(AppError::Internal("仅支持 Windows".into()))
     }
 }
+/// Confirmed shutdown: exits the app so every session is closed by the state
+/// teardown (window.destroy() is blocked by the capability ACL).
+#[tauri::command]
+pub fn quit_app(app: tauri::AppHandle) {
+    tracing::info!("quit requested by the frontend");
+    app.exit(0);
+}

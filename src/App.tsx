@@ -12,6 +12,7 @@ import { WindowControls } from "./components/WindowControls";
 import { ConfirmDialog } from "./components/dialogs";
 import { setBroadcastHandler } from "./lib/terminal/TerminalSession";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { startAllForwards } from "./lib/ipc/forwards";
 import { toUserMessage } from "./lib/ipc/errors";
@@ -580,7 +581,7 @@ export default function App() {
           confirmLabel="关闭"
           onConfirm={() => {
             setCloseRequested(false);
-            void getCurrentWindow().destroy();
+            void invoke("quit_app");
           }}
           onCancel={() => setCloseRequested(false)}
         />

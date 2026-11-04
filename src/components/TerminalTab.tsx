@@ -50,6 +50,8 @@ export function TerminalTab({
   const [pathDir, setPathDir] = useState<string | null>(null);
   const suggestListRef = useRef<HTMLDivElement | null>(null);
   const paneRef = useRef<HTMLElement | null>(null);
+  /** Keeps the popup closed after accepting a file (no deeper level). */
+  const ignoreNextLineRef = useRef(false);
   const { containerRef, notice, clearNotice, reconnect, insertText, backspace, findNext, findPrevious } = useTerminal({
     sessionId,
     title,
@@ -59,6 +61,11 @@ export function TerminalTab({
     onStatus,
     onInputLine: (value) => {
       setLine(value);
+      if (ignoreNextLineRef.current) {
+        ignoreNextLineRef.current = false;
+        setSuggestDismissed(true);
+        return;
+      }
       setSuggestDismissed(false);
       setSuggestIndex(0);
     },
@@ -123,8 +130,8 @@ export function TerminalTab({
     : [];
 
   const rows = isPathMode
-    ? pathSuggestions.map((item) => ({ name: item.name, desc: item.isDir ? "目录" : "文件" }))
-    : candidates;
+    ? pathSuggestions.map((item) => ({ name: item.name, desc: item.isDir ? "目录" : "文件", isDir: item.isDir }))
+    : candidates.map((item) => ({ name: item.name, desc: item.desc, isDir: false }));
   const activeCount = rows.length;
 
   function bumpUsageLocal(name: string): void {
@@ -144,6 +151,9 @@ export function TerminalTab({
       if (pick !== undefined) {
         if (prefixPart.length > 0) {
           backspace(prefixPart.length);
+        }
+        if (!pick.isDir) {
+          ignoreNextLineRef.current = true;
         }
         insertText(pick.name + (pick.isDir ? "/" : ""));
         setSuggestDismissed(true);
@@ -356,7 +366,7 @@ export function TerminalTab({
                 setSuggestDismissed(true);
               }}
             >
-              <span className="terminal-suggest__name">{command.name}</span>
+              <span className={`terminal-suggest__name${command.isDir ? " terminal-suggest__name--dir" : ""}`}>{command.name}</span>
               <span className="terminal-suggest__desc">{command.desc}</span>
             </button>
           ))}

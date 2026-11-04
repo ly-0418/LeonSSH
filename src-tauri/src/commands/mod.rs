@@ -8,5 +8,6 @@ pub mod forward;
 pub mod local;
 pub mod sessions;
 pub mod sftp;
+pub mod usage;
 pub mod ssh;
 pub mod transfer;

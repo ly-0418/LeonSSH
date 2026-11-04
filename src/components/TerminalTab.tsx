@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import type { TerminalStatus } from "../lib/ipc/types";
 import { LINUX_COMMANDS } from "../lib/terminal/commands";
-import { bumpUsage, usageOf } from "../lib/terminal/usage";
+import { bumpCommandUsage, loadCommandUsage } from "../lib/ipc/usage";
 import { useTerminal } from "../hooks/useTerminal";
 import type { ThemeMode } from "../lib/terminal/theme";
 
@@ -40,6 +40,7 @@ export function TerminalTab({
   const [suggestIndex, setSuggestIndex] = useState(0);
   const [suggestDismissed, setSuggestDismissed] = useState(false);
   const [panelStyle, setPanelStyle] = useState<{ left: number; top: number } | null>(null);
+  const [usage, setUsage] = useState<Record<string, number>>({});
   const { containerRef, notice, clearNotice, reconnect, insertText, cursorBox, findNext, findPrevious } = useTerminal({
     sessionId,
     title,
@@ -60,11 +61,24 @@ export function TerminalTab({
       ? LINUX_COMMANDS.filter(
           (command) => command.name.startsWith(typed) && command.name !== typed,
         )
-          .sort((a, b) => usageOf(b.name) - usageOf(a.name) || a.name.localeCompare(b.name))
+          .sort((a, b) => (usage[b.name] ?? 0) - (usage[a.name] ?? 0) || a.name.localeCompare(b.name))
           .slice(0, 8)
       : [];
 
   // Anchor the popup to the caret: below it when there is room, above otherwise.
+  // Usage counters come from SQLite: they persist across restarts and upgrades.
+  useEffect(() => {
+    let cancelled = false;
+    void loadCommandUsage().then((counts) => {
+      if (!cancelled) {
+        setUsage(counts);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     if (candidates.length === 0) {
       setPanelStyle(null);
@@ -82,6 +96,19 @@ export function TerminalTab({
     });
   }, [candidates, cursorBox]);
 
+  // Usage counters come from SQLite: they persist across restarts and upgrades.
+  useEffect(() => {
+    let cancelled = false;
+    void loadCommandUsage().then((counts) => {
+      if (!cancelled) {
+        setUsage(counts);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     if (!visible || candidates.length === 0) {
       return;
@@ -92,7 +119,7 @@ export function TerminalTab({
         event.stopPropagation();
         const pick = candidates[Math.min(suggestIndex, candidates.length - 1)];
         if (pick !== undefined) {
-          bumpUsage(pick.name);
+          void bumpCommandUsage(pick.name).then(() => setUsage((current) => ({ ...current, [pick.name]: (current[pick.name] ?? 0) + 1 })));
           insertText(pick.name.slice(typed.length));
         }
         setSuggestDismissed(true);
@@ -111,7 +138,20 @@ export function TerminalTab({
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [visible, candidates, suggestIndex, insertText, typed]);
+  }, [visible, candidates, suggestIndex, insertText, typed, usage]);
+
+  // Usage counters come from SQLite: they persist across restarts and upgrades.
+  useEffect(() => {
+    let cancelled = false;
+    void loadCommandUsage().then((counts) => {
+      if (!cancelled) {
+        setUsage(counts);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (reconnectAt !== undefined && reconnectAt > 0) {
@@ -121,6 +161,19 @@ export function TerminalTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reconnectAt]);
 
+
+  // Usage counters come from SQLite: they persist across restarts and upgrades.
+  useEffect(() => {
+    let cancelled = false;
+    void loadCommandUsage().then((counts) => {
+      if (!cancelled) {
+        setUsage(counts);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!visible) {
@@ -185,7 +238,7 @@ export function TerminalTab({
               }`}
               onMouseDown={(event) => {
                 event.preventDefault();
-                bumpUsage(command.name);
+                void bumpCommandUsage(command.name).then(() => setUsage((current) => ({ ...current, [command.name]: (current[command.name] ?? 0) + 1 })));
                 insertText(command.name.slice(typed.length));
                 setSuggestDismissed(true);
               }}

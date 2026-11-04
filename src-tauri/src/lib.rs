@@ -214,6 +214,7 @@ pub fn run() {
             commands::forward::forward_stop,
             commands::local::local_roots,
             commands::local::app_version,
+            commands::local::shell_icon,
             commands::local::frontend_error,
             commands::local::open_external_url,
             commands::transfer::transfer_attach,

@@ -974,3 +974,9 @@
 .fm-icon--purple { --icon-tone: #7c3aed; }
 .fm-icon--cyan { --icon-tone: #0891b2; }
 .fm-icon--slate { --icon-tone: #64748b; }
+.fm-icon-img {
+  flex: 0 0 auto;
+  margin-right: 6px;
+  vertical-align: -3px;
+  image-rendering: auto;
+}

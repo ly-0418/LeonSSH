@@ -174,3 +174,125 @@ pub fn open_external_url(url: String) -> Result<(), AppError> {
 pub fn frontend_error(message: String) {
     tracing::error!(target: "frontend", "{message}");
 }
+/// Icon data for one file type, as BGRA pixels (frontend converts to a data URL).
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShellIcon {
+    pub width: u32,
+    pub height: u32,
+    pub bgra: Vec<u8>,
+}
+
+/// Windows shell icon for a name (file association or the directory icon).
+#[tauri::command]
+pub fn shell_icon(name: String, is_dir: bool) -> Result<ShellIcon, AppError> {
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::Foundation::HWND;
+        use windows_sys::Win32::Graphics::Gdi::{
+            DeleteObject, GetDC, GetDIBits, GetObjectW, ReleaseDC, BITMAP, BITMAPINFO,
+            BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HGDIOBJ,
+        };
+        use windows_sys::Win32::Storage::FileSystem::{FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL};
+        use windows_sys::Win32::UI::Shell::{
+            SHGetFileInfoW, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON, SHGFI_USEFILEATTRIBUTES,
+        };
+        use windows_sys::Win32::UI::WindowsAndMessaging::{DestroyIcon, GetIconInfo, ICONINFO};
+
+        if name.contains('\\') || name.contains('/') || name.contains(':') {
+            return Err(AppError::InvalidArgument("非法文件名".into()));
+        }
+        let mut shfi: SHFILEINFOW = unsafe { std::mem::zeroed() };
+        let path: Vec<u16> = std::iter::once("C:\\icon\\")
+            .flat_map(|prefix| prefix.encode_utf16())
+            .chain(name.encode_utf16())
+            .chain(std::iter::once(0))
+            .collect();
+        let attributes = if is_dir {
+            FILE_ATTRIBUTE_DIRECTORY
+        } else {
+            FILE_ATTRIBUTE_NORMAL
+        };
+        let flags = SHGFI_ICON | SHGFI_USEFILEATTRIBUTES | SHGFI_LARGEICON;
+        let ok = unsafe {
+            SHGetFileInfoW(
+                path.as_ptr(),
+                attributes,
+                &mut shfi,
+                std::mem::size_of::<SHFILEINFOW>() as u32,
+                flags,
+            )
+        };
+        if ok == 0 || shfi.hIcon.is_null() {
+            return Err(AppError::Internal("无法读取系统图标".into()));
+        }
+
+        let mut info: ICONINFO = unsafe { std::mem::zeroed() };
+        if unsafe { GetIconInfo(shfi.hIcon, &mut info) } == 0 {
+            unsafe { DestroyIcon(shfi.hIcon) };
+            return Err(AppError::Internal("无法解析系统图标".into()));
+        }
+
+        let mut bitmap: BITMAP = unsafe { std::mem::zeroed() };
+        let copied = unsafe {
+            GetObjectW(
+                info.hbmColor as HGDIOBJ,
+                std::mem::size_of::<BITMAP>() as i32,
+                &mut bitmap as *mut BITMAP as *mut _,
+            )
+        };
+        let width = if copied > 0 { bitmap.bmWidth.max(1) } else { 32 };
+        let height = if copied > 0 { bitmap.bmHeight.max(1) } else { 32 };
+        let mut pixels = vec![0u8; (width * height * 4) as usize];
+
+        let mut header: BITMAPINFO = unsafe { std::mem::zeroed() };
+        header.bmiHeader.biSize = std::mem::size_of::<BITMAPINFOHEADER>() as u32;
+        header.bmiHeader.biWidth = width;
+        header.bmiHeader.biHeight = -height;
+        header.bmiHeader.biPlanes = 1;
+        header.bmiHeader.biBitCount = 32;
+        header.bmiHeader.biCompression = BI_RGB;
+
+        let dc = unsafe { GetDC(std::ptr::null_mut() as HWND) };
+        let lines = unsafe {
+            GetDIBits(
+                dc,
+                info.hbmColor,
+                0,
+                height as u32,
+                pixels.as_mut_ptr() as *mut _,
+                &mut header,
+                DIB_RGB_COLORS,
+            )
+        };
+        unsafe {
+            ReleaseDC(std::ptr::null_mut() as HWND, dc);
+            DeleteObject(info.hbmColor as HGDIOBJ);
+            DeleteObject(info.hbmMask as HGDIOBJ);
+            DestroyIcon(shfi.hIcon);
+        }
+        if lines == 0 {
+            return Err(AppError::Internal("无法转换系统图标".into()));
+        }
+
+        // Some icons come without an alpha channel; derive it from luminance.
+        let has_alpha = pixels.chunks_exact(4).any(|px| px[3] != 0);
+        if !has_alpha {
+            for px in pixels.chunks_exact_mut(4) {
+                let luminance = ((px[0] as u32 + px[1] as u32 + px[2] as u32) / 3) as u8;
+                px[3] = if luminance == 0 { 0 } else { 255 };
+            }
+        }
+
+        Ok(ShellIcon {
+            width: width as u32,
+            height: height as u32,
+            bgra: pixels,
+        })
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (name, is_dir);
+        Err(AppError::Internal("仅支持 Windows".into()))
+    }
+}

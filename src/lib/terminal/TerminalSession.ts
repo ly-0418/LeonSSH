@@ -45,13 +45,6 @@ export interface TerminalSessionOptions {
 }
 
 type BroadcastHandler = (data: string) => void;
-type SuggestionKeyHandler = (event: KeyboardEvent) => boolean;
-let suggestionKeyHandler: SuggestionKeyHandler | null = null;
-
-/** Lets the completion popup intercept Tab/Enter/Arrows before xterm does. */
-export function setSuggestionKeyHandler(handler: SuggestionKeyHandler | null): void {
-  suggestionKeyHandler = handler;
-}
 let broadcastHandler: BroadcastHandler | null = null;
 
 /** Registers the "type once, send everywhere" handler (null disables it). */
@@ -100,29 +93,10 @@ export class TerminalSession {
     });
     // Clipboard: Ctrl+C copies when text is selected (otherwise it stays SIGINT),
     // Ctrl+V pastes from the system clipboard into the shell.
+    // Clipboard: Ctrl+C copies when text is selected (otherwise it stays SIGINT).
+    // Ctrl+V is left to the native paste path: doing readText() ourselves made
+    // WebView2 ask for permission and pasted the text twice.
     this.terminal.attachCustomKeyEventHandler((event) => {
-      if (
-        event.type === "keydown" &&
-        (event.key === "Tab" || event.key === "Enter") &&
-        suggestionKeyHandler === null
-      ) {
-        void import("@tauri-apps/api/core").then(({ invoke }) =>
-          invoke("frontend_error", { message: `suggest-null key=${event.key}` }),
-        );
-      }
-      if (event.type === "keydown" && (event.key === "Tab" || event.key === "Enter")) {
-        void import("@tauri-apps/api/core").then(({ invoke }) =>
-          invoke("frontend_error", {
-            message: `key-probe key=${event.key} handler=${suggestionKeyHandler !== null}`,
-          }),
-        );
-      }
-      if (event.type === "keydown" && suggestionKeyHandler?.(event) === true) {
-        if (event.key === "Enter") {
-          this.pendingEnterSuppress = true;
-        }
-        return false;
-      }
       if (event.type !== "keydown" || !event.ctrlKey || event.altKey) {
         return true;
       }
@@ -133,17 +107,6 @@ export class TerminalSession {
           void navigator.clipboard.writeText(text).catch(() => undefined);
           this.terminal.clearSelection();
         }
-        return false;
-      }
-      if (key === "v") {
-        void navigator.clipboard
-          .readText()
-          .then((text) => {
-            if (text.length > 0) {
-              this.terminal.paste(text);
-            }
-          })
-          .catch(() => undefined);
         return false;
       }
       return true;

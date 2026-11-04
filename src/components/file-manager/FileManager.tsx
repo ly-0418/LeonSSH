@@ -68,7 +68,11 @@ export function FileManager({
   const [dragging, setDragging] = useState(false);
   const [queueHeight, setQueueHeight] = useState(remembered?.queueHeight ?? 150);
   const [conflict, setConflict] = useState<{ name: string } | null>(null);
-  const conflictResolver = useRef<((choice: "overwrite" | "skip") => void) | null>(null);
+  const conflictResolver = useRef<
+    ((choice: "overwrite" | "skip" | "overwrite-all" | "skip-all") => void) | null
+  >(null);
+  /** Set once the user picks "always overwrite/skip" for the current batch. */
+  const conflictPolicy = useRef<"overwrite" | "skip" | null>(null);
   const queueDragRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const panesRef = useRef<HTMLDivElement | null>(null);
   const { tasks, speeds, error: transferError, revision, clearError, cancel } = useTransfers();
@@ -76,14 +80,15 @@ export function FileManager({
   /** Asks the user what to do when the remote file already exists. */
   const askConflict = useCallback(
     (name: string) =>
-      new Promise<"overwrite" | "skip">((resolve) => {
+      new Promise<"overwrite" | "skip" | "overwrite-all" | "skip-all">((resolve) => {
         conflictResolver.current = resolve;
         setConflict({ name });
       }),
     [],
   );
 
-  const resolveConflict = useCallback((choice: "overwrite" | "skip") => {
+  const resolveConflict = useCallback(
+    (choice: "overwrite" | "skip" | "overwrite-all" | "skip-all") => {
     conflictResolver.current?.(choice);
     conflictResolver.current = null;
     setConflict(null);
@@ -105,11 +110,25 @@ export function FileManager({
       }
       let overwrite = false;
       if (exists) {
-        const choice = await askConflict(name);
-        if (choice === "skip") {
+        if (conflictPolicy.current === "skip") {
           return;
         }
-        overwrite = true;
+        if (conflictPolicy.current === "overwrite") {
+          overwrite = true;
+        } else {
+          const choice = await askConflict(name);
+          if (choice === "skip") {
+            return;
+          }
+          if (choice === "skip-all") {
+            conflictPolicy.current = "skip";
+            return;
+          }
+          if (choice === "overwrite-all") {
+            conflictPolicy.current = "overwrite";
+          }
+          overwrite = true;
+        }
       }
       await startUpload(terminalId, localFile, target, overwrite);
     },
@@ -128,6 +147,7 @@ export function FileManager({
         return;
       }
       setMessage(null);
+      conflictPolicy.current = null;
       for (const folder of folders) {
         try {
           await startUploadDir(
@@ -164,6 +184,7 @@ export function FileManager({
         return;
       }
       setMessage(null);
+      conflictPolicy.current = null;
       for (const folder of folders) {
         try {
           await startDownloadDir(
@@ -212,6 +233,7 @@ export function FileManager({
         return;
       }
       setMessage(null);
+      conflictPolicy.current = null;
       for (const path of paths) {
         try {
           await uploadOne(path, fileName(path));
@@ -501,6 +523,20 @@ export function FileManager({
                 onClick={() => resolveConflict("skip")}
               >
                 跳过
+              </button>
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => resolveConflict("overwrite-all")}
+              >
+                以后都覆盖
+              </button>
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => resolveConflict("skip-all")}
+              >
+                以后都跳过
               </button>
             </div>
           </div>

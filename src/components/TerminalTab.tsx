@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { TerminalStatus } from "../lib/ipc/types";
 import { LINUX_COMMANDS } from "../lib/terminal/commands";
@@ -48,7 +48,8 @@ export function TerminalTab({
   const [pathItems, setPathItems] = useState<Array<{ name: string; isDir: boolean }>>([]);
   const [pathDir, setPathDir] = useState<string | null>(null);
   const suggestListRef = useRef<HTMLDivElement | null>(null);
-  const { containerRef, notice, clearNotice, reconnect, insertText, replaceSuffix, cursorBox, findNext, findPrevious } = useTerminal({
+  const paneRef = useRef<HTMLElement | null>(null);
+  const { containerRef, notice, clearNotice, reconnect, insertText, replaceSuffix, findNext, findPrevious } = useTerminal({
     sessionId,
     title,
     visible,
@@ -165,36 +166,27 @@ export function TerminalTab({
     }
     active.scrollIntoView({ block: "nearest" });
   }, [suggestIndex, activeCount, isPathMode]);
-  // Anchor the popup to the caret: below it when there is room, above otherwise.
-  // Usage counters come from SQLite: they persist across restarts and upgrades.
-  useEffect(() => {
-    let cancelled = false;
-    void loadCommandUsage().then((counts) => {
-      if (!cancelled) {
-        setUsage(counts);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (candidates.length === 0) {
-      setPanelStyle(null);
+  // Anchor the popup to the real caret: the hidden textarea sits exactly on the
+  // cursor cell, so its rect is a reliable anchor inside the pane.
+  useLayoutEffect(() => {
+    if (rows.length === 0) {
       return;
     }
-    const box = cursorBox();
-    if (box === null) {
+    const pane = paneRef.current;
+    const textarea = containerRef.current?.querySelector<HTMLElement>(".xterm-helper-textarea");
+    if (pane === null || textarea === null || textarea === undefined) {
       return;
     }
-    const panelHeight = 46 + rows.length * 26;
-    const below = box.top + box.cellHeight + panelHeight < box.height;
+    const paneRect = pane.getBoundingClientRect();
+    const caretRect = textarea.getBoundingClientRect();
+    const panelHeight = 46 + Math.min(rows.length, 5) * 26;
+    const below = caretRect.bottom - paneRect.top + 4;
+    const above = caretRect.top - paneRect.top - panelHeight - 4;
     setPanelStyle({
-      left: Math.max(4, Math.min(box.left, box.width - 340)),
-      top: below ? box.top + box.cellHeight + 2 : Math.max(4, box.top - panelHeight - 2),
+      left: Math.max(8, Math.min(caretRect.left - paneRect.left, paneRect.width - 360)),
+      top: below + panelHeight < paneRect.height ? below : Math.max(4, above),
     });
-  }, [rows, cursorBox]);
+  }, [rows, containerRef]);
 
   // Usage counters come from SQLite: they persist across restarts and upgrades.
   useEffect(() => {
@@ -292,7 +284,7 @@ export function TerminalTab({
   }, [visible]);
 
   return (
-    <section className="terminal-pane" data-visible={visible}>
+    <section className="terminal-pane" data-visible={visible} ref={paneRef}>
 
       {searchOpen && (
         <div className="terminal-search">

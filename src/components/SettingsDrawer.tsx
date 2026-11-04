@@ -13,6 +13,8 @@ interface SettingsDrawerProps {
   exiting?: boolean;
   fontSize: number;
   onChangeFontSize: (size: number) => void;
+  fontFamily: string;
+  onChangeFontFamily: (family: string) => void;
   cursorStyle: "bar" | "underline";
   cursorWidth: number;
   onChangeCursorStyle: (style: "bar" | "underline", width: number) => void;
@@ -35,6 +37,8 @@ export function SettingsDrawer({
   exiting = false,
   fontSize,
   onChangeFontSize,
+  fontFamily,
+  onChangeFontFamily,
   cursorStyle,
   cursorWidth,
   onChangeCursorStyle,
@@ -157,6 +161,24 @@ export function SettingsDrawer({
                   <span className="font-size-value">{fontSize} px</span>
                 </div>
               </div>
+              <div className="setting-group">
+                <h3 className="setting-group__title">终端字体</h3>
+                <p className="modal__hint">选择终端使用的等宽字体。</p>
+                <select
+                  className="input font-family-select"
+                  value={fontFamily}
+                  onChange={(event) => onChangeFontFamily(event.target.value)}
+                >
+                  <option value="Cascadia Mono, Consolas, monospace">Cascadia Mono（Windows 默认）</option>
+                  <option value="Consolas, monospace">Consolas</option>
+                  <option value="'JetBrains Mono', Consolas, monospace">JetBrains Mono</option>
+                  <option value="'Fira Code', Consolas, monospace">Fira Code</option>
+                  <option value="'Source Code Pro', Consolas, monospace">Source Code Pro</option>
+                  <option value="'Courier New', monospace">Courier New</option>
+                  <option value="monospace">系统等宽</option>
+                </select>
+              </div>
+
               <div className="setting-group">
                 <h3 className="setting-group__title">终端光标</h3>
                 <p className="modal__hint">选择光标形状；竖线可以调整粗细。</p>

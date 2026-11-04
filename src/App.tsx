@@ -54,6 +54,9 @@ export default function App() {
   /** Tabs whose saved forward rules were already auto-started. */
   const startedForwards = useRef<Set<string>>(new Set());
   const [forwardOpen, setForwardOpen] = useState(false);
+  const [fontFamily, setFontFamily] = useState<string>(
+    () => localStorage.getItem("leonssh.fontFamily") ?? "Cascadia Mono, Consolas, monospace",
+  );
   const [cursorStyle, setCursorStyle] = useState<"bar" | "underline">(
     () => (localStorage.getItem("leonssh.cursorStyle") === "underline" ? "underline" : "bar"),
   );
@@ -480,6 +483,7 @@ export default function App() {
                     visible={tab.key === activeKey}
                     theme={theme}
                     fontSize={fontSize}
+                    fontFamily={fontFamily}
                     cursorStyle={cursorStyle}
                     cursorWidth={cursorWidth}
                     onStatus={makeStatusHandler(tab.key)}
@@ -566,6 +570,11 @@ export default function App() {
           theme={theme}
           onChangeTheme={setTheme}
           fontSize={fontSize}
+          fontFamily={fontFamily}
+          onChangeFontFamily={(value) => {
+            setFontFamily(value);
+            localStorage.setItem("leonssh.fontFamily", value);
+          }}
           onChangeFontSize={setFontSize}
           cursorStyle={cursorStyle}
           cursorWidth={cursorWidth}

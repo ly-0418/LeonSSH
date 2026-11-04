@@ -16,6 +16,7 @@ interface TerminalTabProps {
   visible: boolean;
   theme: ThemeMode;
   fontSize: number;
+  fontFamily: string;
   cursorStyle: "bar" | "underline";
   cursorWidth: number;
   state: TerminalStatus["state"];
@@ -35,8 +36,9 @@ export function TerminalTab({
   visible,
   theme,
   fontSize,
-  cursorStyle,
-  cursorWidth,
+  fontFamily,
+    cursorStyle,
+    cursorWidth,
   state,
   reconnectAt,
   onStatus,
@@ -59,8 +61,9 @@ export function TerminalTab({
     visible,
     theme,
     fontSize,
-  cursorStyle,
-  cursorWidth,
+    fontFamily,
+    cursorStyle,
+    cursorWidth,
     onStatus,
     onInputLine: (value) => {
       setLine(value);

@@ -34,6 +34,7 @@ export interface TerminalSessionOptions {
   /** UI theme at creation time; later changes go through `setTheme`. */
   theme?: ThemeMode;
   fontSize?: number;
+  fontFamily?: string;
   cursorStyle?: "bar" | "underline";
   cursorWidth?: number;
   onStatus?: (patch: Partial<TerminalStatus>) => void;
@@ -79,6 +80,7 @@ export class TerminalSession {
     this.terminal = new Terminal({
       ...TERMINAL_OPTIONS,
       fontSize: options.fontSize ?? 14,
+      fontFamily: options.fontFamily ?? "Cascadia Mono, Consolas, monospace",
       cursorStyle: options.cursorStyle ?? "bar",
       cursorWidth: options.cursorWidth ?? 2,
       theme: terminalTheme(options.theme ?? "dark"),
@@ -279,6 +281,15 @@ export class TerminalSession {
       this.terminal.refresh(0, Math.max(0, this.terminal.rows - 1));
       this.terminal.focus();
     });
+  }
+
+  /** Applies the terminal font family chosen in the settings drawer. */
+  setFontFamily(family: string): void {
+    if (this.disposed || family.trim().length === 0) {
+      return;
+    }
+    this.terminal.options.fontFamily = family;
+    this.scheduleFit();
   }
 
   /** Applies the cursor shape/width chosen in the settings drawer. */

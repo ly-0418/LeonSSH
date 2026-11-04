@@ -25,6 +25,7 @@ export interface UseTerminalOptions {
   visible: boolean;
   theme: ThemeMode;
   fontSize: number;
+  fontFamily: string;
   cursorStyle: "bar" | "underline";
   cursorWidth: number;
   onInputLine?: (line: string) => void;
@@ -38,6 +39,7 @@ export function useTerminal({
   visible,
   theme,
   fontSize,
+  fontFamily,
   cursorStyle,
   cursorWidth,
   onInputLine,
@@ -53,6 +55,8 @@ export function useTerminal({
   const themeRef = useRef(theme);
   themeRef.current = theme;
   const fontSizeRef = useRef(fontSize);
+  const fontFamilyRef = useRef(fontFamily);
+  fontFamilyRef.current = fontFamily;
   const cursorRef = useRef({ style: cursorStyle, width: cursorWidth });
   cursorRef.current = { style: cursorStyle, width: cursorWidth };
   const onInputLineRef = useRef(onInputLine);

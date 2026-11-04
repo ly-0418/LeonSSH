@@ -94,6 +94,8 @@ export function useTerminal({
     void sessionRef.current?.reconnect();
   }, []);
 
+  const cursorBox = useCallback(() => sessionRef.current?.getCursorBox() ?? null, []);
+
   const insertText = useCallback((text: string) => {
     void sessionRef.current?.insertText(text);
   }, []);
@@ -105,5 +107,5 @@ export function useTerminal({
     sessionRef.current?.findPrevious(text);
   }, []);
 
-  return { containerRef, notice, clearNotice, reconnect, insertText, findNext, findPrevious, focus, initialStatus: INITIAL_STATUS };
+  return { containerRef, notice, clearNotice, reconnect, insertText, cursorBox, findNext, findPrevious, focus, initialStatus: INITIAL_STATUS };
 }

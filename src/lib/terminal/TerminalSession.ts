@@ -184,6 +184,29 @@ export class TerminalSession {
     await this.connect();
   }
 
+  /** Pixel box of the text cursor inside the terminal container. */
+  getCursorBox(): { left: number; top: number; cellHeight: number; width: number; height: number } | null {
+    if (this.disposed) {
+      return null;
+    }
+    const element = this.terminal.element ?? null;
+    if (element === null) {
+      return null;
+    }
+    const buffer = this.terminal.buffer.active;
+    const width = element.clientWidth;
+    const height = element.clientHeight;
+    const cellWidth = width / Math.max(1, this.terminal.cols);
+    const cellHeight = height / Math.max(1, this.terminal.rows);
+    return {
+      left: buffer.cursorX * cellWidth,
+      top: buffer.cursorY * cellHeight,
+      cellHeight,
+      width,
+      height,
+    };
+  }
+
   async dispose(): Promise<void> {
     if (this.disposed) {
       return;

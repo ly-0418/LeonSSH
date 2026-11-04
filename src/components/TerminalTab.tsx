@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import type { TerminalStatus } from "../lib/ipc/types";
 import { LINUX_COMMANDS } from "../lib/terminal/commands";
+import { bumpUsage, usageOf } from "../lib/terminal/usage";
 import { useTerminal } from "../hooks/useTerminal";
 import type { ThemeMode } from "../lib/terminal/theme";
 
@@ -38,7 +39,8 @@ export function TerminalTab({
   const [line, setLine] = useState("");
   const [suggestIndex, setSuggestIndex] = useState(0);
   const [suggestDismissed, setSuggestDismissed] = useState(false);
-  const { containerRef, notice, clearNotice, reconnect, insertText, findNext, findPrevious } = useTerminal({
+  const [panelStyle, setPanelStyle] = useState<{ left: number; top: number } | null>(null);
+  const { containerRef, notice, clearNotice, reconnect, insertText, cursorBox, findNext, findPrevious } = useTerminal({
     sessionId,
     title,
     visible,
@@ -57,8 +59,28 @@ export function TerminalTab({
     !suggestDismissed && typed.length > 0 && !typed.includes(" ")
       ? LINUX_COMMANDS.filter(
           (command) => command.name.startsWith(typed) && command.name !== typed,
-        ).slice(0, 8)
+        )
+          .sort((a, b) => usageOf(b.name) - usageOf(a.name) || a.name.localeCompare(b.name))
+          .slice(0, 8)
       : [];
+
+  // Anchor the popup to the caret: below it when there is room, above otherwise.
+  useEffect(() => {
+    if (candidates.length === 0) {
+      setPanelStyle(null);
+      return;
+    }
+    const box = cursorBox();
+    if (box === null) {
+      return;
+    }
+    const panelHeight = 46 + candidates.length * 26;
+    const below = box.top + box.cellHeight + panelHeight < box.height;
+    setPanelStyle({
+      left: Math.max(4, Math.min(box.left, box.width - 340)),
+      top: below ? box.top + box.cellHeight + 2 : Math.max(4, box.top - panelHeight - 2),
+    });
+  }, [candidates, cursorBox]);
 
   useEffect(() => {
     if (!visible || candidates.length === 0) {
@@ -70,6 +92,7 @@ export function TerminalTab({
         event.stopPropagation();
         const pick = candidates[Math.min(suggestIndex, candidates.length - 1)];
         if (pick !== undefined) {
+          bumpUsage(pick.name);
           insertText(pick.name.slice(typed.length));
         }
         setSuggestDismissed(true);
@@ -146,7 +169,7 @@ export function TerminalTab({
       <div className="terminal-host" ref={containerRef} />
 
       {candidates.length > 0 && (
-        <div className="terminal-suggest">
+        <div className="terminal-suggest" style={panelStyle ?? undefined}>
           <div className="terminal-suggest__head">
             <span className="terminal-suggest__pick">
               {candidates[Math.min(suggestIndex, candidates.length - 1)].name}
@@ -162,6 +185,7 @@ export function TerminalTab({
               }`}
               onMouseDown={(event) => {
                 event.preventDefault();
+                bumpUsage(command.name);
                 insertText(command.name.slice(typed.length));
                 setSuggestDismissed(true);
               }}

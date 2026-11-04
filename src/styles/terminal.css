@@ -183,8 +183,6 @@
 /* Command completion popup (IDE-style). */
 .terminal-suggest {
   position: absolute;
-  left: 12px;
-  bottom: 34px;
   width: 460px;
   max-width: calc(100% - 24px);
   padding: 6px;

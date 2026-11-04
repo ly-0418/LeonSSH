@@ -409,13 +409,14 @@ export function TerminalTab({
       <div className="terminal-host" ref={containerRef} />
 
       {activeCount > 0 && (
-        <div className="terminal-suggest" ref={suggestListRef} style={panelStyle ?? undefined}>
+        <div className="terminal-suggest" style={panelStyle ?? undefined}>
           <div className="terminal-suggest__head">
             <span className="terminal-suggest__pick">
               {rows[Math.min(suggestIndex, activeCount - 1)]?.name}
             </span>
             <span className="terminal-suggest__keys">Tab 填入 · Enter 填入并执行 · ↑↓ 选择 · Esc 关闭</span>
           </div>
+          <div className="terminal-suggest__list" ref={suggestListRef}>
           {rows.map((command, index) => (
             <button
               type="button"
@@ -435,6 +436,7 @@ export function TerminalTab({
               <span className="terminal-suggest__desc">{command.desc}</span>
             </button>
           ))}
+          </div>
         </div>
       )}
 

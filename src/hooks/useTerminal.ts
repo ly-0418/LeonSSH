@@ -106,6 +106,10 @@ export function useTerminal({
     sessionRef.current?.setCursorStyle(cursorStyle, cursorWidth);
   }, [cursorStyle, cursorWidth]);
 
+  useEffect(() => {
+    sessionRef.current?.setFontFamily(fontFamily);
+  }, [fontFamily]);
+
   const clearNotice = useCallback(() => setNotice(null), []);
   const focus = useCallback(() => sessionRef.current?.focus(), []);
 

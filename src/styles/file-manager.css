@@ -980,80 +980,87 @@
   vertical-align: -3px;
   image-rendering: auto;
 }
+
 /* Larger file-manager surface: bigger text, taller rows, bigger inputs/icons. */
 .sftp-sheet {
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .sftp-sheet .fm-row {
-  height: 38px;
-  padding: 7px 14px;
-  font-size: 14px;
-  grid-template-columns: 30px minmax(0, 1fr) 100px 148px;
+  height: 44px;
+  padding: 8px 16px;
+  font-size: 15.5px;
+  grid-template-columns: 34px minmax(0, 1fr) 116px 168px;
 }
 
 .sftp-sheet .fm-row--perm {
-  grid-template-columns: 30px minmax(0, 1fr) 92px 52px 140px;
+  grid-template-columns: 34px minmax(0, 1fr) 106px 58px 160px;
 }
 
 .sftp-sheet .fm-row__size,
 .sftp-sheet .fm-row__mode,
 .sftp-sheet .fm-row__time {
-  font-size: 12.5px;
+  font-size: 14.5px;
 }
 
 .sftp-sheet .fm-row__name {
-  gap: 9px;
+  gap: 11px;
 }
 
 .sftp-sheet .fm-icon-img {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
 }
 
 .sftp-sheet .fm-icon {
-  width: 24px;
-  height: 24px;
-  font-size: 12px;
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
 }
 
 .sftp-sheet .fm-icon--dir {
-  width: 24px;
+  width: 32px;
 }
 
 .sftp-sheet .fm-pathbar {
-  padding: 9px 10px;
-  gap: 8px;
+  padding: 11px 14px;
+  gap: 10px;
 }
 
 .sftp-sheet .fm-pathbar__label {
-  font-size: 12px;
+  font-size: 13.5px;
 }
 
 .sftp-sheet .fm-pathbar__input,
 .sftp-sheet .fm-pathbar__search {
-  height: 38px;
-  padding: 9px 92px 9px 12px;
-  font-size: 14.5px;
+  height: 44px;
+  padding: 11px 104px 11px 14px;
+  font-size: 16px;
 }
 
 .sftp-sheet .fm-pathbar__search {
-  width: 210px;
-  padding-right: 12px;
+  width: 240px;
+  padding-right: 14px;
 }
 
 .sftp-sheet .fm-iconbtn {
-  width: 36px;
-  height: 36px;
-  font-size: 16px;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
 }
 
 .sftp-sheet .fm-toolbar button,
 .sftp-sheet .fm-tabs button {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .sftp-sheet .fm-table__head {
-  font-size: 13.5px;
-  height: 36px;
+  font-size: 15px;
+  height: 42px;
+}
+
+.sftp-sheet .fm-table__row-check,
+.sftp-sheet input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
 }

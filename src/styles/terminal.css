@@ -60,7 +60,9 @@
 
 .terminal-host .xterm {
   height: 100%;
-  padding: 6px 8px;
+  /* Extra bottom inset so the last prompt row is not clipped by the rounded
+     host corner; +5px on trial. */
+  padding: 6px 8px 11px;
 }
 
 .terminal-host .xterm-viewport {

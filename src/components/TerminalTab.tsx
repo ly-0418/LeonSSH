@@ -58,6 +58,7 @@ export function TerminalTab({
   const paneRef = useRef<HTMLElement | null>(null);
   /** Keeps the popup closed after accepting a file (no deeper level). */
   const ignoreNextLineRef = useRef(false);
+  const previousLineRef = useRef("");
   const { containerRef, notice, clearNotice, reconnect, insertText, backspace, findNext, findPrevious, focus } = useTerminal({
     sessionId,
     title,
@@ -69,6 +70,12 @@ export function TerminalTab({
     onStatus,
     onInputLine: (value) => {
       setLine(value);
+      const deleting = value.length < previousLineRef.current.length;
+      previousLineRef.current = value;
+      if (deleting) {
+        setSuggestDismissed(true);
+        return;
+      }
       if (ignoreNextLineRef.current) {
         ignoreNextLineRef.current = false;
         setSuggestDismissed(true);
@@ -134,7 +141,7 @@ export function TerminalTab({
     ? pathItems
         .filter((entry) => entry.name.startsWith(prefixPart))
         .filter((entry) => !entry.name.startsWith(".") || prefixPart.startsWith("."))
-        .filter((entry) => entry.isDir || entry.name !== prefixPart)
+        .filter((entry) => entry.name !== prefixPart)
         .sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name))
         .slice(0, 8)
     : [];
@@ -165,7 +172,7 @@ export function TerminalTab({
         if (!pick.isDir) {
           ignoreNextLineRef.current = true;
         }
-        insertText(pick.name + (pick.isDir ? "/" : ""));
+        insertText(pick.name);
         setSuggestDismissed(true);
         focus();
       }

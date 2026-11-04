@@ -179,6 +179,7 @@
    other, an active tab that merges with the page, and a subtle hover. */
 .tab {
   position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -208,7 +209,7 @@
   z-index: -1;
   border-radius: 8px;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
-  background: var(--accent-soft-bg);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .tab--active {
@@ -516,7 +517,7 @@ input[type="password"]::-ms-reveal {
 }
 
 .button--primary {
-  background: var(--accent-soft-bg);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
   border-color: var(--accent-soft-border);
   color: var(--accent);
 }
@@ -640,7 +641,7 @@ input[type="password"]::-ms-reveal {
 .tab-bar__action--active {
   color: var(--accent);
   border-color: var(--accent-soft-border);
-  background: var(--accent-soft-bg);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .sftp-overlay {
@@ -999,7 +1000,7 @@ input[type="password"]::-ms-reveal {
 
 .session-card--active {
   border-color: var(--accent);
-  background: var(--accent-soft-bg);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .session-card--new {
@@ -1046,7 +1047,7 @@ input[type="password"]::-ms-reveal {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--accent-soft-bg);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
   border: 1px solid var(--accent-soft-border);
   color: var(--accent);
   font-size: 12px;
@@ -1173,7 +1174,7 @@ input[type="password"]::-ms-reveal {
   border-style: solid;
   border-color: var(--accent);
   color: var(--accent);
-  background: var(--accent-soft-bg);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .new-session__head {
   display: flex;
@@ -1229,7 +1230,7 @@ input[type="password"]::-ms-reveal {
 
 .new-session__item:hover {
   border-color: var(--accent-soft-border);
-  background: var(--accent-soft-bg);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .new-session__dot {
@@ -1459,7 +1460,7 @@ input[type="password"]::-ms-reveal {
 
 .drawer__navbtn--active {
   border-color: var(--accent-soft-border);
-  background: var(--accent-soft-bg);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
   color: var(--accent);
 }
 
@@ -1508,7 +1509,7 @@ input[type="password"]::-ms-reveal {
 .theme-card--active {
   border-color: var(--accent);
   color: var(--accent);
-  background: var(--accent-soft-bg);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .theme-card__icon {
@@ -1706,7 +1707,7 @@ input[type="password"]::-ms-reveal {
 
 .auth-switch__btn--active {
   border-color: var(--accent);
-  background: var(--accent-soft-bg);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
   color: var(--accent);
 }
 .session-dialog__search {
@@ -1767,7 +1768,7 @@ input[type="password"]::-ms-reveal {
 
 .cursor-option--active {
   border-color: var(--accent);
-  background: var(--accent-soft-bg);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
   color: var(--accent);
 }
 

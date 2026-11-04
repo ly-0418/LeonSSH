@@ -104,6 +104,13 @@ export class TerminalSession {
           invoke("frontend_error", { message: `suggest-null key=${event.key}` }),
         );
       }
+      if (event.type === "keydown" && (event.key === "Tab" || event.key === "Enter")) {
+        void import("@tauri-apps/api/core").then(({ invoke }) =>
+          invoke("frontend_error", {
+            message: `key-probe key=${event.key} handler=${suggestionKeyHandler !== null}`,
+          }),
+        );
+      }
       if (event.type === "keydown" && suggestionKeyHandler?.(event) === true) {
         return false;
       }

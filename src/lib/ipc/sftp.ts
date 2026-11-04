@@ -213,3 +213,15 @@ export async function copyRemote(
     throw normalizeError(error);
   }
 }
+/** Names only (bounded) — used by path completion. */
+export async function listRemoteNames(
+  terminalId: string,
+  path: string,
+  limit = 200,
+): Promise<FileEntry[]> {
+  try {
+    return await invoke<FileEntry[]>("sftp_list_names", { terminalId, path, limit });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}

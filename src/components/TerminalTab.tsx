@@ -3,11 +3,14 @@ import { useEffect, useState } from "react";
 import type { TerminalStatus } from "../lib/ipc/types";
 import { LINUX_COMMANDS } from "../lib/terminal/commands";
 import { bumpCommandUsage, loadCommandUsage } from "../lib/ipc/usage";
+import { listRemoteNames } from "../lib/ipc/sftp";
 import { useTerminal } from "../hooks/useTerminal";
 import type { ThemeMode } from "../lib/terminal/theme";
 
 interface TerminalTabProps {
   sessionId: number;
+  /** Active SSH terminal id (needed for path completion). */
+  terminalId?: string;
   title: string;
   visible: boolean;
   theme: ThemeMode;
@@ -26,6 +29,7 @@ interface TerminalTabProps {
 export function TerminalTab({
   sessionId,
   title,
+  terminalId,
   visible,
   theme,
   fontSize,
@@ -41,7 +45,9 @@ export function TerminalTab({
   const [suggestDismissed, setSuggestDismissed] = useState(false);
   const [panelStyle, setPanelStyle] = useState<{ left: number; top: number } | null>(null);
   const [usage, setUsage] = useState<Record<string, number>>({});
-  const { containerRef, notice, clearNotice, reconnect, insertText, cursorBox, findNext, findPrevious } = useTerminal({
+  const [pathItems, setPathItems] = useState<Array<{ name: string; isDir: boolean }>>([]);
+  const [pathDir, setPathDir] = useState<string | null>(null);
+  const { containerRef, notice, clearNotice, reconnect, insertText, replaceSuffix, cursorBox, findNext, findPrevious } = useTerminal({
     sessionId,
     title,
     visible,
@@ -73,6 +79,71 @@ export function TerminalTab({
           .slice(0, 8)
       : [];
 
+
+  // Path mode: completing the last token when it contains a slash.
+  const lastToken = typed.split(" ").pop() ?? "";
+  const isPathMode = typed.includes(" ") && lastToken.includes("/");
+  const slashIndex = lastToken.lastIndexOf("/");
+  const dirPart = isPathMode ? lastToken.slice(0, slashIndex + 1) : "";
+  const prefixPart = isPathMode ? lastToken.slice(slashIndex + 1) : "";
+
+  useEffect(() => {
+    if (!isPathMode || terminalId === undefined) {
+      setPathItems([]);
+      return;
+    }
+    const dir = dirPart.length === 0 ? "/" : dirPart;
+    if (pathDir === dir) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void listRemoteNames(terminalId, dir, 400)
+        .then((items) => {
+          setPathItems(items.map((item) => ({ name: item.name, isDir: item.isDir })));
+          setPathDir(dir);
+        })
+        .catch(() => {
+          setPathItems([]);
+          setPathDir(dir);
+        });
+    }, 160);
+    return () => window.clearTimeout(timer);
+  }, [isPathMode, terminalId, dirPart, pathDir]);
+
+  const pathSuggestions = isPathMode
+    ? pathItems
+        .filter((entry) => entry.name.startsWith(prefixPart))
+        .sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name))
+        .slice(0, 8)
+    : [];
+
+  const rows = isPathMode
+    ? pathSuggestions.map((item) => ({ name: item.name, desc: item.isDir ? "目录" : "文件" }))
+    : candidates;
+  const activeCount = rows.length;
+
+  function bumpUsageLocal(name: string): void {
+    void bumpCommandUsage(name).then(() =>
+      setUsage((current) => ({ ...current, [name]: (current[name] ?? 0) + 1 })),
+    );
+  }
+
+  function acceptSuggestion(index: number): void {
+    if (isPathMode) {
+      const pick = pathSuggestions[index];
+      if (pick !== undefined) {
+        replaceSuffix(prefixPart.length, pick.name + (pick.isDir ? "/" : ""));
+        setSuggestDismissed(true);
+      }
+      return;
+    }
+    const pick = candidates[index];
+    if (pick !== undefined) {
+      bumpUsageLocal(pick.name);
+      insertText(pick.name.slice(typed.length));
+    }
+    setSuggestDismissed(true);
+  }
   // Anchor the popup to the caret: below it when there is room, above otherwise.
   // Usage counters come from SQLite: they persist across restarts and upgrades.
   useEffect(() => {
@@ -96,13 +167,13 @@ export function TerminalTab({
     if (box === null) {
       return;
     }
-    const panelHeight = 46 + candidates.length * 26;
+    const panelHeight = 46 + rows.length * 26;
     const below = box.top + box.cellHeight + panelHeight < box.height;
     setPanelStyle({
       left: Math.max(4, Math.min(box.left, box.width - 340)),
       top: below ? box.top + box.cellHeight + 2 : Math.max(4, box.top - panelHeight - 2),
     });
-  }, [candidates, cursorBox]);
+  }, [rows, cursorBox]);
 
   // Usage counters come from SQLite: they persist across restarts and upgrades.
   useEffect(() => {
@@ -118,7 +189,7 @@ export function TerminalTab({
   }, []);
 
   useEffect(() => {
-    if (!visible || candidates.length === 0) {
+    if (!visible || activeCount === 0) {
       return;
     }
     const onKey = (event: KeyboardEvent) => {
@@ -134,11 +205,11 @@ export function TerminalTab({
       } else if (event.key === "ArrowDown") {
         event.preventDefault();
         event.stopPropagation();
-        setSuggestIndex((current) => (current + 1) % candidates.length);
+        setSuggestIndex((current) => (current + 1) % activeCount);
       } else if (event.key === "ArrowUp") {
         event.preventDefault();
         event.stopPropagation();
-        setSuggestIndex((current) => (current - 1 + candidates.length) % candidates.length);
+        setSuggestIndex((current) => (current - 1 + activeCount) % activeCount);
       } else if (event.key === "Escape") {
         event.preventDefault();
         setSuggestDismissed(true);
@@ -146,7 +217,7 @@ export function TerminalTab({
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [visible, candidates, suggestIndex, insertText, typed, usage]);
+  }, [visible, activeCount, rows, suggestIndex, typed, isPathMode, acceptSuggestion]);
 
   // Usage counters come from SQLite: they persist across restarts and upgrades.
   useEffect(() => {
@@ -229,15 +300,15 @@ export function TerminalTab({
 
       <div className="terminal-host" ref={containerRef} />
 
-      {candidates.length > 0 && (
+      {activeCount > 0 && (
         <div className="terminal-suggest" style={panelStyle ?? undefined}>
           <div className="terminal-suggest__head">
             <span className="terminal-suggest__pick">
-              {candidates[Math.min(suggestIndex, candidates.length - 1)].name}
+              {rows[Math.min(suggestIndex, activeCount - 1)]?.name}
             </span>
             <span className="terminal-suggest__keys">Tab 填入 · ↑↓ 选择 · Enter 确认 · Esc 关闭</span>
           </div>
-          {candidates.map((command, index) => (
+          {rows.map((command, index) => (
             <button
               type="button"
               key={command.name}

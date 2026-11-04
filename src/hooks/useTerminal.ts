@@ -99,6 +99,10 @@ export function useTerminal({
     void sessionRef.current?.reconnect();
   }, []);
 
+  const replaceSuffix = useCallback((remove: number, text: string) => {
+    void sessionRef.current?.replaceSuffix(remove, text);
+  }, []);
+
   const cursorBox = useCallback(() => sessionRef.current?.getCursorBox() ?? null, []);
 
   const insertText = useCallback((text: string) => {
@@ -112,5 +116,5 @@ export function useTerminal({
     sessionRef.current?.findPrevious(text);
   }, []);
 
-  return { containerRef, notice, clearNotice, reconnect, insertText, cursorBox, findNext, findPrevious, focus, initialStatus: INITIAL_STATUS };
+  return { containerRef, notice, clearNotice, reconnect, insertText, replaceSuffix, cursorBox, findNext, findPrevious, focus, initialStatus: INITIAL_STATUS };
 }

@@ -243,3 +243,13 @@ pub async fn sftp_copy(
     tracing::info!(%from, %to, bytes, "remote copy finished");
     Ok(bytes)
 }
+#[tauri::command]
+pub async fn sftp_list_names(
+    state: State<'_, AppState>,
+    terminal_id: String,
+    path: String,
+    limit: Option<usize>,
+) -> Result<Vec<sftp::FileEntry>, AppError> {
+    let session = state.sftp(&terminal_id).await?;
+    sftp::list_names(&session, &path, limit.unwrap_or(200)).await
+}

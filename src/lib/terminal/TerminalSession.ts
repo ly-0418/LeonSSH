@@ -314,6 +314,19 @@ export class TerminalSession {
     this.options.onInputLine?.(this.inputLine);
   }
 
+  /** Replaces the last `remove` characters of the current line with `text`. */
+  async replaceSuffix(remove: number, text: string): Promise<void> {
+    if (this.disposed) {
+      return;
+    }
+    const trimmed = this.inputLine.slice(0, Math.max(0, this.inputLine.length - remove));
+    this.inputLine = trimmed + text;
+    this.options.onInputLine?.(this.inputLine);
+    if (text.length > 0) {
+      await this.handleInput("\x7f".repeat(remove) + text);
+    }
+  }
+
   /** Writes text into the shell and keeps the tracked line in sync. */
   async insertText(text: string): Promise<void> {
     if (this.disposed || text.length === 0) {

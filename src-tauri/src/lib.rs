@@ -194,6 +194,7 @@ pub fn run() {
             commands::sftp::sftp_open,
             commands::sftp::sftp_close,
             commands::sftp::sftp_list,
+            commands::sftp::sftp_list_names,
             commands::sftp::sftp_list_stream,
             commands::sftp::sftp_mkdir,
             commands::sftp::sftp_remove,

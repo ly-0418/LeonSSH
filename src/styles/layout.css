@@ -645,7 +645,7 @@ input[type="password"]::-ms-reveal {
   backdrop-filter: none;
 }
 
-/* Forward panel sheet: half the window, slides in from the right. */
+/* Panels slide in from the right. The file manager takes most of the width;\n   the forwarding panel keeps a compact, fixed width. */
 .sftp-sheet {
   width: 90%;
   min-width: 960px;

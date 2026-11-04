@@ -7,7 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
  * The window is created with `decorations(false)`, so these replace the
  * system caption buttons.
  */
-export function WindowControls() {
+export function WindowControls({ onClose }: { onClose?: () => void }) {
   const appWindow = getCurrentWindow();
   const [maximized, setMaximized] = useState(false);
 
@@ -67,6 +67,10 @@ export function WindowControls() {
         title="关闭"
         aria-label="关闭"
           onClick={() => {
+            if (onClose !== undefined) {
+              onClose();
+              return;
+            }
             void invoke("frontend_error", { message: "close-clicked" });
             appWindow.close().catch((error: unknown) =>
               void invoke("frontend_error", { message: `close-failed: ${String(error)}` }),

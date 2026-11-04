@@ -225,6 +225,15 @@ export default function App() {
     [tabs],
   );
 
+  // The caption ✕ goes through here: no sessions => quit directly, sessions => ask.
+  const requestClose = useCallback(() => {
+    if (tabs.length === 0) {
+      void invoke("quit_app");
+      return;
+    }
+    setCloseRequested(true);
+  }, [tabs.length]);
+
   const closeTab = useCallback(
     (key: string) => {
       const tab = tabs.find((item) => item.key === key);
@@ -459,7 +468,7 @@ export default function App() {
               <path d="M19.4 14.8a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.6 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.4 1z" />
             </svg>
           </button>
-          <WindowControls />
+          <WindowControls onClose={requestClose} />
         </div>
       </header>
 
@@ -613,8 +622,7 @@ export default function App() {
             setCloseRequested(false);
             forceClose.current = true;
             void invoke("frontend_error", { message: "close-confirmed" });
-            void getCurrentWindow().close();
-            window.setTimeout(() => void invoke("quit_app"), 400);
+            void invoke("quit_app");
           }}
           onCancel={() => setCloseRequested(false)}
         />

@@ -114,6 +114,7 @@ export function TerminalTab({
   const pathSuggestions = isPathMode
     ? pathItems
         .filter((entry) => entry.name.startsWith(prefixPart))
+        .filter((entry) => !entry.name.startsWith(".") || prefixPart.startsWith("."))
         .sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name))
         .slice(0, 8)
     : [];

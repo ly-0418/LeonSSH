@@ -191,7 +191,7 @@ export class TerminalSession {
     if (this.disposed) {
       return null;
     }
-    const element = this.terminal.element ?? null;
+    const element = this.terminal.element ?? this.options.container;
     if (element === null) {
       return null;
     }

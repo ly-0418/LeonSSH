@@ -107,8 +107,8 @@ export default function App() {
   );
 
   const openTab = useCallback(
-    (session: SessionSummary) => {
-      const existing = tabs.find((tab) => tab.sessionId === session.id);
+    (session: SessionSummary, force = false) => {
+      const existing = force ? undefined : tabs.find((tab) => tab.sessionId === session.id);
       if (existing) {
         setActiveKey(existing.key);
         setMode("terminal");
@@ -278,7 +278,9 @@ export default function App() {
         return;
       }
       closeTab(tab.key);
-      openTab(profile);
+      // Force a fresh tab: without it `openTab` would short-circuit to the tab
+      // that is being closed in this same update.
+      openTab(profile, true);
     },
     [sessions, closeTab, openTab],
   );

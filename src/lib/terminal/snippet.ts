@@ -7,6 +7,17 @@
  */
 const PLACEHOLDER = /\{(?:n|ip|path)\}/g;
 
+/**
+ * Commands whose free arguments are file names even without a leading slash
+ * (`cd opt`, `ls var`, `vim hosts`): those must fold into one template.
+ */
+const PATH_COMMANDS = new Set([
+  "cd", "ls", "ll", "cat", "less", "more", "head", "tail", "vim", "vi", "nvim", "nano",
+  "mkdir", "rmdir", "rm", "cp", "mv", "chmod", "chown", "touch", "stat", "file",
+  "du", "df", "find", "tar", "unzip", "zip", "gzip", "xz", "rsync", "scp",
+  "source", "sh", "bash", "python", "python3", "node", "ln", "readlink", "tree",
+]);
+
 function isNumberToken(token: string): boolean {
   return /^\d{1,6}$/.test(token);
 }
@@ -37,7 +48,9 @@ export function snippetTemplate(line: string): string | null {
   if (tokens.length < 2) {
     return null;
   }
-  const normalized = tokens.map((token) => {
+  const primary = tokens[0].toLowerCase();
+  const treatsArgumentsAsPaths = PATH_COMMANDS.has(primary);
+  const normalized = tokens.map((token, index) => {
     if (token === "|" || token === "||" || token === "&&") {
       return token;
     }
@@ -48,6 +61,10 @@ export function snippetTemplate(line: string): string | null {
       return "{ip}";
     }
     if (isPathToken(token)) {
+      return "{path}";
+    }
+    // `cd opt` / `ls var` — bare names are still paths for these commands.
+    if (index > 0 && treatsArgumentsAsPaths && !token.startsWith("-")) {
       return "{path}";
     }
     return token;

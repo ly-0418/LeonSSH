@@ -200,3 +200,16 @@ export function formatMode(mode: number | null): string {
   }
   return (mode & 0o777).toString(8).padStart(3, "0");
 }
+
+/** Copies a remote file or directory to another remote path. */
+export async function copyRemote(
+  terminalId: string,
+  from: string,
+  to: string,
+): Promise<number> {
+  try {
+    return await invoke<number>("sftp_copy", { terminalId, from, to });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}

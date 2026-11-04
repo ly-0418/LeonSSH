@@ -438,3 +438,50 @@ pub async fn list_stream(
     );
     Ok(total)
 }
+/// Copies a file, or recursively copies a directory, on the remote host.
+pub async fn copy_path(sftp: &SftpSession, from: &str, to: &str) -> Result<u64, AppError> {
+    let source = normalize_remote(from);
+    let target = normalize_remote(to);
+    if source == target {
+        return Err(AppError::InvalidArgument("源路径与目标路径相同".into()));
+    }
+    let meta = sftp
+        .symlink_metadata(source.clone())
+        .await
+        .map_err(|err| AppError::Sftp(format!("读取 {source} 元数据失败: {err}")))?;
+    if meta.is_dir() {
+        copy_dir(sftp, &source, &target).await
+    } else {
+        copy_file(sftp, &source, &target).await
+    }
+}
+
+async fn copy_file(sftp: &SftpSession, from: &str, to: &str) -> Result<u64, AppError> {
+    let mut source = sftp
+        .open(from.to_string())
+        .await
+        .map_err(|err| AppError::Sftp(format!("打开 {from} 失败: {err}")))?;
+    let mut sink = sftp
+        .create(to.to_string())
+        .await
+        .map_err(|err| AppError::Sftp(format!("创建 {to} 失败: {err}")))?;
+    let bytes = tokio::io::copy(&mut source, &mut sink)
+        .await
+        .map_err(|err| AppError::Sftp(format!("复制 {from} 失败: {err}")))?;
+    let _ = tokio::io::AsyncWriteExt::flush(&mut sink).await;
+    Ok(bytes)
+}
+
+async fn copy_dir(sftp: &SftpSession, from: &str, to: &str) -> Result<u64, AppError> {
+    let _ = mkdir(sftp, to).await;
+    let mut total = 0u64;
+    for entry in list(sftp, from).await? {
+        let child_target = join_remote(to, &entry.name)?;
+        if entry.is_dir && !entry.is_symlink {
+            total += Box::pin(copy_dir(sftp, &entry.path, &child_target)).await?;
+        } else if !entry.is_dir {
+            total += copy_file(sftp, &entry.path, &child_target).await?;
+        }
+    }
+    Ok(total)
+}

@@ -230,3 +230,16 @@ pub async fn sftp_stat(
     let session = state.sftp(&terminal_id).await?;
     sftp::stat(&session, &path).await
 }
+
+#[tauri::command]
+pub async fn sftp_copy(
+    state: State<'_, AppState>,
+    terminal_id: String,
+    from: String,
+    to: String,
+) -> Result<u64, AppError> {
+    let session = state.sftp(&terminal_id).await?;
+    let bytes = sftp::copy_path(&session, &from, &to).await?;
+    tracing::info!(%from, %to, bytes, "remote copy finished");
+    Ok(bytes)
+}

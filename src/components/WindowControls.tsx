@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
 
 /**
  * Window controls for the frameless window: minimize / maximize-restore / close.
@@ -65,7 +66,12 @@ export function WindowControls() {
         className="window-controls__btn window-controls__btn--close"
         title="关闭"
         aria-label="关闭"
-        onClick={() => void appWindow.close()}
+          onClick={() => {
+            void invoke("frontend_error", { message: "close-clicked" });
+            appWindow.close().catch((error: unknown) =>
+              void invoke("frontend_error", { message: `close-failed: ${String(error)}` }),
+            );
+          }}
       >
         ✕
       </button>

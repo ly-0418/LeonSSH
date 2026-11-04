@@ -106,6 +106,7 @@ export default function App() {
     let unlisten: (() => void) | undefined;
     void getCurrentWindow()
       .onCloseRequested((event) => {
+        void invoke("frontend_error", { message: `close-requested force=${String(forceClose.current)}` });
         if (forceClose.current) {
           return;
         }
@@ -116,6 +117,7 @@ export default function App() {
         setCloseRequested(true);
       })
       .then((dispose) => {
+        void invoke("frontend_error", { message: "close-listener registered" });
         unlisten = dispose;
       });
     return () => unlisten?.();
@@ -276,7 +278,7 @@ export default function App() {
           }
         }
         return next;
-      });
+      })
     },
     [],
   );
@@ -610,6 +612,7 @@ export default function App() {
           onConfirm={() => {
             setCloseRequested(false);
             forceClose.current = true;
+            void invoke("frontend_error", { message: "close-confirmed" });
             void getCurrentWindow().close();
             window.setTimeout(() => void invoke("quit_app"), 400);
           }}

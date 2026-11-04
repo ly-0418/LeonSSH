@@ -80,6 +80,34 @@ export class TerminalSession {
         this.options.onNotice?.(`WebGL 渲染不可用，已回退 DOM（${reason}）`);
       }
     });
+    // Clipboard: Ctrl+C copies when text is selected (otherwise it stays SIGINT),
+    // Ctrl+V pastes from the system clipboard into the shell.
+    this.terminal.attachCustomKeyEventHandler((event) => {
+      if (event.type !== "keydown" || !event.ctrlKey || event.altKey) {
+        return true;
+      }
+      const key = event.key.toLowerCase();
+      if (key === "c" && this.terminal.hasSelection()) {
+        const text = this.terminal.getSelection();
+        if (text.length > 0) {
+          void navigator.clipboard.writeText(text).catch(() => undefined);
+          this.terminal.clearSelection();
+        }
+        return false;
+      }
+      if (key === "v") {
+        void navigator.clipboard
+          .readText()
+          .then((text) => {
+            if (text.length > 0) {
+              this.terminal.paste(text);
+            }
+          })
+          .catch(() => undefined);
+        return false;
+      }
+      return true;
+    });
 
     this.terminal.onData((data) => {
       void this.handleInput(data);

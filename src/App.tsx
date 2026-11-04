@@ -46,7 +46,6 @@ export default function App() {
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [mode, setMode] = useState<"terminal" | "form">("terminal");
   const [editing, setEditing] = useState<SessionSummary | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<SessionSummary | null>(null);
   const [view, setView] = useState<WorkspaceView>(() =>
     new URLSearchParams(window.location.search).get("view") === "files" ? "files" : "terminal",
   );
@@ -72,6 +71,18 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeMode>(initialTheme);
   const [sessionDialog, setSessionDialog] = useState<SessionDialogState | null>(null);
+
+  const [pendingDelete, setPendingDelete] = useState<SessionSummary | null>(null);
+  // Dialogs and drawers steal focus; hand it back to the active terminal.
+  useEffect(() => {
+    if (settingsOpen || sessionDialog !== null || pendingDelete !== null || view !== "terminal") {
+      return;
+    }
+    const target = document.querySelector<HTMLElement>(
+      '.terminal-pane[data-visible="true"] .xterm-helper-textarea',
+    );
+    target?.focus();
+  }, [settingsOpen, sessionDialog, pendingDelete, view]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;

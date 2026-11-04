@@ -68,7 +68,7 @@ export function TerminalTab({
   }, [visible]);
 
   return (
-    <section className="terminal-pane">
+    <section className="terminal-pane" data-visible={visible}>
 
       {searchOpen && (
         <div className="terminal-search">

@@ -225,54 +225,8 @@ export function TerminalTab({
     );
   }, [activeCount, line, containerRef]);
 
-  // Usage counters come from SQLite: they persist across restarts and upgrades.
-  useEffect(() => {
-    let cancelled = false;
-    void loadSnippets().then((counts) => {
-      if (!cancelled) {
-        setSnippets(counts);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  useEffect(() => {
-    let cancelled = false;
-    void loadCommandUsage().then((counts) => {
-      if (!cancelled) {
-        setUsage(counts);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
 
-  // Usage counters come from SQLite: they persist across restarts and upgrades.
-  useEffect(() => {
-    let cancelled = false;
-    void loadSnippets().then((counts) => {
-      if (!cancelled) {
-        setSnippets(counts);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  useEffect(() => {
-    let cancelled = false;
-    void loadCommandUsage().then((counts) => {
-      if (!cancelled) {
-        setUsage(counts);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (reconnectAt !== undefined && reconnectAt > 0) {

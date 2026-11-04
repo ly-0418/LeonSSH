@@ -202,6 +202,8 @@ export function TerminalTab({
       }
       return false;
     });
+    return () => setSuggestionKeyHandler(null);
+  }, [visible, activeCount, suggestIndex, rows]);
 
   // Right-click / stray clicks can steal keyboard focus from xterm; give it back
   // unless a dialog is open or the user is typing in another field.
@@ -215,7 +217,10 @@ export function TerminalTab({
       }
       const active = document.activeElement as HTMLElement | null;
       const tag = active?.tagName ?? "";
-      if ((tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") && !active?.classList.contains("xterm-helper-textarea")) {
+      if (
+        (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") &&
+        !active?.classList.contains("xterm-helper-textarea")
+      ) {
         return;
       }
       focus();
@@ -227,9 +232,6 @@ export function TerminalTab({
       window.removeEventListener("contextmenu", refocusAfterPointer, true);
     };
   }, [visible, focus]);
-
-    return () => setSuggestionKeyHandler(null);
-  }, [visible, activeCount, suggestIndex, rows]);
   // Keep the highlighted candidate visible inside the scrollable popup.
   useEffect(() => {
     const list = suggestListRef.current;

@@ -140,7 +140,7 @@ export function TerminalTab({
     );
   }
 
-  function acceptSuggestion(index: number): void {
+  function acceptSuggestion(index: number, execute = false): void {
     const pick = rows[index];
     if (pick !== undefined) {
       const canonical = canonicalCommand(pick.name.split(/\s+/)[0] ?? pick.name);
@@ -151,6 +151,9 @@ export function TerminalTab({
         backspace(typed.length);
       }
       insertText(pick.insert ?? pick.name);
+        if (execute) {
+          window.setTimeout(() => insertText("\r"), 40);
+        }
     }
     setSuggestDismissed(true);
   }
@@ -180,7 +183,7 @@ export function TerminalTab({
           setSuggestDismissed(true);
           return event.key === "Tab";
         }
-        acceptSuggestion(index);
+        acceptSuggestion(index, event.key === "Enter");
         return true;
       }
       if (event.key === "ArrowDown") {
@@ -199,6 +202,32 @@ export function TerminalTab({
       }
       return false;
     });
+
+  // Right-click / stray clicks can steal keyboard focus from xterm; give it back
+  // unless a dialog is open or the user is typing in another field.
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+    const refocusAfterPointer = () => {
+      if (document.querySelector(".modal-backdrop, .drawer-layer") !== null) {
+        return;
+      }
+      const active = document.activeElement as HTMLElement | null;
+      const tag = active?.tagName ?? "";
+      if ((tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") && !active?.classList.contains("xterm-helper-textarea")) {
+        return;
+      }
+      focus();
+    };
+    window.addEventListener("pointerup", refocusAfterPointer, true);
+    window.addEventListener("contextmenu", refocusAfterPointer, true);
+    return () => {
+      window.removeEventListener("pointerup", refocusAfterPointer, true);
+      window.removeEventListener("contextmenu", refocusAfterPointer, true);
+    };
+  }, [visible, focus]);
+
     return () => setSuggestionKeyHandler(null);
   }, [visible, activeCount, suggestIndex, rows]);
   // Keep the highlighted candidate visible inside the scrollable popup.
@@ -393,7 +422,7 @@ export function TerminalTab({
             <span className="terminal-suggest__pick">
               {rows[Math.min(suggestIndex, activeCount - 1)]?.name}
             </span>
-            <span className="terminal-suggest__keys">Tab 填入 · ↑↓ 选择 · Enter 确认 · Esc 关闭</span>
+            <span className="terminal-suggest__keys">Tab 填入 · Enter 填入并执行 · ↑↓ 选择 · Esc 关闭</span>
           </div>
           {rows.map((command, index) => (
             <button

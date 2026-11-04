@@ -243,10 +243,14 @@ export function TerminalTab({
     }
     // Wrapping to the first item must clear the sticky header, otherwise the
     // highlighted row hides underneath it.
-    if (suggestIndex === 0) {
-      list.scrollTop = 0;
+    const header = 34;
+    const itemTop = active.offsetTop;
+    const itemBottom = itemTop + active.offsetHeight;
+    if (itemTop - header < list.scrollTop) {
+      list.scrollTop = Math.max(0, itemTop - header);
+    } else if (itemBottom > list.scrollTop + list.clientHeight) {
+      list.scrollTop = itemBottom - list.clientHeight;
     }
-    active.scrollIntoView({ block: "nearest" });
   }, [suggestIndex, activeCount]);
   // Anchor the popup to the real caret: the hidden textarea sits exactly on the
   // cursor cell, so its rect is a reliable anchor inside the pane.
@@ -277,7 +281,7 @@ export function TerminalTab({
         ? current
         : next,
     );
-  }, [rows, containerRef]);
+  }, [activeCount, line, containerRef]);
 
   // Usage counters come from SQLite: they persist across restarts and upgrades.
   useEffect(() => {

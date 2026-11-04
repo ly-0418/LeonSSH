@@ -1,6 +1,8 @@
 /* Dual-pane file manager (phase A: local pane + remote placeholder). */
 
 .file-manager {
+  /* UI scale follows the app font setting (default 16px), expressed in em below. */
+  font-size: var(--ui-font-size, 16px);
   /* Covers the workspace including the session tab bar (the app header stays
      visible above it at 44px, the status bar below at 28px). */
   position: fixed;
@@ -109,7 +111,7 @@
 
 .fm-head__title {
   justify-self: center;
-  font-size: 13px;
+  font-size: 0.82em;
   color: var(--text);
   text-align: center;
 }
@@ -444,7 +446,7 @@
 .fm-row {
   height: 26px;
   box-sizing: border-box;
-  font-size: 12.5px;
+  font-size: 0.78em;
   color: var(--text-dim);
   cursor: default;
   user-select: none;

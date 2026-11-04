@@ -485,7 +485,14 @@ async fn copy_file(sftp: &SftpSession, from: &str, to: &str) -> Result<u64, AppE
 }
 
 async fn copy_dir(sftp: &SftpSession, from: &str, to: &str) -> Result<u64, AppError> {
-    let _ = mkdir(sftp, to).await;
+    if let Err(err) = mkdir(sftp, to).await {
+        let text = err.to_string();
+        if !text.to_lowercase().contains("exist") {
+            return Err(AppError::InvalidArgument(format!(
+                "无法创建目标目录 {to}：没有写入权限或父目录不存在（{text}）"
+            )));
+        }
+    }
     let mut total = 0u64;
     for entry in list(sftp, from).await? {
         let child_target = join_remote(to, &entry.name)?;

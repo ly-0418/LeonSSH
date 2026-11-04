@@ -3,12 +3,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { TerminalStatus } from "../lib/ipc/types";
 import { LINUX_COMMANDS, canonicalCommand, describeCommand } from "../lib/terminal/commands";
 import { snippetInsertion, snippetTemplate } from "../lib/terminal/snippet";
-import { setSuggestionKeyHandler } from "../lib/terminal/TerminalSession";
 import { bumpCommandUsage, bumpSnippet, loadCommandUsage, loadSnippets } from "../lib/ipc/usage";
 import { useTerminal } from "../hooks/useTerminal";
 import type { ThemeMode } from "../lib/terminal/theme";
 
-const HANDLED_KEYS = new Set(["Tab", "Enter", "ArrowUp", "ArrowDown", "Escape"]);
 
 interface TerminalTabProps {
   sessionId: number;
@@ -57,9 +55,7 @@ export function TerminalTab({
   /** Keeps the popup closed after accepting a file (no deeper level). */
   const ignoreNextLineRef = useRef(false);
   const previousLineRef = useRef("");
-  /** Synchronous mirror of suggestDismissed so the key handler never acts on a closed popup. */
-  const dismissedRef = useRef(false);
-  const { containerRef, notice, clearNotice, reconnect, insertText, backspace, findNext, findPrevious, focus } = useTerminal({
+  const { containerRef, notice, clearNotice, reconnect, insertText, sendEnter, backspace, findNext, findPrevious, focus } = useTerminal({
     sessionId,
     title,
     visible,
@@ -159,51 +155,6 @@ export function TerminalTab({
   }
 
 
-  // xterm's custom handler runs before its own key processing: this is the
-  // reliable place to intercept Tab/Enter/Arrows while the popup is open.
-  useEffect(() => {
-    if (!visible || activeCount === 0) {
-      setSuggestionKeyHandler(null);
-      return;
-    }
-    setSuggestionKeyHandler((event) => {
-      if (dismissedRef.current) {
-        return false;
-      }
-      if (HANDLED_KEYS.has(event.key)) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-      if (event.key === "Tab" || event.key === "Enter") {
-        const index = Math.min(suggestIndex, activeCount - 1);
-        const pending = (rows[index]?.name ?? "").trim();
-        if (pending === typed) {
-          dismissedRef.current = true;
-          setSuggestionKeyHandler(null);
-          setSuggestDismissed(true);
-          return event.key === "Tab";
-        }
-        acceptSuggestion(index, event.key === "Enter");
-        return true;
-      }
-      if (event.key === "ArrowDown") {
-        setSuggestIndex((current) => (current + 1) % activeCount);
-        return true;
-      }
-      if (event.key === "ArrowUp") {
-        setSuggestIndex((current) => (current - 1 + activeCount) % activeCount);
-        return true;
-      }
-      if (event.key === "Escape") {
-        dismissedRef.current = true;
-        setSuggestDismissed(true);
-        focus();
-        return true;
-      }
-      return false;
-    });
-    return () => setSuggestionKeyHandler(null);
-  }, [visible, activeCount, suggestIndex, rows]);
 
   // Right-click / stray clicks can steal keyboard focus from xterm; give it back
   // unless a dialog is open or the user is typing in another field.
@@ -383,11 +334,52 @@ export function TerminalTab({
     return () => window.removeEventListener("keydown", onKey);
   }, [visible]);
 
+  // React's capture phase runs before xterm's textarea listener, so these keys
+  // never reach the shell while the completion popup is open.
+  const handleCompletionKey = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (!visible || activeCount === 0) {
+      return;
+    }
+    const key = event.key;
+    if (key !== "Tab" && key !== "Enter" && key !== "ArrowUp" && key !== "ArrowDown" && key !== "Escape") {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (key === "Tab" || key === "Enter") {
+      const index = Math.min(suggestIndex, activeCount - 1);
+      const pending = (rows[index]?.name ?? "").trim();
+      if (pending === typed) {
+        setSuggestDismissed(true);
+        if (key === "Tab") {
+          focus();
+        } else {
+          // Nothing to insert: let the shell run what was typed.
+          sendEnter();
+        }
+        return;
+      }
+      acceptSuggestion(index, key === "Enter");
+      return;
+    }
+    if (key === "ArrowDown") {
+      setSuggestIndex((current) => (current + 1) % activeCount);
+      return;
+    }
+    if (key === "ArrowUp") {
+      setSuggestIndex((current) => (current - 1 + activeCount) % activeCount);
+      return;
+    }
+    setSuggestDismissed(true);
+    focus();
+  };
+
   return (
     <section
         className="terminal-pane"
         data-visible={visible}
         ref={paneRef}
+        onKeyDownCapture={handleCompletionKey}
         onPointerDown={() => focus()}
         onContextMenu={(event) => {
           event.preventDefault();

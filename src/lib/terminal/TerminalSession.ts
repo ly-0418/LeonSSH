@@ -363,6 +363,16 @@ export class TerminalSession {
     this.options.onInputLine?.(this.inputLine);
   }
 
+  /** Sends a bare Enter to the shell (used after filling in a completion). */
+  async sendEnter(): Promise<void> {
+    if (this.disposed) {
+      return;
+    }
+    this.inputLine = "";
+    this.options.onInputLine?.("");
+    await this.handleInput("\r");
+  }
+
   /** Sends `count` backspaces to the shell and trims the tracked line. */
   async backspace(count: number): Promise<void> {
     if (this.disposed || count <= 0 || this.terminalId === null) {

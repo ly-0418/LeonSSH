@@ -109,6 +109,10 @@ export function useTerminal({
     void sessionRef.current?.reconnect();
   }, []);
 
+  const sendEnter = useCallback(() => {
+    void sessionRef.current?.sendEnter();
+  }, []);
+
   const backspace = useCallback((count: number) => {
     void sessionRef.current?.backspace(count);
   }, []);
@@ -130,5 +134,5 @@ export function useTerminal({
     sessionRef.current?.findPrevious(text);
   }, []);
 
-  return { containerRef, notice, clearNotice, reconnect, insertText, backspace, replaceSuffix, cursorBox, findNext, findPrevious, focus, initialStatus: INITIAL_STATUS };
+  return { containerRef, notice, clearNotice, reconnect, insertText, sendEnter, backspace, replaceSuffix, cursorBox, findNext, findPrevious, focus, initialStatus: INITIAL_STATUS };
 }

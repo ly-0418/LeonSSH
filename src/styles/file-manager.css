@@ -983,86 +983,87 @@
 
 
 
+
 /* Larger file-manager surface: bigger text, taller rows, bigger inputs/icons. */
 .sftp-sheet {
-  font-size: 21px;
+  font-size: 25px;
 }
 
 .sftp-sheet .fm-row {
-  height: 56px;
-  padding: 12px 20px;
-  font-size: 19px;
-  grid-template-columns: 46px minmax(0, 1fr) 148px 210px;
+  height: 68px;
+  padding: 14px 24px;
+  font-size: 23px;
+  grid-template-columns: 56px minmax(0, 1fr) 180px 250px;
 }
 
 .sftp-sheet .fm-row--perm {
-  grid-template-columns: 46px minmax(0, 1fr) 134px 74px 200px;
+  grid-template-columns: 56px minmax(0, 1fr) 164px 88px 240px;
 }
 
 .sftp-sheet .fm-row__size,
 .sftp-sheet .fm-row__mode,
 .sftp-sheet .fm-row__time {
-  font-size: 17.5px;
+  font-size: 21px;
 }
 
 .sftp-sheet .fm-row__name {
-  gap: 14px;
+  gap: 18px;
 }
 
 .sftp-sheet .fm-icon-img {
-  width: 34px;
-  height: 34px;
+  width: 42px;
+  height: 42px;
 }
 
 .sftp-sheet .fm-icon {
-  width: 36px;
-  height: 36px;
-  font-size: 16px;
+  width: 44px;
+  height: 44px;
+  font-size: 19px;
 }
 
 .sftp-sheet .fm-icon--dir {
-  width: 40px;
+  width: 48px;
 }
 
 .sftp-sheet .fm-pathbar {
-  padding: 15px 18px;
-  gap: 14px;
+  padding: 18px 22px;
+  gap: 16px;
 }
 
 .sftp-sheet .fm-pathbar__label {
-  font-size: 16.5px;
+  font-size: 20px;
 }
 
 .sftp-sheet .fm-pathbar__input,
 .sftp-sheet .fm-pathbar__search {
-  height: 56px;
-  padding: 15px 132px 15px 18px;
-  font-size: 20px;
+  height: 68px;
+  padding: 18px 160px 18px 22px;
+  font-size: 24px;
 }
 
 .sftp-sheet .fm-pathbar__search {
-  width: 320px;
-  padding-right: 18px;
+  width: 380px;
+  padding-right: 22px;
 }
 
 .sftp-sheet .fm-iconbtn {
-  width: 50px;
-  height: 50px;
-  font-size: 22px;
+  width: 60px;
+  height: 60px;
+  font-size: 26px;
 }
 
 .sftp-sheet .fm-toolbar button,
 .sftp-sheet .fm-tabs button {
-  font-size: 19px;
+  font-size: 23px;
 }
 
 .sftp-sheet .fm-table__head {
-  font-size: 19px;
-  height: 54px;
+  font-size: 23px;
+  height: 66px;
 }
 
 .sftp-sheet .fm-table__row-check,
 .sftp-sheet input[type="checkbox"] {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
 }

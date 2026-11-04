@@ -59,6 +59,8 @@ export class TerminalSession {
   private inputLine = "";
   /** Set when Tab/Enter accepted a completion, so the same Enter is not sent. */
   private pendingEnterSuppress = false;
+  /** Browser paste handler (kept so dispose can detach it). */
+  private pasteListener: ((event: ClipboardEvent) => void) | null = null;
   /** A fresh channel per connection: reusing one after close drops output. */
   private channel: Channel<ArrayBuffer> | null = null;
   private readonly encoder = new TextEncoder();
@@ -101,6 +103,9 @@ export class TerminalSession {
         return true;
       }
       const key = event.key.toLowerCase();
+      if (key === "v") {
+        return false;
+      }
       if (key === "c" && this.terminal.hasSelection()) {
         const text = this.terminal.getSelection();
         if (text.length > 0) {
@@ -111,6 +116,19 @@ export class TerminalSession {
       }
       return true;
     });
+
+    // Paste comes from the browser event: `clipboardData` is available
+    // synchronously, so no clipboard permission prompt and a single paste.
+    this.pasteListener = (event: ClipboardEvent) => {
+      const text = event.clipboardData?.getData("text");
+      if (text === undefined || text.length === 0) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      this.terminal.paste(text);
+    };
+    options.container.addEventListener("paste", this.pasteListener, true);
 
     this.terminal.onData((data) => {
       if (this.pendingEnterSuppress && (data === "\r" || data === "\n")) {

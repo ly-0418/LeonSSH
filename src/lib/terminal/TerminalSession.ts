@@ -95,6 +95,15 @@ export class TerminalSession {
     // Clipboard: Ctrl+C copies when text is selected (otherwise it stays SIGINT),
     // Ctrl+V pastes from the system clipboard into the shell.
     this.terminal.attachCustomKeyEventHandler((event) => {
+      if (
+        event.type === "keydown" &&
+        (event.key === "Tab" || event.key === "Enter") &&
+        suggestionKeyHandler === null
+      ) {
+        void import("@tauri-apps/api/core").then(({ invoke }) =>
+          invoke("frontend_error", { message: `suggest-null key=${event.key}` }),
+        );
+      }
       if (event.type === "keydown" && suggestionKeyHandler?.(event) === true) {
         return false;
       }

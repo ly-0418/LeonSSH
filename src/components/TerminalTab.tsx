@@ -165,6 +165,9 @@ export function TerminalTab({
       setSuggestionKeyHandler(null);
       return;
     }
+    void import("@tauri-apps/api/core").then(({ invoke }) =>
+      invoke("frontend_error", { message: `suggest-register active=${activeCount} path=${String(isPathMode)}` }),
+    );
     setSuggestionKeyHandler((event) => {
       if (event.key === "Tab" || event.key === "Enter") {
         acceptSuggestion(Math.min(suggestIndex, activeCount - 1));

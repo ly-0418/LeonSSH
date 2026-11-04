@@ -656,6 +656,12 @@ input[type="password"]::-ms-reveal {
   animation: forward-in 220ms cubic-bezier(0.22, 0.9, 0.24, 1);
 }
 
+  /* Forwarding drawer: compact fixed width instead of the file-manager width. */
+  .sftp-overlay--forward .sftp-sheet {
+    width: 560px;
+    min-width: 480px;
+  }
+
 .sftp-overlay--leave .sftp-sheet {
   animation: forward-out 200ms cubic-bezier(0.55, 0, 0.85, 0.3) forwards;
 }

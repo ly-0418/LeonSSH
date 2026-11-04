@@ -53,8 +53,6 @@ export function TerminalTab({
   const suggestListRef = useRef<HTMLDivElement | null>(null);
   const paneRef = useRef<HTMLElement | null>(null);
   /** Keeps the popup closed after accepting a file (no deeper level). */
-  const ignoreNextLineRef = useRef(false);
-  const previousLineRef = useRef("");
   const { containerRef, notice, clearNotice, reconnect, insertText, sendEnter, backspace, findNext, findPrevious, focus } = useTerminal({
     sessionId,
     title,
@@ -66,18 +64,6 @@ export function TerminalTab({
     onStatus,
     onInputLine: (value) => {
       setLine(value);
-      const deleting = value.length < previousLineRef.current.length;
-      previousLineRef.current = value;
-      if (deleting) {
-        setSuggestDismissed(true);
-        return;
-      }
-      if (ignoreNextLineRef.current) {
-        ignoreNextLineRef.current = false;
-        setSuggestDismissed(true);
-        focus();
-        return;
-      }
       setSuggestDismissed(false);
       setSuggestIndex(0);
     },

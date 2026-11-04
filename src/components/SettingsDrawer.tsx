@@ -141,9 +141,6 @@ export function SettingsDrawer({
                   />
                   <span className="font-size-value">{Math.round((fontSize / 16) * 100)}%</span>
                 </div>
-                <div className="font-preview" style={{ fontSize: `${fontSize}px` }}>
-                  LeonSSH@localhost:~$ echo 界面缩放预览
-                </div>
               </div>
               </>
             )}

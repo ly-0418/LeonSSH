@@ -106,6 +106,9 @@ export function TransferQueue({ tasks, speeds, height, onCancel }: TransferQueue
                     <span className="fq__resume">续传自 {formatSize(task.resumedFrom)}</span>
                   )}
                   <span className="fq__dst">→ {task.dst}</span>
+                  <span className="fq__session" title="所属会话（全局队列，切换会话不影响）">
+                    {task.terminalId}
+                  </span>
                 </span>
                 <span className="fq__bar">
                   <span

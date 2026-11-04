@@ -1069,3 +1069,13 @@
   width: 35px;
   height: 35px;
 }
+/* Global queue badge: which session a transfer belongs to. */
+.fq__session {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--text-faint);
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+}

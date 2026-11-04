@@ -50,7 +50,8 @@ export class TerminalSession {
   private readonly terminal: Terminal;
   private readonly fitAddon = new FitAddon();
   private readonly searchAddon = new SearchAddon();
-  private readonly channel = new Channel<ArrayBuffer>();
+  /** A fresh channel per connection: reusing one after close drops output. */
+  private channel: Channel<ArrayBuffer> | null = null;
   private readonly encoder = new TextEncoder();
   private renderer: RendererController | null = null;
   private observer: ResizeObserver | null = null;
@@ -95,12 +96,13 @@ export class TerminalSession {
   private async connect(): Promise<void> {
     // The handler must be installed *before* the channel is handed to invoke,
     // otherwise the first frames (the initial paint) would be dropped.
+    this.channel = new Channel<ArrayBuffer>();
     this.channel.onmessage = (payload: ArrayBuffer) => this.handleOutput(payload);
 
     try {
       const result = await openTerminal({
         sessionId: this.options.sessionId,
-        channel: this.channel,
+        channel: this.channel ?? new Channel<ArrayBuffer>(),
         cols: Math.max(MIN_COLS, this.terminal.cols),
         rows: Math.max(MIN_ROWS, this.terminal.rows),
       });
@@ -163,7 +165,9 @@ export class TerminalSession {
     this.observer?.disconnect();
     this.observer = null;
 
-    this.channel.onmessage = () => undefined;
+    if (this.channel !== null) {
+      this.channel.onmessage = () => undefined;
+    }
 
     const terminalId = this.terminalId;
     this.terminalId = null;

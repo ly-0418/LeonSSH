@@ -62,6 +62,8 @@ export class TerminalSession {
   private readonly fitAddon = new FitAddon();
   private readonly searchAddon = new SearchAddon();
   private inputLine = "";
+  /** Set when Tab/Enter accepted a completion, so the same Enter is not sent. */
+  private pendingEnterSuppress = false;
   /** A fresh channel per connection: reusing one after close drops output. */
   private channel: Channel<ArrayBuffer> | null = null;
   private readonly encoder = new TextEncoder();
@@ -112,6 +114,9 @@ export class TerminalSession {
         );
       }
       if (event.type === "keydown" && suggestionKeyHandler?.(event) === true) {
+        if (event.key === "Enter") {
+          this.pendingEnterSuppress = true;
+        }
         return false;
       }
       if (event.type !== "keydown" || !event.ctrlKey || event.altKey) {
@@ -141,6 +146,11 @@ export class TerminalSession {
     });
 
     this.terminal.onData((data) => {
+      if (this.pendingEnterSuppress && (data === "\r" || data === "\n")) {
+        this.pendingEnterSuppress = false;
+        return;
+      }
+      this.pendingEnterSuppress = false;
       this.trackInput(data);
       void this.handleInput(data);
       broadcastHandler?.(data);

@@ -93,10 +93,11 @@ export function TerminalTab({
   useEffect(() => {
     if (!isPathMode || terminalId === undefined) {
       setPathItems([]);
+      setPathDir(null);
       return;
     }
     const dir = dirPart.length === 0 ? "/" : dirPart;
-    if (pathDir === dir) {
+    if (pathDir === dir && pathItems.length > 0) {
       return;
     }
     const timer = window.setTimeout(() => {

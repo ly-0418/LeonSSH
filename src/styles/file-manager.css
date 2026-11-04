@@ -274,7 +274,7 @@
 .fm-table__head,
 .fm-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 88px 132px;
+  grid-template-columns: 26px minmax(0, 1fr) 88px 132px;
   gap: 8px;
   align-items: center;
   padding: 4px 10px;
@@ -282,7 +282,7 @@
 
 .fm-table__head--perm,
 .fm-row--perm {
-  grid-template-columns: minmax(0, 1fr) 84px 46px 126px;
+  grid-template-columns: 26px minmax(0, 1fr) 84px 46px 126px;
 }
 
 .fm-table__head {
@@ -879,4 +879,19 @@
   to {
     background-position: 140% 0;
   }
+}
+/* Selection checkbox column (Ctrl/Shift clicks still work on the row). */
+.fm-table__check,
+.fm-row__check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fm-row__check input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
 }

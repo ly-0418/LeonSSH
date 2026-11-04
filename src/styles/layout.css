@@ -1121,8 +1121,8 @@ input[type="password"]::-ms-reveal {
 
 .tab-bar__new {
   margin-left: 6px;
-  align-self: center;
-  margin-bottom: 4px;
+  align-self: flex-end;
+  margin-bottom: 5px;
   width: 26px;
   height: 24px;
   border-radius: 6px;

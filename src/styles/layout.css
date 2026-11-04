@@ -611,8 +611,8 @@ input[type="password"]::-ms-reveal {
 
 /* Forward panel sheet: half the window, slides in from the right. */
 .sftp-sheet {
-  width: 72%;
-  min-width: 720px;
+  width: 90%;
+  min-width: 960px;
   height: 100%;
   background: var(--bg);
   border-left: 1px solid var(--border-strong);

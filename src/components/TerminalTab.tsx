@@ -242,7 +242,13 @@ export function TerminalTab({
     let cancelled = false;
     void loadSnippets().then((counts) => {
       if (!cancelled) {
-        setSnippets(counts);
+        // Collapse legacy rows so "cd opt" and "cd /usr" share one template.
+        const merged: Record<string, number> = {};
+        for (const [line, count] of Object.entries(counts)) {
+          const key = snippetTemplate(line) ?? line;
+          merged[key] = (merged[key] ?? 0) + count;
+        }
+        setSnippets(merged);
       }
     });
     return () => {

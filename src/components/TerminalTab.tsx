@@ -132,6 +132,11 @@ export function TerminalTab({
   }
 
   function acceptSuggestion(index: number): void {
+    void import("@tauri-apps/api/core").then(({ invoke }) =>
+      invoke("frontend_error", {
+        message: `accept idx=${index} path=${String(isPathMode)} cand=${pathSuggestions.length} rows=${rows.length} prefix=${JSON.stringify(prefixPart)} typed=${JSON.stringify(typed)}`,
+      }),
+    );
     if (isPathMode) {
       const pick = pathSuggestions[index];
       if (pick !== undefined) {

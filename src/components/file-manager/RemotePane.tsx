@@ -5,6 +5,7 @@ import { toUserMessage } from "../../lib/ipc/errors";
 import {
   closeSftp,
   createRemoteFile,
+  copyRemote,
   joinPath,
   listRemote,
   listRemoteStream,
@@ -13,6 +14,7 @@ import {
   parentPath,
   removeRemote,
   renameRemote,
+  chmodRemote,
   type FileEntry as RemoteEntry,
 } from "../../lib/ipc/sftp";
 import { ConfirmDialog } from "../dialogs";
@@ -202,6 +204,10 @@ function RemotePaneLoaded({
   const [prompt, setPrompt] = useState<RemotePrompt | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PaneEntry | null>(null);
   const [opError, setOpError] = useState<string | null>(null);
+  const [copyTarget, setCopyTarget] = useState<PaneEntry | null>(null);
+  const [copyPath, setCopyPath] = useState("");
+  const [chmodTarget, setChmodTarget] = useState<PaneEntry | null>(null);
+  const [chmodMode, setChmodMode] = useState(0o644);
 
   useEffect(() => {
     onPathChange?.(pane.path);
@@ -247,10 +253,54 @@ function RemotePaneLoaded({
           onSelect: () => onOpenInTerminal?.(entry.path),
         },
         { label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
+        {
+          label: "复制到当前目录",
+          onSelect: () => {
+            void run(async () => {
+              await copyRemote(terminalId, entry.path, joinPath(pane.path, `${entry.name} 副本`));
+            });
+          },
+        },
+        {
+          label: "复制到…",
+          onSelect: () => {
+            setCopyPath(joinPath(pane.path, `${entry.name} 副本`));
+            setCopyTarget(entry);
+          },
+        },
+        {
+          label: "权限…",
+          onSelect: () => {
+            setChmodMode(entry.permissions ?? 0o644);
+            setChmodTarget(entry);
+          },
+        },
         { label: "删除文件夹", danger: true, onSelect: () => setPendingDelete(entry) },
       ];
     }
     return [
+      {
+        label: "复制到当前目录",
+        onSelect: () => {
+          void run(async () => {
+            await copyRemote(terminalId, entry.path, joinPath(pane.path, `${entry.name} 副本`));
+          });
+        },
+      },
+      {
+        label: "复制到…",
+        onSelect: () => {
+          setCopyPath(joinPath(pane.path, `${entry.name} 副本`));
+          setCopyTarget(entry);
+        },
+      },
+      {
+        label: "权限…",
+        onSelect: () => {
+          setChmodMode(entry.permissions ?? 0o644);
+          setChmodTarget(entry);
+        },
+      },
       { label: "编辑", onSelect: () => onOpenFile?.(entry) },
       { label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
       { label: "删除", danger: true, onSelect: () => setPendingDelete(entry) },
@@ -368,6 +418,105 @@ onSelectAll={pane.selectAll} persistKey={persistKey} onRowDragStart={(entry, eve
           items={menuItems(menu.entry)}
           onClose={() => setMenu(null)}
         />
+      )}
+
+      {copyTarget !== null && (
+        <div className="modal-backdrop" role="presentation">
+          <div className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <h2 className="modal__title">复制到</h2>
+            <p className="modal__hint">目标远程路径（含文件名）</p>
+            <input
+              autoFocus
+              className="input"
+              value={copyPath}
+              onChange={(event) => setCopyPath(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && copyTarget !== null) {
+                  const target = copyTarget;
+                  setCopyTarget(null);
+                  void run(async () => {
+                    await copyRemote(terminalId, target.path, copyPath.trim());
+                  });
+                }
+              }}
+            />
+            <div className="modal__actions">
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={() => {
+                  if (copyTarget === null) {
+                    return;
+                  }
+                  const target = copyTarget;
+                  setCopyTarget(null);
+                  void run(async () => {
+                    await copyRemote(terminalId, target.path, copyPath.trim());
+                  });
+                }}
+              >
+                复制
+              </button>
+              <button type="button" className="button button--ghost" onClick={() => setCopyTarget(null)}>
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {chmodTarget !== null && (
+        <div className="modal-backdrop" role="presentation">
+          <div className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <h2 className="modal__title">权限 · {chmodTarget.name}</h2>
+            <p className="modal__hint">r=读取/列出，w=写入/创建/删除，x=执行/进入目录</p>
+            {(["属主", "同组", "其他"] as const).map((label, row) => (
+              <div className="chmod-row" key={label}>
+                <span className="chmod-row__label">{label}</span>
+                {[0, 1, 2].map((bit) => {
+                  const shift = (2 - row) * 3 + (2 - bit);
+                  const flag = (chmodMode & (1 << shift)) !== 0;
+                  return (
+                    <label className="chmod-row__item" key={shift}>
+                      <input
+                        type="checkbox"
+                        checked={flag}
+                        onChange={() =>
+                          setChmodMode((previous) =>
+                            flag ? previous & ~(1 << shift) : previous | (1 << shift),
+                          )
+                        }
+                      />
+                      {["r", "w", "x"][bit]}
+                    </label>
+                  );
+                })}
+              </div>
+            ))}
+            <p className="modal__hint">
+              当前权限：<code>{chmodMode.toString(8).padStart(3, "0")}</code>
+            </p>
+            <div className="modal__actions">
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={() => {
+                  if (chmodTarget === null) {
+                    return;
+                  }
+                  const target = chmodTarget;
+                  setChmodTarget(null);
+                  void run(() => chmodRemote(terminalId, target.path, chmodMode));
+                }}
+              >
+                保存
+              </button>
+              <button type="button" className="button button--ghost" onClick={() => setChmodTarget(null)}>
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {prompt !== null && (

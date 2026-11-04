@@ -82,7 +82,16 @@ export function SettingsDrawer({
   }
 
   return (
-    <div className="drawer-layer" role="presentation">
+    <div
+      className="drawer-layer"
+      role="presentation"
+      onPointerDown={(event) => {
+        // Clicking the dimmed area outside the panel closes the drawer.
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <aside className={`drawer${exiting ? " drawer--leave" : ""}`} role="dialog" aria-modal="false" aria-label="设置">
         <header className="drawer__head">
           <span className="drawer__title">设置</span>

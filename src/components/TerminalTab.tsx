@@ -59,6 +59,8 @@ export function TerminalTab({
   /** Keeps the popup closed after accepting a file (no deeper level). */
   const ignoreNextLineRef = useRef(false);
   const previousLineRef = useRef("");
+  /** Synchronous mirror of suggestDismissed so the key handler never acts on a closed popup. */
+  const dismissedRef = useRef(false);
   const { containerRef, notice, clearNotice, reconnect, insertText, backspace, findNext, findPrevious, focus } = useTerminal({
     sessionId,
     title,
@@ -169,10 +171,12 @@ export function TerminalTab({
         if (prefixPart.length > 0) {
           backspace(prefixPart.length);
         }
-        if (!pick.isDir) {
+        if (true) {
           ignoreNextLineRef.current = true;
         }
         insertText(pick.name);
+        dismissedRef.current = true;
+        setSuggestionKeyHandler(null);
         setSuggestDismissed(true);
         focus();
       }
@@ -198,6 +202,9 @@ export function TerminalTab({
       invoke("frontend_error", { message: `suggest-register active=${activeCount} path=${String(isPathMode)}` }),
     );
     setSuggestionKeyHandler((event) => {
+      if (dismissedRef.current) {
+        return false;
+      }
       if (HANDLED_KEYS.has(event.key)) {
         event.preventDefault();
         event.stopPropagation();
@@ -215,6 +222,7 @@ export function TerminalTab({
         return true;
       }
       if (event.key === "Escape") {
+        dismissedRef.current = true;
         setSuggestDismissed(true);
         focus();
         return true;

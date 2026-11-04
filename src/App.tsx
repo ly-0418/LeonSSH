@@ -469,6 +469,7 @@ export default function App() {
                 >
                   <TerminalTab
                     state={tab.status.state}
+                    terminalId={tab.status.terminalId ?? undefined}
                     reconnectAt={reconnectTicks[tab.key] ?? 0}
                     onReconnect={() => reconnectTab(tab)}
                     sessionId={tab.sessionId}

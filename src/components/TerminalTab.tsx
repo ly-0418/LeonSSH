@@ -82,7 +82,7 @@ export function TerminalTab({
 
   // Path mode: completing the last token when it contains a slash.
   const lastToken = typed.split(" ").pop() ?? "";
-  const isPathMode = typed.includes(" ") && lastToken.includes("/");
+  const isPathMode = lastToken.includes("/") && (typed.includes(" ") || lastToken.startsWith("/") || lastToken.startsWith("./"));
   const slashIndex = lastToken.lastIndexOf("/");
   const dirPart = isPathMode ? lastToken.slice(0, slashIndex + 1) : "";
   const prefixPart = isPathMode ? lastToken.slice(slashIndex + 1) : "";

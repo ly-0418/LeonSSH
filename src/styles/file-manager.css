@@ -895,3 +895,10 @@
   accent-color: var(--accent);
   cursor: pointer;
 }
+.fm-table__check input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}

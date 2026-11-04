@@ -47,6 +47,7 @@ export interface FilePaneState {
   setFilter: (value: string) => void;
   toggleSort: (key: SortKey) => void;
   load: (path: string) => Promise<void>;
+  selectAll: (names: string[]) => void;
   refresh: () => Promise<void>;
   goUp: () => Promise<void>;
   select: (name: string, mode: SelectionMode) => void;
@@ -340,6 +341,12 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string, persistK
     [visible, selected],
   );
 
+  /** Replaces the whole selection (header "select all" checkbox). */
+  const selectAll = useCallback((names: string[]) => {
+    setSelected(names);
+    anchorRef.current = null;
+  }, []);
+
   const toggleSort = useCallback((key: SortKey) => {
     setSort((previous) =>
       previous.key === key
@@ -361,6 +368,7 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string, persistK
     setFilter,
     toggleSort,
     load,
+    selectAll,
     refresh,
     goUp,
     select,

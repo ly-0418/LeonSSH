@@ -15,6 +15,8 @@ interface FileTableProps {
   sort: SortState;
   onSort: (key: SortKey) => void;
   onSelect: (name: string, mode: SelectionMode) => void;
+  /** Replaces the whole selection (header checkbox). */
+  onSelectAll?: (names: string[]) => void;
   onOpen: (entry: FileEntry) => void;
   /** `entry === null` means the empty area below the rows. */
   onContextMenu: (entry: FileEntry | null, event: React.MouseEvent) => void;
@@ -42,6 +44,7 @@ export function FileTable({
   sort,
   onSort,
   onSelect,
+  onSelectAll,
   onOpen,
   onContextMenu,
   onRowPointerDown,
@@ -90,6 +93,16 @@ export function FileTable({
     return () => observer.disconnect();
   }, []);
 
+  const headerCheckRef = useRef<HTMLInputElement | null>(null);
+  const allSelected = entries.length > 0 && entries.every((entry) => selected.includes(entry.name));
+  const someSelected = !allSelected && entries.some((entry) => selected.includes(entry.name));
+
+  useEffect(() => {
+    if (headerCheckRef.current !== null) {
+      headerCheckRef.current.indeterminate = someSelected;
+    }
+  }, [someSelected, allSelected]);
+
   const firstRow = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 6);
   const rowCount = Math.ceil(viewportHeight / ROW_HEIGHT) + 14;
   const windowed = entries.slice(firstRow, firstRow + rowCount);
@@ -109,7 +122,16 @@ export function FileTable({
   return (
     <div className="fm-table" role="grid">
       <div className={`fm-table__head${showPermissions ? " fm-table__head--perm" : ""}`}>
-        <span className="fm-table__check" aria-hidden="true" />
+        <span className="fm-table__check">
+          <input
+            ref={headerCheckRef}
+            type="checkbox"
+            checked={allSelected}
+            onChange={() => onSelectAll?.(allSelected ? [] : entries.map((entry) => entry.name))}
+            aria-label={allSelected ? "取消全选" : "全选"}
+            title={allSelected ? "取消全选" : "全选"}
+          />
+        </span>
         {head("name", "名称")}
         {head("size", "大小")}
         {showPermissions && head("type", "权限")}

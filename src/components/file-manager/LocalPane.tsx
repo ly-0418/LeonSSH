@@ -178,7 +178,7 @@ export function LocalPane({
         onUp={() => void pane.goUp()}
         onRefresh={() => void pane.refresh()}
       />
-      <FileTable
+      <FileTableonSelectAll={pane.selectAll} 
 persistKey={persistKey} onDropEntries={onRemoteDrop}
                   entries={pane.visible}
         selected={pane.selected}

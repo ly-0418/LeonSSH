@@ -175,61 +175,70 @@
   display: none;
 }
 
-/* Chrome-style tabs: overlapping rounded tops, the active one merges with the
-   page below and sits above its neighbours. */
+/* Chrome-style tabs: slanted (skewed) shapes that touch without ever covering
+   a neighbour's text, and an active tab that merges with the page below. */
 .tab {
   position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
   gap: 8px;
   max-width: 240px;
   min-width: 0;
-  padding: 9px 12px 9px 15px;
-  border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: 14px 14px 0 0;
+  padding: 9px 13px 8px 16px;
+  border: 0;
   background: transparent;
   color: var(--text-faint);
   font-size: 12.5px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 120ms ease, color 120ms ease;
-}
-
-/* Only neighbouring tabs overlap, so the new-tab button stays clear. */
-.tab + .tab {
-  margin-left: -14px;
+  transition: color 120ms ease;
 }
 
 .tab::before {
   content: "";
   position: absolute;
-  top: 45%;
-  right: 7px;
-  width: 1px;
-  height: 18px;
-  background: var(--border);
-  transform: translateY(-50%);
+  inset: 5px 1px 0;
+  z-index: -1;
+  transform: skewX(-7deg);
+  border-radius: 9px 9px 0 0;
+  background: transparent;
+  box-shadow: inset 1px 0 0 transparent;
+  transition: background 120ms ease;
 }
 
-.tab:hover:not(.tab--active) {
+.tab:hover:not(.tab--active)::before {
   background: var(--bg-hover);
-  color: var(--text-dim);
 }
 
 .tab--active {
-  z-index: 2;
-  background: var(--bg);
-  border-color: var(--border);
   color: var(--text);
-  box-shadow: 0 1px 0 0 var(--bg);
+  z-index: 2;
 }
 
-.tab--active::before,
-.tab--active + .tab::before {
-  opacity: 0;
+.tab--active::before {
+  background: var(--bg);
+  box-shadow:
+    inset 1px 1px 0 var(--border),
+    inset -1px 0 0 var(--border),
+    0 1px 0 0 var(--bg);
 }
 
+/* Hairline between two inactive tabs, hidden next to the active one. */
+.tab + .tab::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+}
+
+.tab--active::after,
+.tab--active + .tab::after {
+  display: none;
+}
 .tab__dot {
   width: 7px;
   height: 7px;

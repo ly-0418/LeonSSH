@@ -327,6 +327,11 @@ export function TerminalTab({
       return;
     }
     const key = event.key;
+    if (key === "ArrowLeft" || key === "ArrowRight" || key === "Home" || key === "End") {
+      // The caret moved without changing the text: hide instead of mis-anchoring.
+      setSuggestDismissed(true);
+      return;
+    }
     if (key !== "Tab" && key !== "Enter" && key !== "ArrowUp" && key !== "ArrowDown" && key !== "Escape") {
       return;
     }

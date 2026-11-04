@@ -352,11 +352,13 @@ export class TerminalSession {
           this.options.onExecuted?.(this.inputLine);
         }
         this.inputLine = "";
-      } else if (char === "\x03") {
-        this.inputLine = "";
       } else if (char === "\x7f") {
         this.inputLine = this.inputLine.slice(0, -1);
-      } else if (char >= " ") {
+      } else if (char < " ") {
+        // Ctrl+C / Ctrl+U / Ctrl+A … edit the shell line in ways we cannot
+        // mirror, so drop our copy instead of suggesting stale text.
+        this.inputLine = "";
+      } else {
         this.inputLine += char;
       }
     }

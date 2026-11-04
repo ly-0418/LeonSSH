@@ -61,6 +61,20 @@ export function LocalPane({
     [],
   );
   const pane = useFilePane(adapter, initialPath, persistKey);
+
+  // Picking the window back up (e.g. after creating a folder in Explorer)
+  // should re-read the directory, otherwise the pane shows a stale listing.
+  useEffect(() => {
+    const onFocus = () => {
+      if (pane.path !== "") {
+        void pane.load(pane.path);
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [pane.path, pane.load]);
+
+  // Picking the window back up \(e\.g\. after creating a folder in Explorer\)\n  // should re-read the directory, otherwise the pane shows a stale listing\.\n  useEffect\(\(\) => \{\n    const onFocus = \(\) => \{\n      if \(pane\.path !== ""\) \{\n        void pane\.load\(pane\.path\);\n      }\n    };\n    window\.addEventListener\("focus", onFocus\);\n    return \(\) => window\.removeEventListener\("focus", onFocus\);\n  }, \[pane\.path, pane\.load]\);\n
   const [roots, setRoots] = useState<string[]>([]);
   const [desktop, setDesktop] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; entry: FileEntry | null } | null>(null);

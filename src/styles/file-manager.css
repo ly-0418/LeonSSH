@@ -982,13 +982,13 @@
 }
 /* Larger file-manager surface: bigger text, taller rows, bigger inputs/icons. */
 .sftp-sheet {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .sftp-sheet .fm-row {
-  height: 34px;
-  padding: 6px 12px;
-  font-size: 13px;
+  height: 38px;
+  padding: 7px 14px;
+  font-size: 14px;
   grid-template-columns: 30px minmax(0, 1fr) 100px 148px;
 }
 
@@ -1007,14 +1007,14 @@
 }
 
 .sftp-sheet .fm-icon-img {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 
 .sftp-sheet .fm-icon {
-  width: 22px;
-  height: 22px;
-  font-size: 11px;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
 }
 
 .sftp-sheet .fm-icon--dir {
@@ -1032,20 +1032,20 @@
 
 .sftp-sheet .fm-pathbar__input,
 .sftp-sheet .fm-pathbar__search {
-  height: 34px;
-  padding: 8px 84px 8px 10px;
-  font-size: 13.5px;
+  height: 38px;
+  padding: 9px 92px 9px 12px;
+  font-size: 14.5px;
 }
 
 .sftp-sheet .fm-pathbar__search {
-  width: 190px;
-  padding-right: 10px;
+  width: 210px;
+  padding-right: 12px;
 }
 
 .sftp-sheet .fm-iconbtn {
-  width: 32px;
-  height: 32px;
-  font-size: 15px;
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
 }
 
 .sftp-sheet .fm-toolbar button,
@@ -1054,6 +1054,6 @@
 }
 
 .sftp-sheet .fm-table__head {
-  font-size: 12.5px;
-  height: 32px;
+  font-size: 13.5px;
+  height: 36px;
 }

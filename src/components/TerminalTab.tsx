@@ -11,6 +11,8 @@ interface TerminalTabProps {
   theme: ThemeMode;
   fontSize: number;
   state: TerminalStatus["state"];
+  /** Bumped by the tab menu to re-open the session in place. */
+  reconnectAt?: number;
   onStatus: (patch: Partial<TerminalStatus>) => void;
   onReconnect?: () => void;
 }
@@ -26,12 +28,13 @@ export function TerminalTab({
   theme,
   fontSize,
   state,
+  reconnectAt,
   onStatus,
   onReconnect,
 }: TerminalTabProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const { containerRef, notice, clearNotice, findNext, findPrevious } = useTerminal({
+  const { containerRef, notice, clearNotice, reconnect, findNext, findPrevious } = useTerminal({
     sessionId,
     title,
     visible,
@@ -39,6 +42,14 @@ export function TerminalTab({
     fontSize,
     onStatus,
   });
+
+  useEffect(() => {
+    if (reconnectAt !== undefined && reconnectAt > 0) {
+      reconnect();
+    }
+    // Reconnect only when the tick changes, never on first render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reconnectAt]);
 
   useEffect(() => {
     if (!visible) {

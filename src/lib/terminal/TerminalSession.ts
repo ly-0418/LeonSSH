@@ -136,6 +136,20 @@ export class TerminalSession {
     }
   }
 
+  /** Re-opens the SSH session inside this terminal, keeping the scrollback. */
+  async reconnect(): Promise<void> {
+    if (this.disposed) {
+      return;
+    }
+    if (this.terminalId !== null) {
+      const previous = this.terminalId;
+      this.terminalId = null;
+      void closeTerminal(previous).catch(() => undefined);
+    }
+    this.terminal.writeln("\r\n\x1b[2m—— 正在重新连接 ——\x1b[0m");
+    await this.connect();
+  }
+
   async dispose(): Promise<void> {
     if (this.disposed) {
       return;

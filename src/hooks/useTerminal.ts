@@ -78,6 +78,10 @@ export function useTerminal({ sessionId, title, visible, theme, fontSize, onStat
   const clearNotice = useCallback(() => setNotice(null), []);
   const focus = useCallback(() => sessionRef.current?.focus(), []);
 
+  const reconnect = useCallback(() => {
+    void sessionRef.current?.reconnect();
+  }, []);
+
   const findNext = useCallback((text: string) => {
     sessionRef.current?.findNext(text);
   }, []);
@@ -85,5 +89,5 @@ export function useTerminal({ sessionId, title, visible, theme, fontSize, onStat
     sessionRef.current?.findPrevious(text);
   }, []);
 
-  return { containerRef, notice, clearNotice, findNext, findPrevious, focus, initialStatus: INITIAL_STATUS };
+  return { containerRef, notice, clearNotice, reconnect, findNext, findPrevious, focus, initialStatus: INITIAL_STATUS };
 }

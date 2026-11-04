@@ -54,6 +54,8 @@ export default function App() {
   /** Tabs whose saved forward rules were already auto-started. */
   const startedForwards = useRef<Set<string>>(new Set());
   const [forwardOpen, setForwardOpen] = useState(false);
+  /** Incremented per tab to re-open its SSH session without remounting xterm. */
+  const [reconnectTicks, setReconnectTicks] = useState<Record<string, number>>({});
   const [broadcast, setBroadcast] = useState<boolean>(
     () => localStorage.getItem("leonssh.broadcast") === "1",
   );
@@ -271,19 +273,10 @@ export default function App() {
   }, [forwardOpen]);
 
   /** Re-opens a dropped tab with the same saved profile. */
-  const reconnectTab = useCallback(
-    (tab: TabItem) => {
-      const profile = sessions.find((item) => item.id === tab.sessionId);
-      if (profile === undefined) {
-        return;
-      }
-      closeTab(tab.key);
-      // Force a fresh tab: without it `openTab` would short-circuit to the tab
-      // that is being closed in this same update.
-      openTab(profile, true);
-    },
-    [sessions, closeTab, openTab],
-  );
+  /** Re-opens the session inside the existing tab (scrollback is preserved). */
+  const reconnectTab = useCallback((tab: TabItem) => {
+    setReconnectTicks((prev) => ({ ...prev, [tab.key]: (prev[tab.key] ?? 0) + 1 }));
+  }, []);
 
   /** Closes the SSH channel of one tab and leaves the tab in the "closed" state. */
   const disconnectTab = useCallback(
@@ -443,6 +436,7 @@ export default function App() {
                 >
                   <TerminalTab
                     state={tab.status.state}
+                    reconnectAt={reconnectTicks[tab.key] ?? 0}
                     onReconnect={() => reconnectTab(tab)}
                     sessionId={tab.sessionId}
                     title={tab.title}

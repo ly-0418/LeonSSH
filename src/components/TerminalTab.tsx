@@ -8,6 +8,8 @@ import { listRemoteNames } from "../lib/ipc/sftp";
 import { useTerminal } from "../hooks/useTerminal";
 import type { ThemeMode } from "../lib/terminal/theme";
 
+const HANDLED_KEYS = new Set(["Tab", "Enter", "ArrowUp", "ArrowDown", "Escape"]);
+
 interface TerminalTabProps {
   sessionId: number;
   /** Active SSH terminal id (needed for path completion). */
@@ -52,7 +54,7 @@ export function TerminalTab({
   const paneRef = useRef<HTMLElement | null>(null);
   /** Keeps the popup closed after accepting a file (no deeper level). */
   const ignoreNextLineRef = useRef(false);
-  const { containerRef, notice, clearNotice, reconnect, insertText, backspace, findNext, findPrevious } = useTerminal({
+  const { containerRef, notice, clearNotice, reconnect, insertText, backspace, findNext, findPrevious, focus } = useTerminal({
     sessionId,
     title,
     visible,
@@ -64,6 +66,7 @@ export function TerminalTab({
       if (ignoreNextLineRef.current) {
         ignoreNextLineRef.current = false;
         setSuggestDismissed(true);
+        focus();
         return;
       }
       setSuggestDismissed(false);
@@ -125,6 +128,7 @@ export function TerminalTab({
     ? pathItems
         .filter((entry) => entry.name.startsWith(prefixPart))
         .filter((entry) => !entry.name.startsWith(".") || prefixPart.startsWith("."))
+        .filter((entry) => entry.isDir || entry.name !== prefixPart)
         .sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name))
         .slice(0, 8)
     : [];
@@ -157,6 +161,7 @@ export function TerminalTab({
         }
         insertText(pick.name + (pick.isDir ? "/" : ""));
         setSuggestDismissed(true);
+        focus();
       }
       return;
     }
@@ -180,6 +185,10 @@ export function TerminalTab({
       invoke("frontend_error", { message: `suggest-register active=${activeCount} path=${String(isPathMode)}` }),
     );
     setSuggestionKeyHandler((event) => {
+      if (HANDLED_KEYS.has(event.key)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       if (event.key === "Tab" || event.key === "Enter") {
         acceptSuggestion(Math.min(suggestIndex, activeCount - 1));
         return true;
@@ -194,6 +203,7 @@ export function TerminalTab({
       }
       if (event.key === "Escape") {
         setSuggestDismissed(true);
+        focus();
         return true;
       }
       return false;
@@ -364,6 +374,7 @@ export function TerminalTab({
                 void bumpCommandUsage(command.name).then(() => setUsage((current) => ({ ...current, [command.name]: (current[command.name] ?? 0) + 1 })));
                 insertText(command.name.slice(typed.length));
                 setSuggestDismissed(true);
+        focus();
               }}
             >
               <span className={`terminal-suggest__name${command.isDir ? " terminal-suggest__name--dir" : ""}`}>{command.name}</span>

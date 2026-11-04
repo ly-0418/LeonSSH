@@ -4,7 +4,7 @@
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
-  padding: 2px 4px 6px;
+  padding: 2px 4px 0;
   background: var(--bg);
 }
 
@@ -60,9 +60,7 @@
 
 .terminal-host .xterm {
   height: 100%;
-  /* Extra bottom inset so the last prompt row is not clipped by the rounded
-     host corner; +5px on trial. */
-  padding: 6px 8px 11px;
+  padding: 6px 8px;
 }
 
 .terminal-host .xterm-viewport {

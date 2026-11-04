@@ -53,6 +53,14 @@ export function TerminalTab({
       setSuggestDismissed(false);
       setSuggestIndex(0);
     },
+    onExecuted: (value) => {
+      const name = value.trim().split(/\s+/)[0] ?? "";
+      if (LINUX_COMMANDS.some((command) => command.name === name)) {
+        void bumpCommandUsage(name).then(() =>
+          setUsage((current) => ({ ...current, [name]: (current[name] ?? 0) + 1 })),
+        );
+      }
+    },
   });
 
   const typed = line.trimStart();

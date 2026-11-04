@@ -138,8 +138,8 @@ pub fn run() {
             };
             let window = tauri::WebviewWindowBuilder::new(app, "main", start_url)
             .title("LeonSSH")
-            .inner_size(1180.0, 760.0)
-            .min_inner_size(760.0, 480.0)
+            .inner_size(1440.0, 920.0)
+            .min_inner_size(1080.0, 720.0)
             // Frameless: the app header doubles as the title bar and renders
             // its own minimize/maximize/close buttons.
             .decorations(false)

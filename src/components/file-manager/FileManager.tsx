@@ -305,7 +305,7 @@ export function FileManager({
           className="fm-head__icon-btn fm-head__upload"
           disabled={!canUpload}
           onClick={() => void upload(localSelection)}
-          title="上传选中的本地文件到当前远程目录"
+          title="上传选中的文件或文件夹（文件夹会递归上传）"
           aria-label="上传"
         >
           <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

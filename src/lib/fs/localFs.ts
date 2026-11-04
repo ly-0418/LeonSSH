@@ -16,6 +16,16 @@ const STAT_CONCURRENCY = 8;
 /** Huge folders would need thousands of IPC calls; hydrate the first page only. */
 const HYDRATE_LIMIT = 300;
 
+/** True when the path exists and is a directory (used by drop handling). */
+export async function isLocalDirectory(path: string): Promise<boolean> {
+  try {
+    const info = await stat(normalizeLocal(path));
+    return info.isDirectory === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function localHome(): Promise<string> {
   const home = await homeDir();
   return normalizeLocal(home.replace(/[\\/]+$/, ""));

@@ -425,7 +425,7 @@ export default function App() {
             onClose={closeTab}
             onNewSession={() =>
               setSessionDialog({
-                creating: sessions.length === 0,
+      creating: true,
                 selectedId: sessions[0]?.id ?? null,
               })
             }

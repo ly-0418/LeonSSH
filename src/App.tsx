@@ -97,6 +97,8 @@ export default function App() {
   const [closeRequested, setCloseRequested] = useState(false);
   const forceClose = useRef(false);
   const [pendingClose, setPendingClose] = useState<{ key: string; count: number; finish: () => void } | null>(null);
+  const [pendingSessionClose, setPendingSessionClose] = useState<string | null>(null);
+  const confirmedSessionClose = useRef<Set<string>>(new Set());
   // Dialogs and drawers steal focus; hand it back to the active terminal.
   useEffect(() => {
     if (settingsOpen || sessionDialog !== null || pendingDelete !== null || view !== "terminal") {
@@ -249,7 +251,16 @@ export default function App() {
   const closeTab = useCallback(
     (key: string) => {
       const tab = tabs.find((item) => item.key === key);
+      const live =
+        tab !== undefined &&
+        (tab.status.state === "ready" || tab.status.state === "connecting");
+      // A live connection asks first; disconnected/failed tabs close silently.
+      if (live && !confirmedSessionClose.current.has(key)) {
+        setPendingSessionClose(key);
+        return;
+      }
       const finish = () => {
+        confirmedSessionClose.current.delete(key);
         const next = tabs.filter((item) => item.key !== key);
         setTabs(next);
         if (activeKey === key) {
@@ -652,6 +663,21 @@ export default function App() {
             void invoke("quit_app");
           }}
           onCancel={() => setCloseRequested(false)}
+        />
+      )}
+
+      {pendingSessionClose !== null && (
+        <ConfirmDialog
+          title="关闭会话"
+          message={`会话「${tabs.find((item) => item.key === pendingSessionClose)?.title ?? ""}」正在连接中，关闭后将断开连接。确认关闭吗？`}
+          confirmLabel="关闭"
+          onConfirm={() => {
+            const key = pendingSessionClose;
+            setPendingSessionClose(null);
+            confirmedSessionClose.current.add(key);
+            closeTab(key);
+          }}
+          onCancel={() => setPendingSessionClose(null)}
         />
       )}
 

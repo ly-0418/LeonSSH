@@ -96,8 +96,13 @@ export function TabBar({
     if (element === null) {
       return;
     }
-    element.scrollTo({ left: element.scrollWidth, behavior: "smooth" });
-  }, [tabs.length]);
+    // Wait for the new tab to be laid out before jumping to the end.
+    const frame = window.requestAnimationFrame(() => {
+      element.scrollLeft = element.scrollWidth;
+      syncArrows();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [tabs.length, syncArrows]);
 
   useEffect(() => {
     if (menu === null) {
@@ -167,8 +172,8 @@ export function TabBar({
           <button
             type="button"
             className="tab__close"
-            title="关闭标签"
-            aria-label="关闭标签"
+            title="关闭会话"
+            aria-label="关闭会话"
             onClick={(event) => {
               event.stopPropagation();
               onClose(tab.key);
@@ -235,6 +240,16 @@ export function TabBar({
           style={{ left: menu.x, top: menu.y }}
           onClick={(event) => event.stopPropagation()}
         >
+          <button
+            type="button"
+            className="tab-menu__item"
+            onClick={() => {
+              onClose(menu.key);
+              setMenu(null);
+            }}
+          >
+            关闭会话
+          </button>
                     {(() => {
               const target = tabs.find((tab) => tab.key === menu.key);
               const connected = target !== undefined && target.status.terminalId !== null;

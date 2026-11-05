@@ -309,30 +309,49 @@ pub fn quit_app(app: tauri::AppHandle) {
 /// not have to hunt through `data/logs`.
 #[tauri::command]
 pub fn logs_tail(state: State<'_, AppState>, limit: Option<usize>) -> Result<String, AppError> {
-    let limit = limit.unwrap_or(400).clamp(20, 2000);
+    let limit = limit.unwrap_or(500).clamp(50, 500);
     let dir = state.paths().data_dir.join("logs");
-    let mut newest: Option<(std::time::SystemTime, std::path::PathBuf)> = None;
+    let now = crate::paths::now_epoch_secs();
+    // Only this run, and never more than three hours back.
+    let floor = crate::paths::boot_epoch_secs().max(now - 3 * 3600);
+
+    let mut files: Vec<std::path::PathBuf> = Vec::new();
     if let Ok(entries) = std::fs::read_dir(&dir) {
         for entry in entries.flatten() {
             let path = entry.path();
             if !path.is_file() {
                 continue;
             }
-            let Ok(meta) = entry.metadata() else { continue };
-            let modified = meta.modified().unwrap_or(std::time::UNIX_EPOCH);
-            if newest.as_ref().is_none_or(|(time, _)| modified > *time) {
-                newest = Some((modified, path));
+            let name = path.file_name().and_then(|value| value.to_str()).unwrap_or("");
+            if name.starts_with("leonssh.log") {
+                files.push(path);
             }
         }
     }
-    let Some((_, path)) = newest else {
-        return Ok("（暂无日志）".to_string());
-    };
-    let bytes = std::fs::read(&path)
-        .map_err(|err| AppError::Internal(format!("读取日志失败: {err}")))?;
-    let start = bytes.len().saturating_sub(512 * 1024);
-    let text = String::from_utf8_lossy(&bytes[start..]).to_string();
-    let lines: Vec<&str> = text.lines().collect();
-    let skip = lines.len().saturating_sub(limit);
-    Ok(lines[skip..].join("\n"))
+    // Daily files are named with their date, so a reverse name sort is newest first.
+    files.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+
+    let mut kept: Vec<String> = Vec::new();
+    'outer: for path in files {
+        let bytes = match std::fs::read(&path) {
+            Ok(bytes) => bytes,
+            Err(_) => continue,
+        };
+        let text = String::from_utf8_lossy(&bytes).to_string();
+        for line in text.lines().rev() {
+            if let Some(stamp) = line.get(0..19) {
+                if let Some(secs) = crate::paths::epoch_from_stamp(stamp) {
+                    if secs < floor {
+                        break 'outer;
+                    }
+                }
+            }
+            kept.push(line.to_string());
+            if kept.len() >= limit {
+                break 'outer;
+            }
+        }
+    }
+    kept.reverse();
+    Ok(kept.join("\n"))
 }

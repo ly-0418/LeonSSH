@@ -158,6 +158,48 @@ pub fn record_boot_stamp() {
     let _ = BOOT_STAMP.set(now_stamp());
 }
 
+/// Days since 1970-01-01 for a civil date (Howard Hinnant's algorithm).
+fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
+    let y = if month <= 2 { year - 1 } else { year };
+    let era = if y >= 0 { y } else { y - 399 } / 400;
+    let yoe = y - era * 400;
+    let mp = (month + 9) % 12;
+    let doy = (153 * mp + 2) / 5 + day - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
+}
+
+/// Parses "YYYY-MM-DDTHH:MM:SS" (milliseconds optional) into epoch seconds.
+pub fn epoch_from_stamp(text: &str) -> Option<i64> {
+    let bytes = text.as_bytes();
+    if bytes.len() < 19 {
+        return None;
+    }
+    let num = |range: std::ops::Range<usize>| text.get(range)?.parse::<i64>().ok();
+    let year = num(0..4)?;
+    let month = num(5..7)?;
+    let day = num(8..10)?;
+    let hour = num(11..13)?;
+    let minute = num(14..16)?;
+    let second = num(17..19)?;
+    Some(days_from_civil(year, month, day) * 86_400 + hour * 3_600 + minute * 60 + second)
+}
+
+/// Current wall-clock time as epoch seconds.
+pub fn now_epoch_secs() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|value| value.as_secs() as i64)
+        .unwrap_or(0)
+}
+
+static BOOT_EPOCH: std::sync::OnceLock<i64> = std::sync::OnceLock::new();
+
+/// Process start time (epoch seconds); the log viewer never shows older lines.
+pub fn boot_epoch_secs() -> i64 {
+    *BOOT_EPOCH.get_or_init(now_epoch_secs)
+}
+
 pub fn boot_stamp() -> Option<&'static str> {
     BOOT_STAMP.get().map(String::as_str)
 }

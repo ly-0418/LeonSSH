@@ -2098,6 +2098,13 @@ input[type="password"]::-ms-reveal {
 }
 
 
+/* While the arrows are shown, inset the scroll area so no tab (or its close
+   button) sits underneath them. */
+.tab-bar__strip[data-overflow="true"] .tab-bar__scroll {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
 .tab-bar__arrow--left {
   left: 0;
   box-shadow: 6px 0 8px -4px var(--bg-header);

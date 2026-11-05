@@ -2020,6 +2020,7 @@ input[type="password"]::-ms-reveal {
 
 /* Tabs occupy at most 70% of the window; arrows scroll them horizontally. */
 .tab-bar__strip {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -2027,10 +2028,10 @@ input[type="password"]::-ms-reveal {
   max-width: 80%;
 }
 
+/* Arrows overlay the strip, so they never take layout space: no gaps while the
+   tabs still fit, and no width shift when they appear. */
 .tab-bar__strip[data-overflow="false"] .tab-bar__arrow {
-  /* Keep the layout width stable: hiding with visibility prevents the scroll
-     area from growing after the arrows appear. */
-  visibility: hidden;
+  display: none;
 }
 
 .tab-bar__scroll {
@@ -2048,6 +2049,10 @@ input[type="password"]::-ms-reveal {
 }
 
 .tab-bar__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
   flex: 0 0 auto;
   width: 22px;
   height: 24px;
@@ -2090,4 +2095,19 @@ input[type="password"]::-ms-reveal {
 
 .tab-bar__arrow svg {
   display: block;
+}
+
+
+.tab-bar__arrow--left {
+  left: 0;
+  box-shadow: 6px 0 8px -4px var(--bg-header);
+}
+
+.tab-bar__arrow--right {
+  right: 0;
+  box-shadow: -6px 0 8px -4px var(--bg-header);
+}
+
+.tab-bar__arrow:not(:disabled) {
+  background: var(--bg-header);
 }

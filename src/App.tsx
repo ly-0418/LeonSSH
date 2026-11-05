@@ -459,10 +459,11 @@ export default function App() {
             onClick={() => (view === "files" ? closeFiles() : openFiles())}
           >
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M4 8h13" />
-              <path d="m14 4.5 3.5 3.5L14 11.5" />
-              <path d="M20 16H7" />
-              <path d="M10 12.5 6.5 16l3.5 3.5" />
+              <path d="M3 6.6c0-.8.6-1.4 1.4-1.4h4.1l1.8 2h8.3c.8 0 1.4.6 1.4 1.4v10.8c0 .8-.6 1.4-1.4 1.4H4.4c-.8 0-1.4-.6-1.4-1.4z" />
+              <path d="M9.4 11.2h6.2" />
+              <path d="m13.6 9.2 2 2-2 2" />
+              <path d="M14.6 16.6H8.4" />
+              <path d="m10.4 18.6-2-2 2-2" />
             </svg>
           </button>
           <button

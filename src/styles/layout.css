@@ -1957,12 +1957,22 @@ input[type="password"]::-ms-reveal {
   background: var(--bg);
 }
 /* Line numbers in the log viewer. */
+/* Each line is a two-column grid: fixed line number, then the text column. */
+.logs-line {
+  display: grid;
+  grid-template-columns: 3.6em minmax(0, 1fr);
+  column-gap: 12px;
+}
+
 .logs-line__no {
-  display: inline-block;
-  width: 3.2em;
-  margin-right: 10px;
   text-align: right;
   color: var(--text-faint);
   opacity: 0.75;
   user-select: none;
+}
+
+.logs-line__text {
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
 }

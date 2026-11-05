@@ -170,8 +170,7 @@ export function SettingsDrawer({
     logNodes.push(
       <span key={`line-${lineIndex}`} className="logs-line">
         <span className="logs-line__no">{lineIndex + 1}</span>
-        {parts}
-        {"\n"}
+        <span className="logs-line__text">{parts}</span>
       </span>,
     );
   });

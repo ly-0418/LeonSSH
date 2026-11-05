@@ -107,6 +107,11 @@ export default function App() {
     target?.focus();
   }, [settingsOpen, sessionDialog, pendingDelete, view]);
 
+  // Only live connections block the window close: closed/failed tabs do not.
+  const liveSessionCount = tabs.filter(
+    (tab) => tab.status.state === "ready" || tab.status.state === "connecting",
+  ).length;
+
   // Closing the window with live sessions asks for confirmation first.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -116,7 +121,7 @@ export default function App() {
         if (forceClose.current) {
           return;
         }
-        if (tabs.length === 0) {
+        if (liveSessionCount === 0) {
           return;
         }
         event.preventDefault();
@@ -127,7 +132,7 @@ export default function App() {
         unlisten = dispose;
       });
     return () => unlisten?.();
-  }, [tabs.length]);
+  }, [liveSessionCount]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -233,12 +238,12 @@ export default function App() {
 
   // The caption ✕ goes through here: no sessions => quit directly, sessions => ask.
   const requestClose = useCallback(() => {
-    if (tabs.length === 0) {
+    if (liveSessionCount === 0) {
       void invoke("quit_app");
       return;
     }
     setCloseRequested(true);
-  }, [tabs.length]);
+  }, [liveSessionCount]);
 
   const closeTab = useCallback(
     (key: string) => {
@@ -645,7 +650,7 @@ export default function App() {
       {closeRequested && (
         <ConfirmDialog
           title="关闭 LeonSSH"
-          message={`当前有 ${tabs.length} 个会话正在进行，关闭后连接会被断开。确认关闭吗？`}
+          message={`当前有 ${liveSessionCount} 个会话正在进行，关闭后连接会被断开。确认关闭吗？`}
           confirmLabel="关闭"
           onConfirm={() => {
             setCloseRequested(false);

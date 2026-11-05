@@ -2024,7 +2024,7 @@ input[type="password"]::-ms-reveal {
   align-items: center;
   gap: 2px;
   min-width: 0;
-  max-width: 70%;
+  max-width: 80%;
 }
 
 .tab-bar__strip[data-overflow="false"] .tab-bar__arrow {

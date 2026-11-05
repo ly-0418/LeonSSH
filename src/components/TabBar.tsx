@@ -124,7 +124,7 @@ export function TabBar({
           disabled={!canScrollLeft}
           onClick={() => scrollTabs(-1)}
         >
-          \u2039
+          ‹
         </button>
         <div className="tab-bar__scroll" ref={scrollRef}>
       {tabs.map((tab) => (
@@ -174,7 +174,7 @@ export function TabBar({
           disabled={!canScrollRight}
           onClick={() => scrollTabs(1)}
         >
-          \u203a
+          ›
         </button>
       </div>
 

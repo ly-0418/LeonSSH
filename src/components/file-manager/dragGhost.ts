@@ -31,31 +31,47 @@ export function moveGhost(x: number, y: number): void {
   }
 }
 
-function iconFrame(name: string, isDir: boolean): HTMLElement {
+interface LoadedIcon {
+  element: HTMLElement;
+  /** Rendered width in px; used to stack the smallest icons on top. */
+  loaded: Promise<number>;
+}
+
+function iconFrame(name: string, isDir: boolean): LoadedIcon {
   const frame = document.createElement("span");
   frame.className = "fm-drag-badge__icon";
-  const fallback = () => {
+
+  const fallback = (): number => {
     frame.textContent = isDir ? "📁" : "📄";
+    return 22;
   };
-  void loadShellIcon(name, isDir)
-    .then((source) => {
-      if (source === null) {
-        fallback();
-        return;
-      }
-      const image = document.createElement("img");
-      image.src = source;
-      image.alt = "";
-      image.draggable = false;
-      frame.appendChild(image);
-    })
-    .catch(fallback);
-  return frame;
+
+  const loaded = loadShellIcon(name, isDir)
+    .then(
+      (source) =>
+        new Promise<number>((resolve) => {
+          if (source === null) {
+            resolve(fallback());
+            return;
+          }
+          const image = document.createElement("img");
+          image.draggable = false;
+          image.alt = "";
+          image.onload = () => resolve(image.naturalWidth || 32);
+          image.onerror = () => resolve(fallback());
+          image.src = source;
+          frame.appendChild(image);
+        }),
+    )
+    .catch(() => fallback());
+
+  return { element: frame, loaded };
 }
 
 /**
  * Fills the badge: one item shows its type icon, several items show up to three
- * distinct type icons stacked together with the total count in the middle.
+ * distinct types stacked with the total count centred. Icons are ordered by
+ * size so the smallest one ends up on top (Windows-like layering).
  */
 export function fillGhost(items: DragBadgeItem[]): void {
   const element = ensureGhost();
@@ -77,14 +93,21 @@ export function fillGhost(items: DragBadgeItem[]): void {
 
   const stack = document.createElement("span");
   stack.className = "fm-drag-badge__stack";
-  distinct.forEach((item, index) => {
-    const frame = iconFrame(item.name, item.isDir);
-    // Symmetric offsets keep the icon group visually centred in the frame.
-    const offset = index === 0 ? 0 : index === 1 ? 8 : -8;
-    frame.style.setProperty("--offset", `${offset}px`);
-    stack.appendChild(frame);
-  });
   element.appendChild(stack);
+
+  const frames = distinct.map((item) => iconFrame(item.name, item.isDir));
+  void Promise.all(frames.map((frame) => frame.loaded)).then((sizes) => {
+    // Largest first: later siblings paint on top, so the smallest icon wins.
+    const ordered = frames
+      .map((frame, index) => ({ frame, size: sizes[index] }))
+      .sort((a, b) => b.size - a.size);
+    ordered.forEach(({ frame }, index) => {
+      const offset = index === 0 ? 0 : index === 1 ? 8 : -8;
+      frame.element.style.setProperty("--offset", `${offset}px`);
+      frame.element.style.zIndex = String(ordered.length - index);
+      stack.appendChild(frame.element);
+    });
+  });
 
   if (items.length > 1) {
     const count = document.createElement("span");

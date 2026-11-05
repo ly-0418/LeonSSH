@@ -128,12 +128,32 @@ pub async fn mkdir(sftp: &SftpSession, path: &str) -> Result<(), AppError> {
 
 pub async fn remove(sftp: &SftpSession, path: &str, is_dir: bool) -> Result<(), AppError> {
     let path = normalize_remote(path);
-    let result = if is_dir {
-        sftp.remove_dir(path).await
-    } else {
-        sftp.remove_file(path).await
-    };
-    result.map_err(|err| AppError::Sftp(format!("删除失败: {err}")))
+    if !is_dir {
+        return sftp
+            .remove_file(path)
+            .await
+            .map_err(|err| AppError::Sftp(format!("删除失败: {err}")));
+    }
+    // Directories are removed recursively: a non-empty folder used to make
+    // remove_dir fail with an opaque error.
+    remove_tree(sftp, &path).await
+}
+
+/// Depth-first delete: children first, then the directory itself.
+async fn remove_tree(sftp: &SftpSession, path: &str) -> Result<(), AppError> {
+    let entries = list(sftp, path).await?;
+    for entry in entries {
+        if entry.is_dir && !entry.is_symlink {
+            Box::pin(remove_tree(sftp, &entry.path)).await?;
+        } else {
+            sftp.remove_file(entry.path.clone())
+                .await
+                .map_err(|err| AppError::Sftp(format!("删除 {} 失败: {err}", entry.path)))?;
+        }
+    }
+    sftp.remove_dir(path.to_string())
+        .await
+        .map_err(|err| AppError::Sftp(format!("删除目录 {path} 失败: {err}")))
 }
 
 pub async fn rename(sftp: &SftpSession, from: &str, to: &str) -> Result<(), AppError> {

@@ -1,5 +1,5 @@
 import { memGet, memSet } from "../../lib/fs/fmMemory";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState , useMemo} from "react";
 
 import { ShellFileIcon } from "./ShellFileIcon";
 import type { FileEntry } from "../../lib/fs/types";
@@ -95,8 +95,10 @@ export function FileTable({
   }, []);
 
   const headerCheckRef = useRef<HTMLInputElement | null>(null);
-  const allSelected = entries.length > 0 && entries.every((entry) => selected.includes(entry.name));
-  const someSelected = !allSelected && entries.some((entry) => selected.includes(entry.name));
+  // A Set keeps select-all O(n) instead of O(n²) on folders with thousands of files.
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
+  const allSelected = entries.length > 0 && entries.every((entry) => selectedSet.has(entry.name));
+  const someSelected = !allSelected && entries.some((entry) => selectedSet.has(entry.name));
 
   useEffect(() => {
     if (headerCheckRef.current !== null) {
@@ -177,11 +179,11 @@ export function FileTable({
           <div
             key={entry.path}
             role="row"
-            aria-selected={selected.includes(entry.name)}
+            aria-selected={selectedSet.has(entry.name)}
             draggable={onRowDragStart !== undefined}
             onDragStart={(event) => onRowDragStart?.(entry, event)}
             style={{ position: "absolute", top: (firstRow + index) * ROW_HEIGHT, left: 0, right: 0 }}
-            className={`fm-row${selected.includes(entry.name) ? " fm-row--selected" : ""}${
+            className={`fm-row${selectedSet.has(entry.name) ? " fm-row--selected" : ""}${
               showPermissions ? " fm-row--perm" : ""
             }`}
             onClick={(event) =>
@@ -194,7 +196,7 @@ export function FileTable({
             onContextMenu={(event) => {
               event.preventDefault();
               event.stopPropagation();
-              if (!selected.includes(entry.name)) {
+              if (!selectedSet.has(entry.name)) {
                 onSelect(entry.name, "single");
               }
               onContextMenu(entry, event);
@@ -211,7 +213,7 @@ export function FileTable({
             <span className="fm-row__check">
               <input
                 type="checkbox"
-                checked={selected.includes(entry.name)}
+                checked={selectedSet.has(entry.name)}
                 onChange={() => onSelect(entry.name, "toggle")}
                 onClick={(event) => event.stopPropagation()}
                 aria-label={`选择 ${entry.name}`}

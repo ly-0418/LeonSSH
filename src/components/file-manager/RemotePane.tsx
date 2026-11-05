@@ -576,7 +576,7 @@ function RemotePaneLoaded({
       {pendingDelete !== null && (
         <ConfirmDialog
           title="删除远程项目"
-          message={`确定删除「${pendingDelete.name}」吗？${pendingDelete.isDir ? "文件夹必须为空。" : ""}`}
+          message={`确定删除「${pendingDelete.name}」吗？${pendingDelete.isDir ? "文件夹会被递归删除（包含其中的所有文件和子目录），且不可恢复。" : "删除后不可恢复。"}`}
           confirmLabel="删除"
           onConfirm={() => {
             const target = pendingDelete;

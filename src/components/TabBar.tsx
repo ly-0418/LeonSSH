@@ -96,14 +96,12 @@ export function TabBar({
     if (element === null) {
       return;
     }
-    // Two frames: the first applies the arrow state (its width is reserved),
-    // the second pins the strip to the end so the newest tab is fully visible.
+    // Scroll smoothly to the newest tab once its layout is in place.
     let inner = 0;
     const frame = window.requestAnimationFrame(() => {
-      element.scrollLeft = element.scrollWidth;
       syncArrows();
       inner = window.requestAnimationFrame(() => {
-        element.scrollLeft = element.scrollWidth;
+        element.scrollTo({ left: element.scrollWidth, behavior: "smooth" });
       });
     });
     return () => {

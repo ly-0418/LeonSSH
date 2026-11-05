@@ -2127,21 +2127,21 @@ input[type="password"]::-ms-reveal {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 22px;
+  width: 34px;
   z-index: 2;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 120ms ease;
+  transition: opacity 140ms ease;
 }
 
 .tab-bar__strip::before {
   left: 22px;
-  background: linear-gradient(to right, var(--bg-header) 10%, transparent);
+  background: linear-gradient(to right, var(--bg-header) 45%, transparent);
 }
 
 .tab-bar__strip::after {
   right: 22px;
-  background: linear-gradient(to left, var(--bg-header) 10%, transparent);
+  background: linear-gradient(to left, var(--bg-header) 45%, transparent);
 }
 
 .tab-bar__strip[data-fade-left="true"]::before {

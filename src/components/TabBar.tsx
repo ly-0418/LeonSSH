@@ -90,6 +90,15 @@ export function TabBar({
     scrollRef.current?.scrollBy({ left: direction * 220, behavior: "smooth" });
   };
 
+  // A new tab should be visible immediately: scroll the strip to the end.
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (element === null) {
+      return;
+    }
+    element.scrollTo({ left: element.scrollWidth, behavior: "smooth" });
+  }, [tabs.length]);
+
   useEffect(() => {
     if (menu === null) {
       return;
@@ -124,9 +133,14 @@ export function TabBar({
           disabled={!canScrollLeft}
           onClick={() => scrollTabs(-1)}
         >
-          ‹
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m15 5-7 7 7 7" />
+          </svg>
         </button>
-        <div className="tab-bar__scroll" ref={scrollRef}>
+        <div
+          className={`tab-bar__scroll${canScrollLeft ? " tab-bar__scroll--fade-left" : ""}${canScrollRight ? " tab-bar__scroll--fade-right" : ""}`}
+          ref={scrollRef}
+        >
       {tabs.map((tab) => (
         <div
           key={tab.key}
@@ -174,7 +188,9 @@ export function TabBar({
           disabled={!canScrollRight}
           onClick={() => scrollTabs(1)}
         >
-          ›
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m9 5 7 7-7 7" />
+          </svg>
         </button>
       </div>
 

@@ -2071,3 +2071,21 @@ input[type="password"]::-ms-reveal {
   opacity: 0.35;
   cursor: default;
 }
+
+
+/* Edge fades hint that more tabs are hidden on either side. */
+.tab-bar__scroll--fade-left {
+  mask-image: linear-gradient(to right, transparent 0, #000 26px, #000 100%);
+}
+
+.tab-bar__scroll--fade-right {
+  mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 26px), transparent 100%);
+}
+
+.tab-bar__scroll--fade-left.tab-bar__scroll--fade-right {
+  mask-image: linear-gradient(to right, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+}
+
+.tab-bar__arrow svg {
+  display: block;
+}

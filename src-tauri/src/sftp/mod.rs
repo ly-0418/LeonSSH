@@ -43,7 +43,7 @@ pub async fn open_subsystem(
         .request_subsystem(true, "sftp")
         .await
         .map_err(|err| AppError::Sftp(format!("请求 sftp 子系统失败: {err}")))?;
-    SftpSession::new(channel.into_stream())
+    SftpSession::new_with_config(channel.into_stream(), tuned_config())
         .await
         .map_err(|err| AppError::Sftp(format!("SFTP 初始化失败: {err}")))
 }
@@ -166,8 +166,20 @@ pub async fn chmod(sftp: &SftpSession, path: &str, mode: u32) -> Result<(), AppE
 
 // ----------------------------------------------------------------- transfer
 
+/// Throughput-oriented SFTP limits: bigger write packets and a deeper pipeline.
+/// OpenSSH caps these per server; the effective size is the minimum of both.
+fn tuned_config() -> russh_sftp::client::Config {
+    russh_sftp::client::Config {
+        max_packet_len: 256 * 1024,
+        max_concurrent_reads: 64,
+        max_concurrent_writes: 64,
+        max_write_packet_len: 256 * 1024,
+        request_timeout_secs: 20,
+    }
+}
+
 /// Chunk size for both directions: bounds memory and keeps progress smooth.
-pub const CHUNK_SIZE: usize = 32 * 1024;
+pub const CHUNK_SIZE: usize = 256 * 1024;
 
 /// Uploads `local` to `remote`, calling `on_progress(transferred, total)`.
 pub async fn upload_file(
@@ -383,7 +395,7 @@ pub async fn list_stream(
         .await
         .map_err(|err| AppError::Ssh(format!("启动 SFTP 子系统失败: {err}")))?;
 
-    let sftp = SftpSession::new(channel.into_stream())
+    let sftp = SftpSession::new_with_config(channel.into_stream(), tuned_config())
         .await
         .map_err(|err| AppError::Sftp(format!("启动 SFTP 会话失败: {err}")))?;
 

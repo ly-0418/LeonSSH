@@ -26,6 +26,8 @@ interface LocalPaneProps {
   refreshToken?: number;
   onPathChange?: (path: string) => void;
   persistKey?: string;
+  /** Highlight while a remote drag hovers this pane. */
+  dropActive?: boolean;
   /** Files dragged from the remote pane: download them here. */
   onRemoteDrop?: (entries: FileEntry[]) => void;
   onSelectionChange?: (entries: FileEntry[]) => void;
@@ -50,6 +52,7 @@ export function LocalPane({
   onRemoteDrop,
   onSelectionChange,
   onRowPointerDown,
+  dropActive,
 }: LocalPaneProps) {
   const adapter = useMemo<PaneAdapter>(
     () => ({
@@ -165,7 +168,7 @@ export function LocalPane({
           : "重命名";
 
   return (
-    <section className="fm-pane" data-drop-local="true">
+    <section className={`fm-pane${dropActive === true ? " fm-pane--drop" : ""}`} data-drop-local="true">
       <PathBar
         label="本地"
         path={pane.path}

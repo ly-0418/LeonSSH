@@ -19,7 +19,6 @@ import {
 import { ConfirmDialog } from "../dialogs";
 import { FileContextMenu, type FileMenuItem } from "./FileContextMenu";
 import { FileTable } from "./FileTable";
-import { setDragGhost } from "./dragGhost";
 import { PathBar } from "./PathBar";
 import { PromptDialog } from "./PromptDialog";
 import { useFilePane, type PaneAdapter } from "./useFilePane";
@@ -396,16 +395,6 @@ function RemotePaneLoaded({
         onRefresh={() => void pane.refresh()}
       />
       <FileTable
-        onRowDragStart={(entry, event) => {
-          const selected = pane.selectedEntries;
-          const items =
-            selected.some((item) => item.name === entry.name) && selected.length > 1
-              ? selected
-              : [entry];
-          event.dataTransfer.effectAllowed = "copyMove";
-          event.dataTransfer.setData("application/x-leonssh-remote", JSON.stringify(items));
-          setDragGhost(event, items.length, entry.name);
-        }}
                   entries={pane.visible}
         selected={pane.selected}
         showPermissions

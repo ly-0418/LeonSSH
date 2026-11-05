@@ -61,6 +61,7 @@ export function FileManager({
   const [localSelection, setLocalSelection] = useState<FileEntry[]>([]);
   const [remoteSelection, setRemoteSelection] = useState<FileEntry[]>([]);
   const [dropActive, setDropActive] = useState(false);
+  const [dropLocalActive, setDropLocalActive] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorFile | null>(null);
   const [editorRevision, setEditorRevision] = useState(0);
@@ -344,6 +345,7 @@ export function FileManager({
       const move = (moveEvent: PointerEvent) => {
         if (!active && Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) > 6) {
           active = true;
+          setDropLocalActive(true);
           showGhost(items.length, entry.name, moveEvent.clientX, moveEvent.clientY);
         }
         if (active) {
@@ -354,6 +356,7 @@ export function FileManager({
         document.removeEventListener("pointermove", move);
         document.removeEventListener("pointerup", up);
         hideGhost();
+        setDropLocalActive(false);
         if (!active) {
           return;
         }
@@ -489,6 +492,7 @@ export function FileManager({
         style={{ gridTemplateColumns: `${splitPercent}% 6px 1fr` }}
       >
         <LocalPane
+            dropActive={dropLocalActive}
           key={memoryKey}
           persistKey={"fm:" + memoryKey + ":local"}
           initialPath={localPath || initialLocal}

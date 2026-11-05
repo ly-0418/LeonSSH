@@ -336,11 +336,12 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string, persistK
   }, [entries, filter, sort]);
 
   const visibleNamesSet = useMemo(() => new Set(visible.map((entry) => entry.name)), [visible]);
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
   const selectedEntries = useMemo(
-    () => visible.filter((entry) => selected.includes(entry.name)),
-    [visible, selected],
+    // Set lookups: folders with thousands of files would otherwise be O(n²).
+    () => visible.filter((entry) => selectedSet.has(entry.name)),
+    [visible, selectedSet],
   );
-
   /** Replaces the whole selection (header "select all" checkbox). */
   const selectAll = useCallback((names: string[]) => {
     setSelected(names);

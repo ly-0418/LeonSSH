@@ -1179,3 +1179,18 @@
   font-size: 11px;
   white-space: nowrap;
 }
+/* Hard override: every data cell and header starts at the left edge. */
+.sftp-sheet .fm-row > .fm-row__size,
+.sftp-sheet .fm-row > .fm-row__mode,
+.sftp-sheet .fm-row > .fm-row__time {
+  text-align: left !important;
+  justify-self: start !important;
+  display: block;
+}
+
+.sftp-sheet .fm-table__head > .fm-row__size,
+.sftp-sheet .fm-table__head > .fm-row__mode,
+.sftp-sheet .fm-table__head > .fm-row__time {
+  text-align: left !important;
+  justify-self: start !important;
+}

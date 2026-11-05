@@ -1856,10 +1856,45 @@ input[type="password"]::-ms-reveal {
   margin: 10px 0 8px;
 }
 
+.logs-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+}
+
+.logs-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.logs-search__count {
+  min-width: 48px;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+.logs-hit {
+  border-radius: 2px;
+  background: rgba(250, 204, 21, 0.28);
+  color: inherit;
+}
+
+.logs-hit--active {
+  background: #facc15;
+  color: #111;
+}
+
 .logs-view {
   margin: 0;
   padding: 12px;
-  max-height: 420px;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 8px;

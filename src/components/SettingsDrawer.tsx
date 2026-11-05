@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { invoke } from "@tauri-apps/api/core";
 import { appVersion } from "../lib/ipc/app";
@@ -33,9 +33,9 @@ type SettingsTab = "theme" | "config" | "logs" | "docs" | "hosts" | "about";
 const TABS: Array<{ key: SettingsTab; label: string }> = [
   { key: "theme", label: "界面样式" },
   { key: "config", label: "配置参数" },
+  { key: "hosts", label: "主机" },
   { key: "logs", label: "日志" },
   { key: "docs", label: "功能说明" },
-  { key: "hosts", label: "主机" },
   { key: "about", label: "关于" },
 ];
 
@@ -61,8 +61,11 @@ export function SettingsDrawer({
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState<string>("");
   const [logs, setLogs] = useState<string>("");
-  const [logsBusy, setLogsBusy] = useState(false);
   const [docQuery, setDocQuery] = useState("");
+  const [logQuery, setLogQuery] = useState("");
+  const [logHit, setLogHit] = useState(0);
+  const logsRef = useRef<HTMLPreElement | null>(null);
+  const hitRefs = useRef<Array<HTMLElement | null>>([]);
 
   useEffect(() => {
     void appVersion()
@@ -76,7 +79,6 @@ export function SettingsDrawer({
     }
     let cancelled = false;
     const load = () => {
-      setLogsBusy(true);
       void invoke<string>("logs_tail", { limit: 500 })
         .then((text) => {
           if (!cancelled) {
@@ -90,7 +92,6 @@ export function SettingsDrawer({
         })
         .finally(() => {
           if (!cancelled) {
-            setLogsBusy(false);
           }
         });
     };
@@ -131,6 +132,55 @@ export function SettingsDrawer({
       setError(toUserMessage(err));
     }
   }
+
+  // Highlight matches (case-insensitive) and keep refs so Enter can jump.
+  const highlightQuery = logQuery.trim().toLowerCase();
+  const logNodes: React.ReactNode[] = [];
+  let hitIndex = 0;
+  if (highlightQuery.length === 0) {
+    logNodes.push(logs);
+  } else {
+    logs.split("\n").forEach((line, lineIndex) => {
+      const lower = line.toLowerCase();
+      let cursor = 0;
+      const parts: React.ReactNode[] = [];
+      let found = lower.indexOf(highlightQuery);
+      while (found >= 0) {
+        if (found > cursor) {
+          parts.push(line.slice(cursor, found));
+        }
+        const index = hitIndex++;
+        parts.push(
+          <mark
+            key={`hit-${index}`}
+            className={`logs-hit${index === logHit ? " logs-hit--active" : ""}`}
+            ref={(element) => {
+              hitRefs.current[index] = element;
+            }}
+          >
+            {line.slice(found, found + highlightQuery.length)}
+          </mark>,
+        );
+        cursor = found + highlightQuery.length;
+        found = lower.indexOf(highlightQuery, cursor);
+      }
+      parts.push(line.slice(cursor));
+      logNodes.push(
+        <span key={`line-${lineIndex}`} className="logs-line">
+          {parts}
+          {"\n"}
+        </span>,
+      );
+    });
+  }
+  const logHitCount = highlightQuery.length === 0 ? 0 : hitIndex;
+
+  useEffect(() => {
+    if (highlightQuery.length === 0) {
+      return;
+    }
+    hitRefs.current[logHit]?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [logHit, highlightQuery]);
 
   return (
     <div
@@ -308,24 +358,36 @@ export function SettingsDrawer({
             )}
 
             {tab === "logs" && (
-              <div className="setting-group">
-                <h3 className="setting-group__title">运行日志</h3>
-                <p className="modal__hint">
-                  本次启动以来的后台日志（每 3 秒刷新一次）。反馈问题时可直接复制这里的内容。
-                </p>
-                <div className="logs-toolbar">
-                  <button
-                    type="button"
-                    className="button button--ghost button--sm"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(logs).catch(() => undefined);
+              <div className="logs-panel">
+                <div className="logs-search">
+                  <input
+                    className="input"
+                    value={logQuery}
+                    onChange={(event) => {
+                      setLogQuery(event.target.value);
+                      setLogHit(0);
                     }}
-                  >
-                    复制
-                  </button>
-                  <span className="modal__hint">{logsBusy ? "刷新中…" : `共 ${logs.split("\n").length} 行`}</span>
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        if (logHitCount > 0) {
+                          setLogHit((current) =>
+                            event.shiftKey
+                              ? (current - 1 + logHitCount) % logHitCount
+                              : (current + 1) % logHitCount,
+                          );
+                        }
+                      }
+                    }}
+                    placeholder="搜索日志…（Enter 下一个，Shift+Enter 上一个）"
+                  />
+                  <span className="logs-search__count">
+                    {logQuery.trim().length > 0 ? `${logHitCount === 0 ? 0 : logHit + 1}/${logHitCount}` : ""}
+                  </span>
                 </div>
-                <pre className="logs-view">{logs.length > 0 ? logs : "加载中…"}</pre>
+                <pre className="logs-view" ref={logsRef}>
+                  {logNodes}
+                </pre>
               </div>
             )}
 

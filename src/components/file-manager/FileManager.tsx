@@ -250,10 +250,17 @@ export function FileManager({
   // unreliable inside WebView2, so we track the pointer ourselves and check the
   // drop target with elementFromPoint.
   const beginDrag = useCallback(
-    (entry: FileEntry, event: React.PointerEvent) => {
-      if (entry.isDir || event.button !== 0) {
+    (entry: FileEntry, event: React.PointerEvent, selection?: FileEntry[]) => {
+      if (event.button !== 0) {
         return;
       }
+      const items =
+        selection !== undefined &&
+        selection.length > 1 &&
+        selection.some((item) => item.name === entry.name)
+          ? selection
+          : [entry];
+      const paths = items.map((item) => item.path);
       const startX = event.clientX;
       const startY = event.clientY;
       let active = false;
@@ -274,7 +281,7 @@ export function FileManager({
         const element = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
         const target = element instanceof Element ? element.closest("[data-drop-remote]") : null;
         if (target !== null) {
-          void dropPaths([entry.path]);
+          void dropPaths(paths);
         }
       };
 

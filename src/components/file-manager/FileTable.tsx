@@ -21,7 +21,7 @@ interface FileTableProps {
   onOpen: (entry: FileEntry) => void;
   /** `entry === null` means the empty area below the rows. */
   onContextMenu: (entry: FileEntry | null, event: React.MouseEvent) => void;
-  onRowPointerDown?: (entry: FileEntry, event: React.PointerEvent) => void;
+  onRowPointerDown?: (entry: FileEntry, event: React.PointerEvent, selection: FileEntry[]) => void;
   /** Enables HTML5 dragging of rows (remote → local download). */
   onRowDragStart?: (entry: FileEntry, event: React.DragEvent) => void;
   /** Accepts files dropped onto the table body (remote → local download). */
@@ -199,7 +199,13 @@ export function FileTable({
               }
               onContextMenu(entry, event);
             }}
-            onPointerDown={(event) => onRowPointerDown?.(entry, event)}
+            onPointerDown={(event) =>
+              onRowPointerDown?.(
+                entry,
+                event,
+                entries.filter((item) => selected.includes(item.name)),
+              )
+            }
             title={entry.path}
           >
             <span className="fm-row__check">

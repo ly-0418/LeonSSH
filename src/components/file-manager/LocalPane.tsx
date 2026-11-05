@@ -17,7 +17,6 @@ import { toUserMessage } from "../../lib/ipc/errors";
 import { ConfirmDialog } from "../dialogs";
 import { FileContextMenu, type FileMenuItem } from "./FileContextMenu";
 import { FileTable } from "./FileTable";
-import { setDragGhost } from "./dragGhost";
 import { PathBar } from "./PathBar";
 import { PromptDialog } from "./PromptDialog";
 import { useFilePane, type PaneAdapter } from "./useFilePane";
@@ -180,19 +179,6 @@ export function LocalPane({
         onRefresh={() => void pane.refresh()}
       />
       <FileTable
-        onRowDragStart={(entry, event) => {
-          const items =
-            pane.selected.includes(entry.name) && pane.selected.length > 1
-              ? pane.visible.filter((item) => pane.selected.includes(item.name))
-              : [entry];
-          event.dataTransfer.effectAllowed = "copyMove";
-          event.dataTransfer.setData(
-            "application/x-leonssh-path",
-            items.map((item) => item.path).join("\n"),
-          );
-          event.dataTransfer.setData("text/plain", items.map((item) => item.path).join("\n"));
-          setDragGhost(event, items.length, entry.name);
-        }}
 onSelectAll={pane.selectAll} 
 persistKey={persistKey} onDropEntries={onRemoteDrop}
                   entries={pane.visible}

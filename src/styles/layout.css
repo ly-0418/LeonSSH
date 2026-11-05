@@ -1956,3 +1956,13 @@ input[type="password"]::-ms-reveal {
   padding: 18px;
   background: var(--bg);
 }
+/* Line numbers in the log viewer. */
+.logs-line__no {
+  display: inline-block;
+  width: 3.2em;
+  margin-right: 10px;
+  text-align: right;
+  color: var(--text-faint);
+  opacity: 0.75;
+  user-select: none;
+}

@@ -311,9 +311,14 @@ pub fn quit_app(app: tauri::AppHandle) {
 pub fn logs_tail(state: State<'_, AppState>, limit: Option<usize>) -> Result<String, AppError> {
     let limit = limit.unwrap_or(500).clamp(50, 500);
     let dir = state.paths().data_dir.join("logs");
-    let now = crate::paths::now_epoch_secs();
+    // Log timestamps are local wall-clock strings, so the floor must be parsed
+    // the same way (not with SystemTime::now, which is UTC).
+    let now_local = crate::paths::epoch_from_stamp(&crate::paths::now_stamp()).unwrap_or(0);
+    let boot_local = crate::paths::boot_stamp()
+        .and_then(crate::paths::epoch_from_stamp)
+        .unwrap_or(0);
     // Only this run, and never more than three hours back.
-    let floor = crate::paths::boot_epoch_secs().max(now - 3 * 3600);
+    let floor = boot_local.max(now_local - 3 * 3600);
 
     let mut files: Vec<std::path::PathBuf> = Vec::new();
     if let Ok(entries) = std::fs::read_dir(&dir) {

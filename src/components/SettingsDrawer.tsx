@@ -138,13 +138,13 @@ export function SettingsDrawer({
   const highlightQuery = logQuery.trim().toLowerCase();
   const logNodes: React.ReactNode[] = [];
   let hitIndex = 0;
-  if (highlightQuery.length === 0) {
-    logNodes.push(logs);
-  } else {
-    logs.split("\n").forEach((line, lineIndex) => {
+  logs.split("\n").forEach((line, lineIndex) => {
+    const parts: React.ReactNode[] = [];
+    if (highlightQuery.length === 0) {
+      parts.push(line);
+    } else {
       const lower = line.toLowerCase();
       let cursor = 0;
-      const parts: React.ReactNode[] = [];
       let found = lower.indexOf(highlightQuery);
       while (found >= 0) {
         if (found > cursor) {
@@ -166,14 +166,15 @@ export function SettingsDrawer({
         found = lower.indexOf(highlightQuery, cursor);
       }
       parts.push(line.slice(cursor));
-      logNodes.push(
-        <span key={`line-${lineIndex}`} className="logs-line">
-          {parts}
-          {"\n"}
-        </span>,
-      );
-    });
-  }
+    }
+    logNodes.push(
+      <span key={`line-${lineIndex}`} className="logs-line">
+        <span className="logs-line__no">{lineIndex + 1}</span>
+        {parts}
+        {"\n"}
+      </span>,
+    );
+  });
   const logHitCount = highlightQuery.length === 0 ? 0 : hitIndex;
 
   useEffect(() => {

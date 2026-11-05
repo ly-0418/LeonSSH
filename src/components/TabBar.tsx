@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { TerminalStatus } from "../lib/ipc/types";
 
@@ -58,6 +58,38 @@ export function TabBar({
 }: TabBarProps) {
   const [menu, setMenu] = useState<MenuState | null>(null);
 
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const syncArrows = useCallback(() => {
+    const element = scrollRef.current;
+    if (element === null) {
+      return;
+    }
+    setCanScrollLeft(element.scrollLeft > 2);
+    setCanScrollRight(element.scrollLeft + element.clientWidth < element.scrollWidth - 2);
+  }, []);
+
+  useEffect(() => {
+    syncArrows();
+    const element = scrollRef.current;
+    if (element === null) {
+      return;
+    }
+    element.addEventListener("scroll", syncArrows, { passive: true });
+    const observer = new ResizeObserver(syncArrows);
+    observer.observe(element);
+    return () => {
+      element.removeEventListener("scroll", syncArrows);
+      observer.disconnect();
+    };
+  }, [syncArrows, tabs.length]);
+
+  const scrollTabs = (direction: number) => {
+    scrollRef.current?.scrollBy({ left: direction * 220, behavior: "smooth" });
+  };
+
   useEffect(() => {
     if (menu === null) {
       return;
@@ -80,6 +112,21 @@ export function TabBar({
 
   return (
     <div className="tab-bar" role="tablist">
+      <div
+        className="tab-bar__strip"
+        data-overflow={canScrollLeft || canScrollRight ? "true" : "false"}
+      >
+        <button
+          type="button"
+          className="tab-bar__arrow tab-bar__arrow--left"
+          title="向左滚动标签"
+          aria-label="向左滚动标签"
+          disabled={!canScrollLeft}
+          onClick={() => scrollTabs(-1)}
+        >
+          \u2039
+        </button>
+        <div className="tab-bar__scroll" ref={scrollRef}>
       {tabs.map((tab) => (
         <div
           key={tab.key}
@@ -117,6 +164,19 @@ export function TabBar({
           </button>
         </div>
       ))}
+
+        </div>
+        <button
+          type="button"
+          className="tab-bar__arrow tab-bar__arrow--right"
+          title="向右滚动标签"
+          aria-label="向右滚动标签"
+          disabled={!canScrollRight}
+          onClick={() => scrollTabs(1)}
+        >
+          \u203a
+        </button>
+      </div>
 
       <button
         type="button"

@@ -7,6 +7,7 @@ import { SessionForm } from "./components/SessionForm";
 import { SettingsDrawer } from "./components/SettingsDrawer";
 import { StatusBar } from "./components/StatusBar";
 import { TabBar, type TabItem } from "./components/TabBar";
+import { SettingsIcon, TransferIcon } from "./components/icons";
 import { TerminalTab } from "./components/TerminalTab";
 import { ConfirmDialog } from "./components/dialogs";
 import { setBroadcastHandler } from "./lib/terminal/TerminalSession";
@@ -458,13 +459,7 @@ export default function App() {
             aria-label="文件传输"
             onClick={() => (view === "files" ? closeFiles() : openFiles())}
           >
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M3 6.6c0-.8.6-1.4 1.4-1.4h4.1l1.8 2h8.3c.8 0 1.4.6 1.4 1.4v10.8c0 .8-.6 1.4-1.4 1.4H4.4c-.8 0-1.4-.6-1.4-1.4z" />
-              <path d="M9.4 11.2h6.2" />
-              <path d="m13.6 9.2 2 2-2 2" />
-              <path d="M14.6 16.6H8.4" />
-              <path d="m10.4 18.6-2-2 2-2" />
-            </svg>
+            <TransferIcon />
           </button>
           <button
             type="button"
@@ -473,10 +468,7 @@ export default function App() {
             aria-label="设置"
             onClick={() => setSettingsOpen((open) => !open)}
           >
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="3.2" />
-              <path d="M19.4 14.8a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.6 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.4 1z" />
-            </svg>
+            <SettingsIcon />
           </button>
           <span className="app-header__divider" />
           <div className="traffic-lights">

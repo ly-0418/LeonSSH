@@ -161,14 +161,12 @@
 .tab-bar {
   flex: 0 0 auto;
   display: flex;
-  align-items: flex-end;
-  gap: 0;
+  align-items: center;
+  gap: 4px;
   padding: 4px 10px 0;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
   background: var(--bg-header);
   border-bottom: 1px solid var(--border);
-  scrollbar-width: thin;
 }
 
 .tab-bar::-webkit-scrollbar {
@@ -2017,4 +2015,59 @@ input[type="password"]::-ms-reveal {
   line-height: 1;
   letter-spacing: 0.02em;
   border-top: 1px solid var(--border);
+}
+
+
+/* Tabs occupy at most 70% of the window; arrows scroll them horizontally. */
+.tab-bar__strip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  max-width: 70%;
+}
+
+.tab-bar__strip[data-overflow="false"] .tab-bar__arrow {
+  display: none;
+}
+
+.tab-bar__scroll {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.tab-bar__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-bar__arrow {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tab-bar__arrow:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.tab-bar__arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
 }

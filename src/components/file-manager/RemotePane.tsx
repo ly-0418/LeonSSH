@@ -201,8 +201,9 @@ function RemotePaneLoaded({
   const [menu, setMenu] = useState<{ x: number; y: number; entry: PaneEntry | null } | null>(null);
   const [prompt, setPrompt] = useState<RemotePrompt | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PaneEntry | null>(null);
+  const [batchDelete, setBatchDelete] = useState<PaneEntry[] | null>(null);
   const [opError, setOpError] = useState<string | null>(null);
-  const [copyTarget, setCopyTarget] = useState<PaneEntry | null>(null);
+  const [transferPrompt, setTransferPrompt] = useState<{ entries: PaneEntry[]; mode: "copy" | "move" } | null>(null);
   const [copyPath, setCopyPath] = useState("");
   const [chmodTarget, setChmodTarget] = useState<PaneEntry | null>(null);
   const [chmodMode, setChmodMode] = useState(0o644);
@@ -236,6 +237,14 @@ function RemotePaneLoaded({
     [pane],
   );
 
+  /** Multi-selection wins over the row that was right-clicked. */
+  function targetsFor(entry: PaneEntry): PaneEntry[] {
+    const selected = pane.selectedEntries;
+    return selected.some((item) => item.name === entry.name) && selected.length > 1
+      ? selected
+      : [entry];
+  }
+
   function menuItems(entry: PaneEntry | null): FileMenuItem[] {
     if (entry === null) {
       return [
@@ -245,7 +254,20 @@ function RemotePaneLoaded({
       ];
     }
 
-    const copyItems: FileMenuItem[] = [
+    const targets = targetsFor(entry);
+    if (targets.length > 1) {
+      return [
+        {
+          label: `批量删除（${targets.length} 项）`,
+          danger: true,
+          onSelect: () => setBatchDelete(targets),
+        },
+        { label: `批量复制到...`, onSelect: () => openTransfer(targets, "copy") },
+        { label: `批量移动到...`, onSelect: () => openTransfer(targets, "move") },
+      ];
+    }
+
+    const common: FileMenuItem[] = [
       {
         label: "复制到当前目录",
         onSelect: () => {
@@ -254,13 +276,8 @@ function RemotePaneLoaded({
           });
         },
       },
-      {
-        label: "复制到...",
-        onSelect: () => {
-          setCopyPath(joinPath(pane.path, `${entry.name} 副本`));
-          setCopyTarget(entry);
-        },
-      },
+      { label: "复制到...", onSelect: () => openTransfer([entry], "copy") },
+      { label: "移动到...", onSelect: () => openTransfer([entry], "move") },
       {
         label: "权限",
         onSelect: () => {
@@ -275,7 +292,7 @@ function RemotePaneLoaded({
         { label: "在终端中打开", onSelect: () => onOpenInTerminal?.(entry.path) },
         { label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
         { label: "删除文件夹", danger: true, onSelect: () => setPendingDelete(entry) },
-        ...copyItems,
+        ...common,
       ];
     }
 
@@ -283,8 +300,36 @@ function RemotePaneLoaded({
       { label: "编辑", onSelect: () => onOpenFile?.(entry) },
       { label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
       { label: "删除", danger: true, onSelect: () => setPendingDelete(entry) },
-      ...copyItems,
+      ...common,
     ];
+  }
+
+  function openTransfer(entries: PaneEntry[], mode: "copy" | "move") {
+    const first = entries[0];
+    setCopyPath(entries.length > 1 ? pane.path : joinPath(pane.path, `${first.name} 副本`));
+    setTransferPrompt({ entries, mode });
+  }
+
+  /** Runs the pending copy/move for every target, then refreshes the pane. */
+  async function submitTransfer() {
+    const current = transferPrompt;
+    const target = copyPath.trim();
+    if (current === null || target.length === 0) {
+      return;
+    }
+    setTransferPrompt(null);
+    await run(async () => {
+      for (const item of current.entries) {
+        const destination =
+          current.entries.length > 1 ? joinPath(target, item.name) : target;
+        if (current.mode === "move") {
+          await renameRemote(terminalId, item.path, destination);
+        } else {
+          await copyRemote(terminalId, item.path, destination);
+        }
+      }
+      await pane.refresh();
+    });
   }
 
   async function submitPrompt(value: string) {
@@ -400,44 +445,64 @@ onSelectAll={pane.selectAll} persistKey={persistKey} onRowDragStart={(entry, eve
         />
       )}
 
-      {copyTarget !== null && (
+      {transferPrompt !== null && (
         <div className="modal-backdrop" role="presentation">
           <div className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-            <h2 className="modal__title">复制到</h2>
-            <p className="modal__hint">目标远程路径（含文件名）</p>
+            <h2 className="modal__title">
+              {transferPrompt.mode === "move" ? "移动到" : "复制到"}
+              {transferPrompt.entries.length > 1 ? `（${transferPrompt.entries.length} 项）` : ""}
+            </h2>
+            <p className="modal__hint">
+              {transferPrompt.entries.length > 1 ? "目标远程目录" : "目标远程路径（含文件名）"}
+            </p>
             <input
               autoFocus
               className="input"
               value={copyPath}
               onChange={(event) => setCopyPath(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === "Enter" && copyTarget !== null) {
-                  const target = copyTarget;
-                  setCopyTarget(null);
-                  void run(async () => {
-                    await copyRemote(terminalId, target.path, copyPath.trim());
-                  });
+                if (event.key === "Enter") {
+                  void submitTransfer();
                 }
               }}
             />
             <div className="modal__actions">
+              <button type="button" className="button button--primary" onClick={() => void submitTransfer()}>
+                确定
+              </button>
+              <button type="button" className="button button--ghost" onClick={() => setTransferPrompt(null)}>
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {batchDelete !== null && (
+        <div className="modal-backdrop" role="presentation">
+          <div className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <h2 className="modal__title">批量删除</h2>
+            <p className="modal__body">
+              确定删除选中的 {batchDelete.length} 项吗？目录会被递归删除，且不可恢复。
+            </p>
+            <div className="modal__actions">
               <button
                 type="button"
-                className="button button--primary"
+                className="button button--danger"
                 onClick={() => {
-                  if (copyTarget === null) {
-                    return;
-                  }
-                  const target = copyTarget;
-                  setCopyTarget(null);
+                  const targets = batchDelete;
+                  setBatchDelete(null);
                   void run(async () => {
-                    await copyRemote(terminalId, target.path, copyPath.trim());
+                    for (const item of targets) {
+                      await removeRemote(terminalId, item.path, item.isDir);
+                    }
+                    await pane.refresh();
                   });
                 }}
               >
-                复制
+                删除
               </button>
-              <button type="button" className="button button--ghost" onClick={() => setCopyTarget(null)}>
+              <button type="button" className="button button--ghost" onClick={() => setBatchDelete(null)}>
                 取消
               </button>
             </div>

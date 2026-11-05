@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 
+import { invoke } from "@tauri-apps/api/core";
 import { appVersion } from "../lib/ipc/app";
+import { FEATURE_DOCS } from "../lib/docs/featureDocs";
 import { forgetKnownHost, listKnownHosts } from "../lib/ipc/sessions";
 import { toUserMessage } from "../lib/ipc/errors";
 import type { KnownHostEntry } from "../lib/ipc/types";
@@ -19,10 +21,14 @@ interface SettingsDrawerProps {
   cursorWidth: number;
   onChangeCursorStyle: (style: "bar" | "underline", width: number) => void;
 
+  showBroadcast: boolean;
+  showForward: boolean;
+  onChangeTabVisibility: (kind: "broadcast" | "forward", visible: boolean) => void;
+
   onClose: () => void;
 }
 
-type SettingsTab = "theme" | "hosts" | "about";
+type SettingsTab = "theme" | "config" | "logs" | "docs" | "hosts" | "about";
 
 const TABS: Array<{ key: SettingsTab; label: string }> = [
   { key: "theme", label: "界面样式" },
@@ -42,18 +48,56 @@ export function SettingsDrawer({
   cursorStyle,
   cursorWidth,
   onChangeCursorStyle,
+  showBroadcast,
+  showForward,
+  onChangeTabVisibility,
   onClose,
 }: SettingsDrawerProps) {
   const [tab, setTab] = useState<SettingsTab>("theme");
   const [hosts, setHosts] = useState<KnownHostEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState<string>("");
+  const [logs, setLogs] = useState<string>("");
+  const [logsBusy, setLogsBusy] = useState(false);
+  const [docQuery, setDocQuery] = useState("");
 
   useEffect(() => {
     void appVersion()
       .then(setVersion)
       .catch(() => setVersion(""));
   }, []);
+
+  useEffect(() => {
+    if (tab !== "logs") {
+      return;
+    }
+    let cancelled = false;
+    const load = () => {
+      setLogsBusy(true);
+      void invoke<string>("logs_tail", { limit: 500 })
+        .then((text) => {
+          if (!cancelled) {
+            setLogs(text);
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setLogs(`读取日志失败：${String(err)}`);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setLogsBusy(false);
+          }
+        });
+    };
+    load();
+    const timer = window.setInterval(load, 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [tab]);
 
   useEffect(() => {
     if (tab !== "hosts") {
@@ -233,6 +277,92 @@ export function SettingsDrawer({
               </div>
 
               </>
+            )}
+
+            {tab === "config" && (
+              <div className="setting-group">
+                <h3 className="setting-group__title">标签栏按钮</h3>
+                <p className="modal__hint">
+                  控制标签栏右侧按钮的显示。关闭后仍可从连接菜单使用对应能力。
+                </p>
+                <label className="setting-toggle">
+                  <input
+                    type="checkbox"
+                    checked={showBroadcast}
+                    onChange={(event) => onChangeTabVisibility("broadcast", event.target.checked)}
+                  />
+                  显示「广播」按钮
+                </label>
+                <label className="setting-toggle">
+                  <input
+                    type="checkbox"
+                    checked={showForward}
+                    onChange={(event) => onChangeTabVisibility("forward", event.target.checked)}
+                  />
+                  显示「转发」按钮
+                </label>
+              </div>
+            )}
+
+            {tab === "logs" && (
+              <div className="setting-group">
+                <h3 className="setting-group__title">运行日志</h3>
+                <p className="modal__hint">
+                  本次启动以来的后台日志（每 3 秒刷新一次）。反馈问题时可直接复制这里的内容。
+                </p>
+                <div className="logs-toolbar">
+                  <button
+                    type="button"
+                    className="button button--ghost button--sm"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(logs).catch(() => undefined);
+                    }}
+                  >
+                    复制
+                  </button>
+                  <span className="modal__hint">{logsBusy ? "刷新中…" : `共 ${logs.split("\n").length} 行`}</span>
+                </div>
+                <pre className="logs-view">{logs.length > 0 ? logs : "加载中…"}</pre>
+              </div>
+            )}
+
+            {tab === "docs" && (
+              <div className="setting-group">
+                <h3 className="setting-group__title">功能说明</h3>
+                <input
+                  className="input"
+                  value={docQuery}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setDocQuery(value);
+                    if (value.trim().length === 0) {
+                      return;
+                    }
+                    window.setTimeout(() => {
+                      document
+                        .querySelector(".docs-section--match")
+                        ?.scrollIntoView({ block: "start", behavior: "smooth" });
+                    }, 30);
+                  }}
+                  placeholder="搜索功能关键词，例如：拖拽、转发、日志"
+                />
+                {FEATURE_DOCS.filter((section) => {
+                  const query = docQuery.trim().toLowerCase();
+                  if (query.length === 0) {
+                    return true;
+                  }
+                  return (section.title + section.body.join(" ")).toLowerCase().includes(query);
+                }).map((section) => (
+                  <section key={section.id} className="docs-section docs-section--match">
+                    <h4 className="docs-section__title">{section.title}</h4>
+                    <ul className="docs-section__list">
+                      {section.body.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
             )}
 
             {tab === "about" && (

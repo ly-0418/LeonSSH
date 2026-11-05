@@ -4,6 +4,8 @@
 //! the drive list, widens the plugin's runtime scope, and opens files with the
 //! Windows default application.
 
+use tauri::State;
+use crate::state::AppState;
 use std::path::Path;
 
 use crate::error::AppError;
@@ -302,4 +304,35 @@ pub fn shell_icon(name: String, is_dir: bool) -> Result<ShellIcon, AppError> {
 pub fn quit_app(app: tauri::AppHandle) {
     tracing::info!("quit requested by the frontend");
     app.exit(0);
+}
+/// Last lines of the newest log file: shown in the settings drawer so users do
+/// not have to hunt through `data/logs`.
+#[tauri::command]
+pub fn logs_tail(state: State<'_, AppState>, limit: Option<usize>) -> Result<String, AppError> {
+    let limit = limit.unwrap_or(400).clamp(20, 2000);
+    let dir = state.paths().data_dir.join("logs");
+    let mut newest: Option<(std::time::SystemTime, std::path::PathBuf)> = None;
+    if let Ok(entries) = std::fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+            let Ok(meta) = entry.metadata() else { continue };
+            let modified = meta.modified().unwrap_or(std::time::UNIX_EPOCH);
+            if newest.as_ref().is_none_or(|(time, _)| modified > *time) {
+                newest = Some((modified, path));
+            }
+        }
+    }
+    let Some((_, path)) = newest else {
+        return Ok("（暂无日志）".to_string());
+    };
+    let bytes = std::fs::read(&path)
+        .map_err(|err| AppError::Internal(format!("读取日志失败: {err}")))?;
+    let start = bytes.len().saturating_sub(512 * 1024);
+    let text = String::from_utf8_lossy(&bytes[start..]).to_string();
+    let lines: Vec<&str> = text.lines().collect();
+    let skip = lines.len().saturating_sub(limit);
+    Ok(lines[skip..].join("\n"))
 }

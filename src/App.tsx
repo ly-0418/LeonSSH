@@ -60,6 +60,13 @@ export default function App() {
   const [fontFamily, setFontFamily] = useState<string>(
     () => localStorage.getItem("leonssh.fontFamily") ?? "Cascadia Mono, Consolas, monospace",
   );
+  // Settings → 配置参数: both action buttons are hidden by default.
+  const [showBroadcast, setShowBroadcast] = useState<boolean>(
+    () => localStorage.getItem("leonssh.showBroadcast") === "1",
+  );
+  const [showForward, setShowForward] = useState<boolean>(
+    () => localStorage.getItem("leonssh.showForward") === "1",
+  );
   const [cursorStyle, setCursorStyle] = useState<"bar" | "underline">(
     () => (localStorage.getItem("leonssh.cursorStyle") === "underline" ? "underline" : "bar"),
   );
@@ -671,6 +678,17 @@ export default function App() {
             setCursorWidth(width);
             localStorage.setItem("leonssh.cursorStyle", style);
             localStorage.setItem("leonssh.cursorWidth", String(width));
+          }}
+          showBroadcast={showBroadcast}
+          showForward={showForward}
+          onChangeTabVisibility={(kind, visible) => {
+            if (kind === "broadcast") {
+              setShowBroadcast(visible);
+              localStorage.setItem("leonssh.showBroadcast", visible ? "1" : "0");
+            } else {
+              setShowForward(visible);
+              localStorage.setItem("leonssh.showForward", visible ? "1" : "0");
+            }
           }}
           onClose={closeSettings}
         />

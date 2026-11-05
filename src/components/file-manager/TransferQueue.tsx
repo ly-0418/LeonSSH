@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { formatSize } from "./format";
-import { formatSpeed, statusLabel, type TransferTask } from "./transferView";
+import { formatDuration, formatSpeed, statusLabel, type TransferTask } from "./transferView";
 
 interface TransferQueueProps {
   tasks: TransferTask[];
@@ -129,6 +129,7 @@ export function TransferQueue({ tasks, terminalId, speeds, height, onCancel }: T
                 <span className="fq__speed">
                   {task.status === "running" && speed > 0 ? formatSpeed(speed) : ""}
                 </span>
+                <span className="fq__time">{formatDuration(task.startedAt, task.finishedAt)}</span>
                 <span className="fq__status">{statusLabel(task)}</span>
                 {(task.status === "running" || task.status === "queued") && (
                   <button type="button" className="fq__cancel" onClick={() => onCancel(task.id)}>

@@ -35,3 +35,20 @@ export function formatSpeed(bytesPerSecond: number): string {
   }
   return `${(bytesPerSecond / (1024 * 1024)).toFixed(1)} MiB/s`;
 }
+
+/** Human readable elapsed time, e.g. "1分 05秒". */
+export function formatDuration(startedAt: number, finishedAt: number | null): string {
+  const nowSecs = Math.floor(Date.now() / 1000);
+  const end = finishedAt ?? nowSecs;
+  const total = Math.max(0, end - startedAt);
+  if (total < 60) {
+    return `${total} 秒`;
+  }
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+  if (minutes < 60) {
+    return `${minutes} 分 ${String(seconds).padStart(2, "0")} 秒`;
+  }
+  const hours = Math.floor(minutes / 60);
+  return `${hours} 小时 ${String(minutes % 60).padStart(2, "0")} 分`;
+}

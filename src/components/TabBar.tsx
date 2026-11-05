@@ -27,6 +27,9 @@ interface TabBarProps {
   onToggleForward: () => void;
   broadcast: boolean;
   onToggleBroadcast: () => void;
+  /** Settings → 配置参数: hide the two action buttons. */
+  showBroadcast?: boolean;
+  showForward?: boolean;
   onReconnect: (key: string) => void;
   onDisconnect: (key: string) => void;
 }
@@ -48,6 +51,8 @@ export function TabBar({
   onToggleForward,
   broadcast,
   onToggleBroadcast,
+  showBroadcast = false,
+  showForward = false,
   onReconnect,
   onDisconnect,
 }: TabBarProps) {
@@ -126,6 +131,7 @@ export function TabBar({
 
 
       <span className="tab-bar__spacer" />
+      {showBroadcast && (
       <button
         type="button"
         className={`tab-bar__action${broadcast ? " tab-bar__action--active" : ""}`}
@@ -134,6 +140,8 @@ export function TabBar({
       >
         广播
       </button>
+      )}
+      {showForward && (
       <button
         type="button"
         className={`tab-bar__action${forwardOpen ? " tab-bar__action--active" : ""}`}
@@ -143,6 +151,7 @@ export function TabBar({
       >
         转发
       </button>
+      )}
 
       {menu !== null && (
           <div

@@ -443,7 +443,6 @@ export default function App() {
     <div className="app">
       <header className="app-header" data-tauri-drag-region>
         <div className="app-header__title" data-tauri-drag-region>
-          <span className="app-header__mark" />
           LeonSSH
         </div>
         <div className="app-header__actions">

@@ -114,6 +114,7 @@ export function FileTable({
     <button
       type="button"
       className={`fm-table__sort${sort.key === key ? " fm-table__sort--active" : ""}`}
+      style={{ textAlign: "left", justifyContent: "flex-start" }}
       onClick={() => onSort(key)}
       title={`按${SORT_LABEL[key]}排序`}
     >
@@ -223,9 +224,9 @@ export function FileTable({
               <ShellFileIcon name={entry.name} isDir={entry.isDir} isSymlink={entry.isSymlink} />
               {entry.name}
             </span>
-            <span className="fm-row__size">{entry.isDir ? "" : formatSize(entry.size)}</span>
-            {showPermissions && <span className="fm-row__mode">{formatMode(entry.permissions)}</span>}
-            <span className="fm-row__time">{formatTime(entry.mtimeMs)}</span>
+            <span className="fm-row__size" style={{ textAlign: "left" }}>{entry.isDir ? "" : formatSize(entry.size)}</span>
+            {showPermissions && (<span className="fm-row__mode" style={{ textAlign: "left" }}>{formatMode(entry.permissions)}</span>)}
+            <span className="fm-row__time" style={{ textAlign: "left" }}>{formatTime(entry.mtimeMs)}</span>
           </div>
         ))}
         </div>

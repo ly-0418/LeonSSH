@@ -488,6 +488,8 @@ export default function App() {
       <div className="app-body">
         <main className="workspace">
           <TabBar
+            showBroadcast={showBroadcast}
+            showForward={showForward}
             tabs={tabs}
             activeKey={activeKey}
             onActivate={setActiveKey}

@@ -1194,3 +1194,8 @@
   text-align: left !important;
   justify-self: start !important;
 }
+/* Header sort buttons start at the left edge of their column. */
+.sftp-sheet .fm-table__sort {
+  justify-content: flex-start;
+  text-align: left;
+}

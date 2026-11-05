@@ -214,7 +214,7 @@ export function SettingsDrawer({
               </button>
             ))}
             <span className="drawer__version">
-              版本 {version.length > 0 ? `v${version}` : "…"}
+              {version.length > 0 ? `v${version}` : "…"}
             </span>
           </nav>
 
@@ -405,7 +405,6 @@ export function SettingsDrawer({
             {tab === "docs" && (
               <div className="setting-group">
                 <h3 className="setting-group__title">功能说明</h3>
-                <p className="modal__hint">正在使用 LeonSSH {version.length > 0 ? `v${version}` : "…"} · Windows 优先的可视化 SSH 客户端</p>
                 <input
                   className="input"
                   value={docQuery}

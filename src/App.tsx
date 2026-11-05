@@ -476,17 +476,17 @@ export default function App() {
           <div className="traffic-lights">
             <button
               type="button"
-              className="traffic traffic--max"
-              title="最大化 / 还原"
-              aria-label="最大化或还原"
-              onClick={() => void getCurrentWindow().toggleMaximize()}
-            />
-            <button
-              type="button"
               className="traffic traffic--min"
               title="最小化"
               aria-label="最小化"
               onClick={() => void getCurrentWindow().minimize()}
+            />
+            <button
+              type="button"
+              className="traffic traffic--max"
+              title="最大化 / 还原"
+              aria-label="最大化或还原"
+              onClick={() => void getCurrentWindow().toggleMaximize()}
             />
             <button
               type="button"

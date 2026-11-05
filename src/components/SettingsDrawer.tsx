@@ -64,6 +64,7 @@ export function SettingsDrawer({
   const [docQuery, setDocQuery] = useState("");
   const [logQuery, setLogQuery] = useState("");
   const [logHit, setLogHit] = useState(0);
+  const [logsMaximized, setLogsMaximized] = useState(false);
   const logsRef = useRef<HTMLPreElement | null>(null);
   const hitRefs = useRef<Array<HTMLElement | null>>([]);
 
@@ -358,7 +359,7 @@ export function SettingsDrawer({
             )}
 
             {tab === "logs" && (
-              <div className="logs-panel">
+              <div className={`logs-panel${logsMaximized ? " logs-panel--max" : ""}`}>
                 <div className="logs-search">
                   <input
                     className="input"
@@ -381,6 +382,14 @@ export function SettingsDrawer({
                     }}
                     placeholder="搜索日志…（Enter 下一个，Shift+Enter 上一个）"
                   />
+                  <button
+                    type="button"
+                    className="logs-zoom"
+                    title={logsMaximized ? "还原日志窗口" : "放大日志窗口"}
+                    onClick={() => setLogsMaximized((value) => !value)}
+                  >
+                    {logsMaximized ? "🗗" : "⛶"}
+                  </button>
                   <span className="logs-search__count">
                     {logQuery.trim().length > 0 ? `${logHitCount === 0 ? 0 : logHit + 1}/${logHitCount}` : ""}
                   </span>

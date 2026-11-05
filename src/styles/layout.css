@@ -1928,3 +1928,30 @@ input[type="password"]::-ms-reveal {
   font-size: 12.5px;
   line-height: 1.75;
 }
+
+.logs-zoom {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.logs-zoom:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+/* Maximised log view: covers the whole window, search bar included. */
+.logs-panel--max {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  padding: 18px;
+  background: var(--bg);
+}

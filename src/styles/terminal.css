@@ -270,3 +270,19 @@
   font-weight: 700;
   color: var(--text);
 }
+
+/* xterm 6 renders a custom scrollbar element instead of a native one. */
+.terminal-host .xterm .xterm-scrollable-element > .scrollbar.vertical {
+  width: 6px !important;
+  border-radius: 3px;
+}
+
+.terminal-host .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider {
+  border-radius: 3px;
+  background: var(--border-strong) !important;
+  box-shadow: none;
+}
+
+.terminal-host .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider:hover {
+  background: var(--text-faint) !important;
+}

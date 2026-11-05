@@ -1895,8 +1895,8 @@ input[type="password"]::-ms-reveal {
   flex: 1 1 auto;
   min-height: 0;
   max-height: none;
-  font-size: 13.5px;
-  line-height: 1.6;
+  font-size: 16.5px;
+  line-height: 1.62;
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 8px;

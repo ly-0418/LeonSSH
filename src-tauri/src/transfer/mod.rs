@@ -105,6 +105,18 @@ impl TransferManager {
         }
     }
 
+    /// True while a transfer for this terminal is queued or running.
+    pub fn has_active_for(&self, terminal: &str) -> bool {
+        self.tasks
+            .lock()
+            .expect("transfer tasks poisoned")
+            .values()
+            .any(|task| {
+                task.terminal_id == terminal
+                    && matches!(task.status, TransferStatus::Queued | TransferStatus::Running)
+            })
+    }
+
     fn emit(&self, task: &TransferTask) {
         if let Some(channel) = self.sink.lock().expect("transfer sink poisoned").as_ref() {
             let _ = channel.send(task.clone());

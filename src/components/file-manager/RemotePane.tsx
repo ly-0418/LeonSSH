@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FileEntry as PaneEntry } from "../../lib/fs/types";
 import { toUserMessage } from "../../lib/ipc/errors";
 import {
-  closeSftp,
   createRemoteFile,
   copyRemote,
   joinPath,
@@ -113,7 +112,6 @@ function RemotePaneConnected({
       });
     return () => {
       cancelled = true;
-      void closeSftp(terminalId);
     };
   }, [terminalId]);
 

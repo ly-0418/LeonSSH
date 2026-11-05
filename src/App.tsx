@@ -446,7 +446,6 @@ export default function App() {
         <div className="brand">
           <span className="brand__mark">▌</span>
           <h1 className="brand__title">LeonSSH</h1>
-          <span className="brand__subtitle">多标签 · SQLite 会话 · 凭据管理器</span>
         </div>
         <div className="app-header__actions">
           <button

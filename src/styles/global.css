@@ -409,13 +409,46 @@ body {
 }
 
 .traffic {
-  width: 12px;
-  height: 12px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
   padding: 0;
   border: 0;
   border-radius: 50%;
   cursor: pointer;
   transition: filter 120ms ease;
+}
+
+/* The glyph only shows up while hovering, like macOS does. */
+.traffic::after {
+  content: "";
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.traffic:hover::after {
+  opacity: 1;
+}
+
+.traffic--close::after {
+  content: "✕";
+}
+
+.traffic--min::after {
+  content: "−";
+  font-size: 12px;
+}
+
+.traffic--max::after {
+  content: "＋";
+  font-size: 11px;
 }
 
 .traffic:hover {

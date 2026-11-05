@@ -454,7 +454,7 @@ export default function App() {
             aria-label="文件传输"
             onClick={() => (view === "files" ? closeFiles() : openFiles())}
           >
-            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M4 8h13" />
               <path d="m14 4.5 3.5 3.5L14 11.5" />
               <path d="M20 16H7" />
@@ -468,7 +468,7 @@ export default function App() {
             aria-label="设置"
             onClick={() => setSettingsOpen((open) => !open)}
           >
-            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="3.2" />
               <path d="M19.4 14.8a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.6 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.4 1z" />
             </svg>
@@ -477,10 +477,10 @@ export default function App() {
           <div className="traffic-lights">
             <button
               type="button"
-              className="traffic traffic--close"
-              title="关闭"
-              aria-label="关闭"
-              onClick={requestClose}
+              className="traffic traffic--max"
+              title="最大化 / 还原"
+              aria-label="最大化或还原"
+              onClick={() => void getCurrentWindow().toggleMaximize()}
             />
             <button
               type="button"
@@ -491,10 +491,10 @@ export default function App() {
             />
             <button
               type="button"
-              className="traffic traffic--max"
-              title="最大化 / 还原"
-              aria-label="最大化或还原"
-              onClick={() => void getCurrentWindow().toggleMaximize()}
+              className="traffic traffic--close"
+              title="关闭"
+              aria-label="关闭"
+              onClick={requestClose}
             />
           </div>
         </div>

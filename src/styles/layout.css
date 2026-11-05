@@ -163,7 +163,7 @@
   display: flex;
   align-items: flex-end;
   gap: 0;
-  padding: 8px 10px 0;
+  padding: 4px 10px 0;
   overflow-x: auto;
   background: var(--bg-header);
   border-bottom: 1px solid var(--border);
@@ -184,7 +184,7 @@
   gap: 8px;
   max-width: 240px;
   min-width: 0;
-  padding: 8px 12px 8px 14px;
+  padding: 5px 12px 5px 14px;
   border: 1px solid transparent;
   border-bottom: none;
   border-radius: 10px 10px 0 0;
@@ -213,7 +213,7 @@
 
 .tab--active {
   margin-bottom: -1px;
-  padding-bottom: 9px;
+  padding-bottom: 6px;
   background: var(--bg);
   border-color: var(--border);
   border-bottom: none;

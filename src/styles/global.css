@@ -183,6 +183,11 @@ body {
   pointer-events: none;
 }
 
+.app-header__actions,
+.app-header__actions * {
+  pointer-events: auto;
+}
+
 .window-controls {
   display: flex;
   align-items: stretch;
@@ -361,6 +366,7 @@ body {
 .app-header {
   position: relative;
   gap: 10px;
+  height: 36px;
   padding: 0 12px;
 }
 

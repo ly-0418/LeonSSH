@@ -35,12 +35,29 @@ fn now_secs() -> i64 {
         .unwrap_or(0)
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct TransferManager {
     tasks: Arc<Mutex<HashMap<String, TransferTask>>>,
     cancels: Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>,
     sink: Arc<Mutex<Option<Channel<TransferTask>>>>,
     counter: Arc<AtomicU64>,
+    /// Bounds how many transfers run at once; the rest stay queued.
+    slots: Arc<tokio::sync::Semaphore>,
+}
+
+/// How many files may transfer in parallel.
+const PARALLEL_TRANSFERS: usize = 3;
+
+impl Default for TransferManager {
+    fn default() -> Self {
+        Self {
+            tasks: Arc::new(Mutex::new(HashMap::new())),
+            cancels: Arc::new(Mutex::new(HashMap::new())),
+            sink: Arc::new(Mutex::new(None)),
+            counter: Arc::new(AtomicU64::new(0)),
+            slots: Arc::new(tokio::sync::Semaphore::new(PARALLEL_TRANSFERS)),
+        }
+    }
 }
 
 impl TransferManager {
@@ -218,6 +235,10 @@ impl TransferManager {
         let task_id = task.id.clone();
 
         tokio::spawn(async move {
+            // Bounded parallelism: extra tasks stay queued until a slot frees up.
+            let Ok(permit) = manager.slots.clone().acquire_owned().await else {
+                return;
+            };
             manager.update(&task_id, |task| task.status = TransferStatus::Running);
             let progress_manager = Arc::clone(&manager);
 
@@ -256,6 +277,7 @@ impl TransferManager {
             };
 
             manager.finish(&task_id, result);
+            drop(permit);
         });
 
         Ok(task)
@@ -274,6 +296,10 @@ impl TransferManager {
         let task_id = task.id.clone();
 
         tokio::spawn(async move {
+            // Bounded parallelism: extra tasks stay queued until a slot frees up.
+            let Ok(permit) = manager.slots.clone().acquire_owned().await else {
+                return;
+            };
             manager.update(&task_id, |task| task.status = TransferStatus::Running);
             let progress_manager = Arc::clone(&manager);
             let progress_id = task_id.clone();
@@ -293,6 +319,7 @@ impl TransferManager {
             .await;
 
             manager.finish(&task_id, result);
+            drop(permit);
         });
 
         Ok(task)

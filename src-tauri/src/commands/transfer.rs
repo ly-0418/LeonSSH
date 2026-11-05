@@ -98,6 +98,25 @@ pub fn transfer_cancel(state: State<'_, AppState>, id: String) -> Result<(), App
     Ok(())
 }
 
+/// Creates `path` and every missing parent on the remote side.
+async fn ensure_remote_dir(
+    session: &russh_sftp::client::SftpSession,
+    path: &str,
+) -> Result<(), AppError> {
+    let normalized = sftp::path::normalize_remote(path);
+    let mut current = String::new();
+    for part in normalized.split('/') {
+        if part.is_empty() {
+            continue;
+        }
+        current.push('/');
+        current.push_str(part);
+        let _ = sftp::mkdir(session, &current).await;
+    }
+    Ok(())
+}
+
+
 /// Recursively uploads a local directory: every file becomes its own transfer
 /// task so the existing queue, progress and resume logic still apply.
 #[tauri::command]
@@ -114,9 +133,15 @@ pub async fn transfer_upload_dir(
     let remote_root = sftp::path::normalize_remote(&remote_path);
     let session = ensure_sftp(&state, &terminal_id).await?;
 
-    let mut files = Vec::new();
-    let mut stack = vec![root.clone()];
-    while let Some(dir) = stack.pop() {
+    let mut files: Vec<PathBuf> = Vec::new();
+    // Relative paths of every directory (including empty ones) so the remote
+    // side keeps the folder structure even when a folder has no files.
+    let mut dirs: Vec<String> = Vec::new();
+    let mut stack: Vec<(PathBuf, String)> = vec![(root.clone(), String::new())];
+    while let Some((dir, relative)) = stack.pop() {
+        if !relative.is_empty() {
+            dirs.push(relative.clone());
+        }
         let entries = std::fs::read_dir(&dir)
             .map_err(|err| AppError::Internal(format!("读取本地目录 {} 失败: {err}", dir.display())))?;
         for entry in entries {
@@ -124,14 +149,34 @@ pub async fn transfer_upload_dir(
             let meta = entry
                 .metadata()
                 .map_err(|err| AppError::Internal(format!("读取元数据失败: {err}")))?;
+            let name = entry.file_name().to_string_lossy().to_string();
+            let child_relative = if relative.is_empty() {
+                name.clone()
+            } else {
+                format!("{relative}/{name}")
+            };
             if meta.is_dir() {
-                stack.push(entry.path());
+                stack.push((entry.path(), child_relative));
             } else if meta.is_file() {
                 files.push(entry.path());
             }
         }
     }
     files.sort();
+    dirs.sort();
+
+    // Create the folder tree first: an empty folder must still appear remotely.
+    ensure_remote_dir(&session, &remote_root).await?;
+    for relative in &dirs {
+        let mut remote = remote_root.clone();
+        for part in relative.split('/') {
+            if part.is_empty() {
+                continue;
+            }
+            remote = sftp::path::join_remote(&remote, part)?;
+        }
+        ensure_remote_dir(&session, &remote).await?;
+    }
 
     let mut queued = 0usize;
     for file in &files {
@@ -163,7 +208,7 @@ pub async fn transfer_upload_dir(
             )?;
         queued += 1;
     }
-    tracing::info!(local = %root.display(), remote = %remote_root, files = queued, "directory upload queued");
+    tracing::info!(local = %root.display(), remote = %remote_root, dirs = dirs.len(), files = queued, "directory upload queued");
     Ok(queued)
 }
 

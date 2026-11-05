@@ -68,12 +68,10 @@
 
 .terminal-host .xterm-viewport {
   background-color: transparent !important;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
 }
 
 .terminal-host .xterm-viewport::-webkit-scrollbar {
-  width: 10px;
+  width: 6px;
 }
 
 .terminal-host .xterm-viewport::-webkit-scrollbar-track {
@@ -82,7 +80,7 @@
 
 .terminal-host .xterm-viewport::-webkit-scrollbar-thumb {
   background: var(--border-strong);
-  border-radius: 0;
+  border-radius: 3px;
 }
 
 .terminal-host .xterm-viewport::-webkit-scrollbar-thumb:hover {

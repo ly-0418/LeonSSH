@@ -249,18 +249,52 @@ export function FileManager({
   // Pointer-based drag from the local pane onto the remote pane. HTML5 DnD was
   // unreliable inside WebView2, so we track the pointer ourselves and check the
   // drop target with elementFromPoint.
+  // Pointer-based drag: HTML5 DnD is unreliable inside WebView2, so we track the
+  // pointer, show a small "N items" badge and resolve the drop zone ourselves.
+  const dragGhost = useRef<HTMLDivElement | null>(null);
+
+  const showGhost = useCallback((count: number, label: string, x: number, y: number) => {
+    let element = dragGhost.current;
+    if (element === null) {
+      element = document.createElement("div");
+      element.className = "fm-drag-ghost";
+      document.body.appendChild(element);
+      dragGhost.current = element;
+    }
+    element.textContent = count > 1 ? `${count} 个项目` : label;
+    element.style.left = `${x + 14}px`;
+    element.style.top = `${y + 14}px`;
+  }, []);
+
+  const moveGhost = useCallback((x: number, y: number) => {
+    const element = dragGhost.current;
+    if (element !== null) {
+      element.style.left = `${x + 14}px`;
+      element.style.top = `${y + 14}px`;
+    }
+  }, []);
+
+  const hideGhost = useCallback(() => {
+    dragGhost.current?.remove();
+    dragGhost.current = null;
+  }, []);
+
+  /** Shared pointer drag: returns the selection-aware item list. */
+  function dragItems(entry: FileEntry, selection?: FileEntry[]): FileEntry[] {
+    return selection !== undefined &&
+      selection.length > 1 &&
+      selection.some((item) => item.name === entry.name)
+      ? selection
+      : [entry];
+  }
+
+  /** Local pane rows → drop on the remote pane (upload files and folders). */
   const beginDrag = useCallback(
     (entry: FileEntry, event: React.PointerEvent, selection?: FileEntry[]) => {
       if (event.button !== 0) {
         return;
       }
-      const items =
-        selection !== undefined &&
-        selection.length > 1 &&
-        selection.some((item) => item.name === entry.name)
-          ? selection
-          : [entry];
-      const paths = items.map((item) => item.path);
+      const items = dragItems(entry, selection);
       const startX = event.clientX;
       const startY = event.clientY;
       let active = false;
@@ -269,26 +303,71 @@ export function FileManager({
         if (!active && Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) > 6) {
           active = true;
           setDropActive(true);
+          showGhost(items.length, entry.name, moveEvent.clientX, moveEvent.clientY);
+        }
+        if (active) {
+          moveGhost(moveEvent.clientX, moveEvent.clientY);
         }
       };
       const up = (upEvent: PointerEvent) => {
         document.removeEventListener("pointermove", move);
         document.removeEventListener("pointerup", up);
         setDropActive(false);
+        hideGhost();
         if (!active) {
           return;
         }
         const element = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
         const target = element instanceof Element ? element.closest("[data-drop-remote]") : null;
         if (target !== null) {
-          void dropPaths(paths);
+          void upload(items);
         }
       };
 
       document.addEventListener("pointermove", move);
       document.addEventListener("pointerup", up);
     },
-    [dropPaths],
+    [upload, showGhost, moveGhost, hideGhost],
+  );
+
+  /** Remote pane rows → drop on the local pane (download files and folders). */
+  const beginRemoteDrag = useCallback(
+    (entry: FileEntry, event: React.PointerEvent, selection?: FileEntry[]) => {
+      if (event.button !== 0) {
+        return;
+      }
+      const items = dragItems(entry, selection);
+      const startX = event.clientX;
+      const startY = event.clientY;
+      let active = false;
+
+      const move = (moveEvent: PointerEvent) => {
+        if (!active && Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) > 6) {
+          active = true;
+          showGhost(items.length, entry.name, moveEvent.clientX, moveEvent.clientY);
+        }
+        if (active) {
+          moveGhost(moveEvent.clientX, moveEvent.clientY);
+        }
+      };
+      const up = (upEvent: PointerEvent) => {
+        document.removeEventListener("pointermove", move);
+        document.removeEventListener("pointerup", up);
+        hideGhost();
+        if (!active) {
+          return;
+        }
+        const element = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
+        const target = element instanceof Element ? element.closest("[data-drop-local]") : null;
+        if (target !== null) {
+          void download(items);
+        }
+      };
+
+      document.addEventListener("pointermove", move);
+      document.addEventListener("pointerup", up);
+    },
+    [download, showGhost, moveGhost, hideGhost],
   );
 
   // Native drag-and-drop from the OS: the webview hands us absolute paths.
@@ -446,6 +525,7 @@ export function FileManager({
           title="拖动调整左右宽度（双击恢复 50/50）"
         />
         <RemotePane
+            onRowPointerDown={beginRemoteDrag}
           terminalId={terminalId}
           sessionTitle={sessionTitle}
           key={memoryKey}

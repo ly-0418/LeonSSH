@@ -165,7 +165,7 @@ export function LocalPane({
           : "重命名";
 
   return (
-    <section className="fm-pane">
+    <section className="fm-pane" data-drop-local="true">
       <PathBar
         label="本地"
         path={pane.path}

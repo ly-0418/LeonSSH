@@ -1909,7 +1909,7 @@ input[type="password"]::-ms-reveal {
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-sunken);
+  background-color: var(--bg-sunken);
   color: var(--text-dim);
   font-family: var(--font-mono);
   white-space: pre-wrap;

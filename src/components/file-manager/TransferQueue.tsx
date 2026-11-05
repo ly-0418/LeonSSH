@@ -5,6 +5,8 @@ import { formatSpeed, statusLabel, type TransferTask } from "./transferView";
 
 interface TransferQueueProps {
   tasks: TransferTask[];
+  /** Only this session's transfers are listed; others keep running in background. */
+  terminalId: string;
   speeds: Record<string, number>;
   /** Height in pixels (adjusted by the splitter above the queue). */
   height: number;
@@ -15,16 +17,18 @@ type QueueTab = "active" | "done" | "failed";
 
 const DONE_STATES = new Set(["completed", "skipped", "cancelled"]);
 
-export function TransferQueue({ tasks, speeds, height, onCancel }: TransferQueueProps) {
+export function TransferQueue({ tasks, terminalId, speeds, height, onCancel }: TransferQueueProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [tab, setTab] = useState<QueueTab>("active");
 
   const groups = useMemo(() => {
-    const active = tasks.filter((task) => task.status === "running" || task.status === "queued");
-    const done = tasks.filter((task) => DONE_STATES.has(task.status));
-    const failed = tasks.filter((task) => task.status === "failed");
-    return { active, done, failed };
-  }, [tasks]);
+    const mine = tasks.filter((task) => task.terminalId === terminalId);
+    const active = mine.filter((task) => task.status === "running" || task.status === "queued");
+    const done = mine.filter((task) => DONE_STATES.has(task.status));
+    const failed = mine.filter((task) => task.status === "failed");
+    const others = tasks.filter((task) => task.terminalId !== terminalId).length;
+    return { active, done, failed, others };
+  }, [tasks, terminalId]);
 
   const visible = tab === "active" ? groups.active : tab === "done" ? groups.done : groups.failed;
 
@@ -79,6 +83,11 @@ export function TransferQueue({ tasks, speeds, height, onCancel }: TransferQueue
           </button>
         </div>
 
+        {groups.others > 0 && (
+          <span className="fq__others" title="其它会话的传输仍在后台运行，切回对应会话即可查看">
+            其它会话 {groups.others} 个传输
+          </span>
+        )}
         <span className="fq__summary">
           {tasks.length === 0 ? "暂无任务" : `${tasks.length} 个任务`}
         </span>
@@ -106,9 +115,6 @@ export function TransferQueue({ tasks, speeds, height, onCancel }: TransferQueue
                     <span className="fq__resume">续传自 {formatSize(task.resumedFrom)}</span>
                   )}
                   <span className="fq__dst">→ {task.dst}</span>
-                  <span className="fq__session" title="所属会话（全局队列，切换会话不影响）">
-                    {task.terminalId}
-                  </span>
                 </span>
                 <span className="fq__bar">
                   <span

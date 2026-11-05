@@ -1079,3 +1079,10 @@
   font-size: 10.5px;
   font-family: var(--font-mono);
 }
+/* Hint that other sessions still have transfers running in the background. */
+.fq__others {
+  margin-left: auto;
+  margin-right: 8px;
+  color: var(--text-faint);
+  font-size: 11px;
+}

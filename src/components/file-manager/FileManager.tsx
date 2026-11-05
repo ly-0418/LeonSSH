@@ -496,6 +496,7 @@ export function FileManager({
       )}
 
       <TransferQueue
+          terminalId={terminalId ?? ""}
         tasks={tasks}
         speeds={speeds}
         height={queueHeight}

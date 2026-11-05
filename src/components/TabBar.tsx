@@ -96,12 +96,20 @@ export function TabBar({
     if (element === null) {
       return;
     }
-    // Wait for the new tab to be laid out before jumping to the end.
+    // Two frames: the first applies the arrow state (its width is reserved),
+    // the second pins the strip to the end so the newest tab is fully visible.
+    let inner = 0;
     const frame = window.requestAnimationFrame(() => {
       element.scrollLeft = element.scrollWidth;
       syncArrows();
+      inner = window.requestAnimationFrame(() => {
+        element.scrollLeft = element.scrollWidth;
+      });
     });
-    return () => window.cancelAnimationFrame(frame);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.cancelAnimationFrame(inner);
+    };
   }, [tabs.length, syncArrows]);
 
   useEffect(() => {

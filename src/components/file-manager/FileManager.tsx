@@ -67,6 +67,7 @@ export function FileManager({
   const [message, setMessage] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorFile | null>(null);
   const [editorRevision, setEditorRevision] = useState(0);
+  const [manualRevision, setManualRevision] = useState(0);
   const [splitPercent, setSplitPercent] = useState(remembered?.split ?? 50);
   const [dragging, setDragging] = useState(false);
   const [queueHeight, setQueueHeight] = useState(remembered?.queueHeight ?? 150);
@@ -172,6 +173,7 @@ export function FileManager({
           break;
         }
       }
+      setManualRevision((value) => value + 1);
     },
     [terminalId, remotePath, uploadOne],
   );
@@ -487,7 +489,7 @@ export function FileManager({
           key={memoryKey}
           persistKey={"fm:" + memoryKey + ":local"}
           initialPath={localPath || initialLocal}
-          refreshToken={revision + editorRevision}
+            refreshToken={revision + editorRevision + manualRevision}
           onPathChange={(path) => {
             if (path !== "") {
               setLocalPath(path);
@@ -527,7 +529,7 @@ export function FileManager({
           initialPath={remotePath || undefined}
           persistKey={"fm:" + memoryKey + ":remote"}
           dropActive={dropActive}
-          refreshToken={revision + editorRevision}
+            refreshToken={revision + editorRevision + manualRevision}
           onPathChange={(path) => {
             if (path !== "") {
               setRemotePath(path);

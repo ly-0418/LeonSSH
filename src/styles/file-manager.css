@@ -1090,6 +1090,8 @@
 /* Drag badge: type icons stacked, count in the middle. */
 /* Drag badge: one icon fills the frame; multi-select stacks icons and puts
    the count in the middle of the frame. */
+/* Drag badge: type icons stay clipped inside the frame; the count sits on a
+   solid pill in the middle. */
 .fm-drag-ghost {
   position: fixed;
   z-index: 9999;
@@ -1097,10 +1099,11 @@
   left: 0;
   display: grid;
   place-items: center;
-  width: 60px;
-  height: 60px;
-  padding: 4px;
-  border-radius: 12px;
+  width: 72px;
+  height: 72px;
+  padding: 5px;
+  overflow: hidden;
+  border-radius: 14px;
   border: 1px solid var(--accent);
   background: var(--bg-elevated);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
@@ -1114,17 +1117,19 @@
   justify-content: center;
   width: 100%;
   height: 100%;
+  overflow: hidden;
 }
 
 .fm-drag-badge__icon {
   position: absolute;
   left: var(--offset, 0);
+  top: 3px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
-  font-size: 40px;
+  width: calc(100% - 6px);
+  height: calc(100% - 6px);
+  font-size: 44px;
   line-height: 1;
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.55));
 }
@@ -1137,14 +1142,20 @@
 
 .fm-drag-badge__count {
   position: absolute;
-  inset: 0;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  background: rgba(8, 12, 16, 0.45);
+  min-width: 34px;
+  height: 34px;
+  padding: 0 7px;
+  border-radius: 17px;
+  border: 1px solid var(--accent);
+  background: rgba(8, 12, 16, 0.88);
   color: #fff;
-  font-size: 26px;
+  font-size: 20px;
   font-weight: 800;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  line-height: 1;
 }

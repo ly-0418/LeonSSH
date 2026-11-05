@@ -79,7 +79,7 @@ export function fillGhost(items: DragBadgeItem[]): void {
   stack.className = "fm-drag-badge__stack";
   distinct.forEach((item, index) => {
     const frame = iconFrame(item.name, item.isDir);
-    frame.style.setProperty("--offset", `${index * 6}px`);
+    frame.style.setProperty("--offset", `${index * 8}px`);
     stack.appendChild(frame);
   });
   element.appendChild(stack);

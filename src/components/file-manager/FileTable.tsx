@@ -194,7 +194,9 @@ export function FileTable({
             onContextMenu={(event) => {
               event.preventDefault();
               event.stopPropagation();
-              onSelect(entry.name, "single");
+              if (!selected.includes(entry.name)) {
+                onSelect(entry.name, "single");
+              }
               onContextMenu(entry, event);
             }}
             onPointerDown={(event) => onRowPointerDown?.(entry, event)}

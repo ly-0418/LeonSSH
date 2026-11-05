@@ -36,7 +36,6 @@ const TABS: Array<{ key: SettingsTab; label: string }> = [
   { key: "hosts", label: "主机" },
   { key: "logs", label: "日志" },
   { key: "docs", label: "功能说明" },
-  { key: "about", label: "关于" },
 ];
 
 /** Right-side settings drawer: categories on the left, content on the right. */
@@ -214,6 +213,9 @@ export function SettingsDrawer({
                 {item.label}
               </button>
             ))}
+            <span className="drawer__version">
+              版本 {version.length > 0 ? `v${version}` : "…"}
+            </span>
           </nav>
 
           <section className="drawer__content">
@@ -403,6 +405,7 @@ export function SettingsDrawer({
             {tab === "docs" && (
               <div className="setting-group">
                 <h3 className="setting-group__title">功能说明</h3>
+                <p className="modal__hint">正在使用 LeonSSH {version.length > 0 ? `v${version}` : "…"} · Windows 优先的可视化 SSH 客户端</p>
                 <input
                   className="input"
                   value={docQuery}
@@ -436,21 +439,6 @@ export function SettingsDrawer({
                     </ul>
                   </section>
                 ))}
-              </div>
-            )}
-
-            {tab === "about" && (
-              <div className="setting-group">
-                <h3 className="setting-group__title">关于 LeonSSH</h3>
-                <p className="modal__hint">
-                  版本 {version.length > 0 ? `v${version}` : "…"} · Windows 优先的可视化 SSH 客户端
-                </p>
-                <ul className="about-list">
-                  <li>数据目录：安装目录下的 <code>data</code>（数据库、日志、缓存、编辑临时文件）</li>
-                  <li>密码与密钥口令：Windows 凭据管理器，不写入数据库</li>
-                  <li>主机密钥：首次连接即记录指纹（TOFU），变更会提示</li>
-                  <li>更新：当前版本需手动下载安装包覆盖；自动更新需要签名证书与发布源，尚未启用</li>
-                </ul>
               </div>
             )}
 

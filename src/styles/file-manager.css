@@ -1142,6 +1142,7 @@
 }
 
 .fm-drag-badge__count {
+  z-index: 30;
   position: absolute;
   left: 50%;
   top: 50%;

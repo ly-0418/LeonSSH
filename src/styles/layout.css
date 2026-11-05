@@ -2004,12 +2004,15 @@ input[type="password"]::-ms-reveal {
 
 .drawer__version {
   margin-top: auto;
-  padding: 6px 18px 6px;
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 18px;
   text-align: left;
   color: var(--text-dim);
   font-size: 14px;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1;
   letter-spacing: 0.02em;
   border-top: 1px solid var(--border);
 }

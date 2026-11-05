@@ -14,7 +14,6 @@
   flex-direction: column;
   min-height: 0;
   background: var(--bg-panel);
-  border-right: 1px solid var(--border);
   user-select: none;
 }
 
@@ -1892,6 +1891,16 @@ input[type="password"]::-ms-reveal {
 .logs-view {
   margin: 0;
   padding: 12px;
+  /* Continuous gutter: one line from the top border to the bottom border. */
+  background-image: linear-gradient(
+    to right,
+    transparent calc(12px + 3ch + 14px),
+    var(--border) calc(12px + 3ch + 14px),
+    var(--border) calc(12px + 3ch + 15px),
+    transparent calc(12px + 3ch + 15px)
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
   flex: 1 1 auto;
   min-height: 0;
   max-height: none;

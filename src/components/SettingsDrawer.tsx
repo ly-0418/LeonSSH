@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
 import { invoke } from "@tauri-apps/api/core";
-import { appVersion } from "../lib/ipc/app";
 import { FEATURE_DOCS } from "../lib/docs/featureDocs";
 import { forgetKnownHost, listKnownHosts } from "../lib/ipc/sessions";
 import { toUserMessage } from "../lib/ipc/errors";
@@ -58,7 +57,6 @@ export function SettingsDrawer({
   const [tab, setTab] = useState<SettingsTab>("theme");
   const [hosts, setHosts] = useState<KnownHostEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [version, setVersion] = useState<string>("");
   const [logs, setLogs] = useState<string>("");
   const [docQuery, setDocQuery] = useState("");
   const [logQuery, setLogQuery] = useState("");
@@ -66,12 +64,6 @@ export function SettingsDrawer({
   const [logsMaximized, setLogsMaximized] = useState(false);
   const logsRef = useRef<HTMLPreElement | null>(null);
   const hitRefs = useRef<Array<HTMLElement | null>>([]);
-
-  useEffect(() => {
-    void appVersion()
-      .then(setVersion)
-      .catch(() => setVersion(""));
-  }, []);
 
   useEffect(() => {
     if (tab !== "logs") {
@@ -213,9 +205,6 @@ export function SettingsDrawer({
                 {item.label}
               </button>
             ))}
-            <span className="drawer__version">
-              {version.length > 0 ? `v${version}` : "…"}
-            </span>
           </nav>
 
           <section className="drawer__content">

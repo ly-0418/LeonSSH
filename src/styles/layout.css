@@ -1960,14 +1960,18 @@ input[type="password"]::-ms-reveal {
 /* Each line is a two-column grid: fixed line number, then the text column. */
 .logs-line {
   display: grid;
-  grid-template-columns: 3.6em minmax(0, 1fr);
-  column-gap: 12px;
+  grid-template-columns: calc(3ch + 14px) minmax(0, 1fr);
+  column-gap: 10px;
 }
 
 .logs-line__no {
+  font-size: inherit;
+  line-height: inherit;
+  padding-right: 10px;
+  border-right: 1px solid var(--border);
   text-align: right;
   color: var(--text-faint);
-  opacity: 0.75;
+  opacity: 0.85;
   user-select: none;
 }
 

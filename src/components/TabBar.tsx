@@ -137,6 +137,8 @@ export function TabBar({
       <div
         className="tab-bar__strip"
         data-overflow={canScrollLeft || canScrollRight ? "true" : "false"}
+        data-fade-left={canScrollLeft ? "true" : "false"}
+        data-fade-right={canScrollRight ? "true" : "false"}
       >
         <button
           type="button"

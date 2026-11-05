@@ -356,3 +356,80 @@ body {
   color: var(--warn);
 }
 
+
+/* macOS-style header: centred title, actions and traffic lights on the right. */
+.app-header {
+  position: relative;
+  gap: 10px;
+  padding: 0 12px;
+}
+
+.app-header__title {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.app-header__mark {
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.app-header__divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--border);
+}
+
+.traffic-lights {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.traffic {
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: filter 120ms ease;
+}
+
+.traffic:hover {
+  filter: brightness(1.18);
+}
+
+.traffic--close {
+  background: #ff5f57;
+}
+
+.traffic--min {
+  background: #febc2e;
+}
+
+.traffic--max {
+  background: #28c840;
+}

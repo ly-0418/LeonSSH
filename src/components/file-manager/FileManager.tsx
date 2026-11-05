@@ -16,6 +16,7 @@ import { ExternalEditorBar } from "./ExternalEditorBar";
 import { LocalPane } from "./LocalPane";
 import { RemotePane } from "./RemotePane";
 import { fillGhost, moveGhost as moveBadge, removeGhost } from "./dragGhost";
+import { invoke } from "@tauri-apps/api/core";
 import { TransferQueue } from "./TransferQueue";
 import { useTransfers } from "./useTransfers";
 
@@ -158,6 +159,7 @@ export function FileManager({
             joinPath(remotePath, folder.name),
           );
         } catch (err) {
+          void invoke("frontend_error", { message: `dir upload failed: ${String(err)}` });
           setMessage(toUserMessage(err));
           return;
         }
@@ -307,6 +309,9 @@ export function FileManager({
         const element = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
         const target = element instanceof Element ? element.closest("[data-drop-remote]") : null;
         if (target !== null) {
+          void invoke("frontend_error", {
+            message: `drag-drop items=${items.length} dirs=${items.filter((item) => item.isDir).length} first=${items[0]?.name ?? ""} isDir=${String(items[0]?.isDir)}`,
+          });
           void upload(items);
         }
       };

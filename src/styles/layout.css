@@ -1931,6 +1931,7 @@ input[type="password"]::-ms-reveal {
 
 .logs-zoom {
   flex: 0 0 auto;
+  margin-left: auto;
   width: 30px;
   height: 30px;
   border-radius: 6px;

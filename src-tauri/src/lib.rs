@@ -45,6 +45,7 @@ fn urlencode(input: &str) -> String {
 pub fn run() {
     let paths = paths::Paths::resolve();
     paths::init_tracing(&paths);
+    paths::record_boot_stamp();
 
     tracing::info!(
         version = env!("CARGO_PKG_VERSION"),

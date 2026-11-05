@@ -133,6 +133,35 @@ pub fn ensure_writable(dir: &Path) -> std::io::Result<()> {
 /// Formats log lines in local wall-clock time (no network, no extra crates).
 struct LocalClock;
 
+/// Local wall-clock timestamp in the same format the log lines use.
+pub fn now_stamp() -> String {
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::System::SystemInformation::GetLocalTime;
+        let mut st: windows_sys::Win32::Foundation::SYSTEMTIME = unsafe { std::mem::zeroed() };
+        unsafe { GetLocalTime(&mut st) };
+        return format!(
+            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}",
+            st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds
+        );
+    }
+    #[cfg(not(windows))]
+    {
+        "1970-01-01T00:00:00.000".to_string()
+    }
+}
+
+/// Timestamp of this process start: the log viewer only shows lines after it.
+static BOOT_STAMP: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+pub fn record_boot_stamp() {
+    let _ = BOOT_STAMP.set(now_stamp());
+}
+
+pub fn boot_stamp() -> Option<&'static str> {
+    BOOT_STAMP.get().map(String::as_str)
+}
+
 impl tracing_subscriber::fmt::time::FormatTime for LocalClock {
     fn format_time(
         &self,

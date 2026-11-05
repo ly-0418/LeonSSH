@@ -382,6 +382,9 @@ export function SettingsDrawer({
                     }}
                     placeholder="搜索日志…（Enter 下一个，Shift+Enter 上一个）"
                   />
+                  <span className="logs-search__count">
+                    {logQuery.trim().length > 0 ? `${logHitCount === 0 ? 0 : logHit + 1}/${logHitCount}` : ""}
+                  </span>
                   <button
                     type="button"
                     className="logs-zoom"
@@ -390,9 +393,6 @@ export function SettingsDrawer({
                   >
                     {logsMaximized ? "🗗" : "⛶"}
                   </button>
-                  <span className="logs-search__count">
-                    {logQuery.trim().length > 0 ? `${logHitCount === 0 ? 0 : logHit + 1}/${logHitCount}` : ""}
-                  </span>
                 </div>
                 <pre className="logs-view" ref={logsRef}>
                   {logNodes}

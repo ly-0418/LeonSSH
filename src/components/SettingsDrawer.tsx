@@ -32,6 +32,9 @@ type SettingsTab = "theme" | "config" | "logs" | "docs" | "hosts" | "about";
 
 const TABS: Array<{ key: SettingsTab; label: string }> = [
   { key: "theme", label: "界面样式" },
+  { key: "config", label: "配置参数" },
+  { key: "logs", label: "日志" },
+  { key: "docs", label: "功能说明" },
   { key: "hosts", label: "主机" },
   { key: "about", label: "关于" },
 ];

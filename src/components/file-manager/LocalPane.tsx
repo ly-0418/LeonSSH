@@ -185,7 +185,7 @@ export function LocalPane({
             pane.selected.includes(entry.name) && pane.selected.length > 1
               ? pane.visible.filter((item) => pane.selected.includes(item.name))
               : [entry];
-          event.dataTransfer.effectAllowed = "copy";
+          event.dataTransfer.effectAllowed = "copyMove";
           event.dataTransfer.setData(
             "application/x-leonssh-path",
             items.map((item) => item.path).join("\n"),

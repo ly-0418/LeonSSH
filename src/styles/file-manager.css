@@ -1089,8 +1089,9 @@
 /* Drag ghost shown next to the cursor while dragging files. */
 .fm-drag-ghost {
   position: fixed;
-  top: -1000px;
-  left: -1000px;
+  z-index: 9999;
+  top: 0;
+  left: 0;
   padding: 6px 12px;
   border-radius: 8px;
   border: 1px solid var(--accent);

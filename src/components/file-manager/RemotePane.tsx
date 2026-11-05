@@ -402,7 +402,7 @@ function RemotePaneLoaded({
             selected.some((item) => item.name === entry.name) && selected.length > 1
               ? selected
               : [entry];
-          event.dataTransfer.effectAllowed = "copy";
+          event.dataTransfer.effectAllowed = "copyMove";
           event.dataTransfer.setData("application/x-leonssh-remote", JSON.stringify(items));
           setDragGhost(event, items.length, entry.name);
         }}

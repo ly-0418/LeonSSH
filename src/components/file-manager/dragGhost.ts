@@ -1,9 +1,16 @@
-/** Windows-like drag ghost: a badge that follows the cursor while dragging. */
+/** Windows-like drag badge: type icons (stacked when mixed) plus a count. */
+
+import { iconKey, loadShellIcon } from "../../lib/fs/shellIcons";
+
+export interface DragBadgeItem {
+  name: string;
+  isDir: boolean;
+  isSymlink?: boolean;
+}
 
 let ghost: HTMLDivElement | null = null;
-let cleanupBound = false;
 
-function ensureGhost(): HTMLDivElement {
+export function ensureGhost(): HTMLDivElement {
   if (ghost === null) {
     ghost = document.createElement("div");
     ghost.className = "fm-drag-ghost";
@@ -12,35 +19,81 @@ function ensureGhost(): HTMLDivElement {
   return ghost;
 }
 
-function removeGhost(): void {
+export function removeGhost(): void {
   ghost?.remove();
   ghost = null;
 }
 
-/**
- * Shows "N 个项目" next to the cursor. The element must stay in the DOM for the
- * whole drag: removing it on the next tick makes Chromium drop the drag image
- * and the drop target then rejects the drag (no-drop cursor).
- */
-export function setDragGhost(event: React.DragEvent, count: number, label?: string): void {
-  if (count <= 0) {
-    return;
+export function moveGhost(x: number, y: number): void {
+  if (ghost !== null) {
+    ghost.style.left = `${x + 16}px`;
+    ghost.style.top = `${y + 16}px`;
   }
-  const element = ensureGhost();
-  element.textContent = count > 1 ? `${count} 个项目` : (label ?? "1 个项目");
-  element.style.left = `${event.clientX + 14}px`;
-  element.style.top = `${event.clientY + 14}px`;
-  event.dataTransfer.setDragImage(element, 12, 12);
+}
 
-  if (!cleanupBound) {
-    cleanupBound = true;
-    const stop = () => {
-      cleanupBound = false;
-      window.removeEventListener("dragend", stop, true);
-      window.removeEventListener("drop", stop, true);
-      removeGhost();
-    };
-    window.addEventListener("dragend", stop, true);
-    window.addEventListener("drop", stop, true);
+function iconFrame(name: string, isDir: boolean): HTMLElement {
+  const frame = document.createElement("span");
+  frame.className = "fm-drag-badge__icon";
+  const fallback = () => {
+    frame.textContent = isDir ? "📁" : "📄";
+  };
+  void loadShellIcon(name, isDir)
+    .then((source) => {
+      if (source === null) {
+        fallback();
+        return;
+      }
+      const image = document.createElement("img");
+      image.src = source;
+      image.alt = "";
+      image.draggable = false;
+      frame.appendChild(image);
+    })
+    .catch(fallback);
+  return frame;
+}
+
+/**
+ * Fills the badge: one item shows its type icon, several items show up to three
+ * distinct type icons stacked together with the total count in the middle.
+ */
+export function fillGhost(items: DragBadgeItem[]): void {
+  const element = ensureGhost();
+  element.replaceChildren();
+
+  const distinct: DragBadgeItem[] = [];
+  const seen = new Set<string>();
+  for (const item of items) {
+    const key = iconKey(item.name, item.isDir, item.isSymlink === true);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    distinct.push(item);
+    if (distinct.length === 3) {
+      break;
+    }
   }
+
+  const stack = document.createElement("span");
+  stack.className = "fm-drag-badge__stack";
+  distinct.forEach((item, index) => {
+    const frame = iconFrame(item.name, item.isDir);
+    frame.style.setProperty("--offset", `${index * 7}px`);
+    stack.appendChild(frame);
+  });
+  element.appendChild(stack);
+
+  if (items.length > 1) {
+    const count = document.createElement("span");
+    count.className = "fm-drag-badge__count";
+    count.textContent = String(items.length);
+    element.appendChild(count);
+  }
+}
+
+export function setGhostPosition(x: number, y: number): void {
+  const element = ensureGhost();
+  element.style.left = `${x + 16}px`;
+  element.style.top = `${y + 16}px`;
 }

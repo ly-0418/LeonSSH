@@ -15,6 +15,7 @@ import {
 import { ExternalEditorBar } from "./ExternalEditorBar";
 import { LocalPane } from "./LocalPane";
 import { RemotePane } from "./RemotePane";
+import { fillGhost, moveGhost as moveBadge, removeGhost } from "./dragGhost";
 import { TransferQueue } from "./TransferQueue";
 import { useTransfers } from "./useTransfers";
 
@@ -252,32 +253,17 @@ export function FileManager({
   // drop target with elementFromPoint.
   // Pointer-based drag: HTML5 DnD is unreliable inside WebView2, so we track the
   // pointer, show a small "N items" badge and resolve the drop zone ourselves.
-  const dragGhost = useRef<HTMLDivElement | null>(null);
-
-  const showGhost = useCallback((count: number, label: string, x: number, y: number) => {
-    let element = dragGhost.current;
-    if (element === null) {
-      element = document.createElement("div");
-      element.className = "fm-drag-ghost";
-      document.body.appendChild(element);
-      dragGhost.current = element;
-    }
-    element.textContent = count > 1 ? `${count} 个项目` : label;
-    element.style.left = `${x + 14}px`;
-    element.style.top = `${y + 14}px`;
+  const showGhost = useCallback((items: FileEntry[], x: number, y: number) => {
+    fillGhost(items.map((item) => ({ name: item.name, isDir: item.isDir })));
+    moveBadge(x, y);
   }, []);
 
   const moveGhost = useCallback((x: number, y: number) => {
-    const element = dragGhost.current;
-    if (element !== null) {
-      element.style.left = `${x + 14}px`;
-      element.style.top = `${y + 14}px`;
-    }
+    moveBadge(x, y);
   }, []);
 
   const hideGhost = useCallback(() => {
-    dragGhost.current?.remove();
-    dragGhost.current = null;
+    removeGhost();
   }, []);
 
   /** Shared pointer drag: returns the selection-aware item list. */
@@ -304,7 +290,7 @@ export function FileManager({
         if (!active && Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) > 6) {
           active = true;
           setDropActive(true);
-          showGhost(items.length, entry.name, moveEvent.clientX, moveEvent.clientY);
+          showGhost(items, moveEvent.clientX, moveEvent.clientY);
         }
         if (active) {
           moveGhost(moveEvent.clientX, moveEvent.clientY);
@@ -346,7 +332,7 @@ export function FileManager({
         if (!active && Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) > 6) {
           active = true;
           setDropLocalActive(true);
-          showGhost(items.length, entry.name, moveEvent.clientX, moveEvent.clientY);
+          showGhost(items, moveEvent.clientX, moveEvent.clientY);
         }
         if (active) {
           moveGhost(moveEvent.clientX, moveEvent.clientY);

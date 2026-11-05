@@ -210,7 +210,8 @@ impl AppState {
     }
 
     pub async fn drop_sftp(&self, terminal: &str) {
-        self.sftp.lock().await.remove(terminal);
+        let removed = self.sftp.lock().await.remove(terminal);
+        tracing::info!(terminal, removed = removed.is_some(), "dropping sftp session");
     }
 }
 

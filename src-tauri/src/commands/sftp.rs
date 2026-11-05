@@ -65,6 +65,7 @@ pub async fn sftp_open(state: State<'_, AppState>, terminal_id: String) -> Resul
 
 #[tauri::command]
 pub async fn sftp_close(state: State<'_, AppState>, terminal_id: String) -> Result<(), AppError> {
+    tracing::info!(terminal = %terminal_id, "sftp_close called");
     if let Ok(session) = state.sftp(&terminal_id).await {
         let _ = session.close().await;
     }

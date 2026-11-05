@@ -1086,3 +1086,17 @@
   color: var(--text-faint);
   font-size: 11px;
 }
+/* Drag ghost shown next to the cursor while dragging files. */
+.fm-drag-ghost {
+  position: fixed;
+  top: -1000px;
+  left: -1000px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 12.5px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}

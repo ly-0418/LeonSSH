@@ -79,7 +79,9 @@ export function fillGhost(items: DragBadgeItem[]): void {
   stack.className = "fm-drag-badge__stack";
   distinct.forEach((item, index) => {
     const frame = iconFrame(item.name, item.isDir);
-    frame.style.setProperty("--offset", `${index * 8}px`);
+    // Symmetric offsets keep the icon group visually centred in the frame.
+    const offset = index === 0 ? 0 : index === 1 ? 8 : -8;
+    frame.style.setProperty("--offset", `${offset}px`);
     stack.appendChild(frame);
   });
   element.appendChild(stack);

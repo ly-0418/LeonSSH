@@ -1122,8 +1122,9 @@
 
 .fm-drag-badge__icon {
   position: absolute;
-  left: var(--offset, 0);
-  top: 3px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) translateX(var(--offset, 0));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1148,14 +1149,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 34px;
-  height: 34px;
-  padding: 0 7px;
-  border-radius: 17px;
+  min-width: 30px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 7px;
   border: 1px solid var(--accent);
   background: rgba(8, 12, 16, 0.88);
   color: #fff;
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 800;
   line-height: 1;
+  max-width: calc(100% - 10px);
+  white-space: nowrap;
 }

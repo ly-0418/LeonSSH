@@ -88,6 +88,14 @@ export default function App() {
     const stored = localStorage.getItem("leonssh.cursorSmoothMove");
     return stored === "snappy" || stored === "gliding" ? stored : "off";
   });
+
+  // Stable identity: a new object every render would re-create the terminal
+  // session and drop the SSH connection immediately after opening it.
+  const cursorSmooth = useMemo(
+    () => ({ smoothBlink, blinkRadius, smoothMove }),
+    [smoothBlink, blinkRadius, smoothMove],
+  );
+
   /** Incremented per tab to re-open its SSH session without remounting xterm. */
   const [reconnectTicks, setReconnectTicks] = useState<Record<string, number>>({});
   const [broadcast, setBroadcast] = useState<boolean>(
@@ -613,7 +621,7 @@ export default function App() {
                     fontFamily={fontFamily}
                     cursorStyle={cursorStyle}
                     cursorWidth={cursorWidth}
-                    cursorSmooth={{ smoothBlink, blinkRadius, smoothMove }}
+                    cursorSmooth={cursorSmooth}
                     onStatus={makeStatusHandler(tab.key)}
                   />
                 </div>

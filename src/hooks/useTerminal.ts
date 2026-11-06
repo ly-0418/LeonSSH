@@ -95,7 +95,7 @@ export function useTerminal({
       sessionRef.current = null;
       void session.dispose();
     };
-  }, [sessionId, title, cursorStyle, cursorWidth, cursorSmooth]);
+  }, [sessionId, title]);
 
   useEffect(() => {
     sessionRef.current?.setVisible(visible);

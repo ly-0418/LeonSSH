@@ -26,6 +26,15 @@ Windows 优先的可视化 SSH 客户端。**阶段 1–5 全部完成**：二�
 | 5 | `-L` 本地转发、`-R` 远程转发、`-D` SOCKS5、规则随会话持久化、关闭自动回收 |
 | 6 | 双栏文件管理器：本地（plugin-fs）/远程（同连接 SFTP）、256 KiB 流式传输、**断点续传**、任务队列、拖拽上传、远程在线编辑（CodeMirror 6） |
 
+## 下载
+
+| 文件 | 直接下载（GitHub） | 大小 |
+| --- | --- | --- |
+| Windows 安装包（推荐） | [LeonSSH_0.4.0_x64-setup.exe](https://github.com/ly-0418/LeonSSH/raw/main/release/LeonSSH_0.4.0_x64-setup.exe) | 4.15 MB |
+| 免安装可执行文件 | [leonssh.exe](https://github.com/ly-0418/LeonSSH/raw/main/release/leonssh.exe) | 16.4 MB |
+
+安装包为 NSIS 单文件安装程序，`installMode: currentUser`，默认安装在 `%LOCALAPPDATA%\LeonSSH`。
+两个文件也在仓库的 [`release/`](release/) 目录中，可以直接浏览或下载历史版本。
 窗口为**无边框**设计：应用顶栏即标题栏（按住可拖动、双击最大化），右上角自绘最小化 / 最大化-还原 / 关闭。
 
 ## 快速开始
@@ -45,13 +54,16 @@ pnpm tauri dev
 ## 构建产物
 
 ```powershell
-pnpm tauri build
+pnpm build:release   # tauri build + 复制产物到 release/
 ```
 
 | 产物 | 路径 | 大小 |
 | --- | --- | --- |
-| 免安装可执行文件 | `src-tauri/target/release/leonssh.exe` | 15.77 MB |
-| NSIS 安装包 | `src-tauri/target/release/bundle/nsis/LeonSSH_0.1.0_x64-setup.exe` | 4.41 MB |
+| 免安装可执行文件 | [`release/leonssh.exe`](release/leonssh.exe) | 16.4 MB |
+| NSIS 安装包 | [`release/LeonSSH_0.4.0_x64-setup.exe`](release/LeonSSH_0.4.0_x64-setup.exe) | 4.15 MB |
+
+`pnpm build:release` 会把 `src-tauri/target/release` 下的 exe 与当前版本的安装包复制到项目根目录 `release/`，方便随仓库发布。
+`src-tauri/target/release/...` 仍保留 Tauri 的原始输出。
 
 安装包 `installMode: currentUser`，默认装到 `%LOCALAPPDATA%\LeonSSH`；卸载删除程序与快捷方式，保留 `data/`。
 

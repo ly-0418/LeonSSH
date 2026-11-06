@@ -35,5 +35,3 @@ src-tauri/**/data/
 *.tmp
 *.bak
 
-# Built artifacts (copied by scripts/copy-release.mjs)
-/release/

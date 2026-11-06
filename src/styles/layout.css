@@ -2159,8 +2159,9 @@ input[type="password"]::-ms-reveal {
    the tab follows the cursor (vuedraggable behaviour). */
 .tab--dragging {
   opacity: 0.32;
-  border-style: dashed;
-  border-color: var(--border-strong);
+  /* Outline instead of a dashed border: borders would change the box height. */
+  outline: 1px dashed var(--border-strong);
+  outline-offset: -1px;
 }
 
 .tab--ghost {

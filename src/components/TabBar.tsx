@@ -213,8 +213,9 @@ export function TabBar({
       if (targetKey === null || targetKey === state.key) {
         return;
       }
-      const fromIndex = tabs.findIndex((tab) => tab.key === state.key);
-      const toIndex = tabs.findIndex((tab) => tab.key === targetKey);
+      const list = tabsRef.current;
+      const fromIndex = list.findIndex((tab) => tab.key === state.key);
+      const toIndex = list.findIndex((tab) => tab.key === targetKey);
       if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
         return;
       }

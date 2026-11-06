@@ -1,3 +1,4 @@
+import { SMOOTH_MOVE_OPTIONS, type SmoothMoveMode } from "../lib/terminal/cursor";
 import { useEffect, useRef, useState } from "react";
 
 import { invoke } from "@tauri-apps/api/core";
@@ -20,6 +21,13 @@ interface SettingsDrawerProps {
   cursorStyle: "bar" | "underline";
   cursorWidth: number;
   onChangeCursorStyle: (style: "bar" | "underline", width: number) => void;
+  /** Smooth caret blink / movement (additive to the shape settings). */
+  smoothBlink: boolean;
+  blinkRadius: number;
+  smoothMove: SmoothMoveMode;
+  onChangeSmoothBlink: (value: boolean) => void;
+  onChangeBlinkRadius: (value: number) => void;
+  onChangeSmoothMove: (value: SmoothMoveMode) => void;
 
   showBroadcast: boolean;
   showForward: boolean;
@@ -50,6 +58,12 @@ export function SettingsDrawer({
   cursorStyle,
   cursorWidth,
   onChangeCursorStyle,
+  smoothBlink,
+  blinkRadius,
+  smoothMove,
+  onChangeSmoothBlink,
+  onChangeBlinkRadius,
+  onChangeSmoothMove,
   showBroadcast,
   showForward,
   onChangeTabVisibility,
@@ -62,6 +76,13 @@ export function SettingsDrawer({
   const [docQuery, setDocQuery] = useState("");
   const [logQuery, setLogQuery] = useState("");
   const [logHit, setLogHit] = useState(0);
+  /** Preview caret hops between two cells so the movement style is visible. */
+  const [previewHop, setPreviewHop] = useState(false);
+  useEffect(() => {
+    const timer = window.setInterval(() => setPreviewHop((value) => !value), 1300);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const [logsMaximized, setLogsMaximized] = useState(false);
   const logsRef = useRef<HTMLPreElement | null>(null);
   const hitRefs = useRef<Array<HTMLElement | null>>([]);
@@ -319,6 +340,77 @@ export function SettingsDrawer({
                     }
                     style={cursorStyle === "bar" ? { width: `${cursorWidth}px` } : undefined}
                   />
+                </div>
+              </div>
+
+              <div className="setting-group">
+                <h3 className="setting-group__title">光标动画</h3>
+                <p className="modal__hint">
+                  只叠加透明度与位置过渡；形状、粗细沿用上方设置，两项可以自由组合。
+                </p>
+
+                <label className="setting-toggle">
+                  <input
+                    type="checkbox"
+                    checked={smoothBlink}
+                    onChange={(event) => onChangeSmoothBlink(event.target.checked)}
+                  />
+                  <span>使用平滑的文本光标闪烁</span>
+                </label>
+                <div className="font-size-row">
+                  <span className="font-size-value">圆角半径</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={8}
+                    step={1}
+                    value={blinkRadius}
+                    disabled={!smoothBlink}
+                    onChange={(event) =>
+                      onChangeBlinkRadius(Number.parseInt(event.target.value, 10))
+                    }
+                  />
+                  <span className="font-size-value">{blinkRadius} px</span>
+                </div>
+
+                <div className="setting-row">
+                  <span className="setting-row__label">使用平滑文本光标移动</span>
+                  <select
+                    className="input"
+                    value={smoothMove}
+                    onChange={(event) => onChangeSmoothMove(event.target.value as SmoothMoveMode)}
+                  >
+                    {SMOOTH_MOVE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="cursor-preview cursor-preview--animated">
+                  <span className="cursor-preview__prompt">root@leonssh:~$</span>
+                  <span className="caret-demo">
+                    <span className="caret-demo__char">a</span>
+                    <span className="caret-demo__char">b</span>
+                    <span
+                      className={`caret-demo__caret${smoothBlink ? " caret-demo__caret--smooth" : ""}${
+                        cursorStyle === "bar" ? "" : " caret-demo__caret--underline"
+                      }`}
+                      style={{
+                        left: previewHop ? "1ch" : "0ch",
+                        width: cursorStyle === "bar" ? `${cursorWidth}px` : "1ch",
+                        height: cursorStyle === "bar" ? "1.15em" : "2px",
+                        borderRadius: cursorStyle === "bar" ? `${blinkRadius}px` : "0",
+                        transition:
+                          smoothMove === "off"
+                            ? "none"
+                            : `left ${smoothMove === "snappy" ? 90 : 170}ms ${
+                                smoothMove === "snappy" ? "cubic-bezier(0.33, 1, 0.68, 1)" : "linear"
+                              }`,
+                      }}
+                    />
+                  </span>
                 </div>
               </div>
 

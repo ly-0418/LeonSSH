@@ -2198,3 +2198,91 @@ input[type="password"]::-ms-reveal {
     opacity: 0;
   }
 }
+
+/* ---------------------------------------------- custom caret (overlay) */
+/* Sits above the WebGL canvas inside `.xterm`; pointer events are disabled so
+   selection and clicks still reach xterm. */
+.xterm-caret-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 10;
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+}
+
+/* ---------------------------------------------------- settings preview */
+.cursor-preview--animated {
+  position: relative;
+}
+
+.caret-demo {
+  position: relative;
+  display: inline-flex;
+  letter-spacing: 0;
+}
+
+.caret-demo__char {
+  width: 1ch;
+  text-align: center;
+  color: var(--text-faint);
+}
+
+.caret-demo__caret {
+  position: absolute;
+  top: 0.15em;
+  left: 0;
+  background: var(--accent);
+  opacity: 1;
+  animation: caret-hard 1000ms steps(1, end) infinite;
+}
+
+.caret-demo__caret--underline {
+  top: auto;
+  bottom: 0.1em;
+}
+
+/* Smooth blink: alpha fades in and out instead of on/off. */
+.caret-demo__caret--smooth {
+  animation: caret-smooth 1100ms ease-in-out infinite;
+}
+
+@keyframes caret-hard {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes caret-smooth {
+  0%,
+  100% {
+    opacity: 0.18;
+  }
+  45%,
+  55% {
+    opacity: 1;
+  }
+}
+/* Label + control row used by the caret animation settings. */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 10px 0 12px;
+}
+
+.setting-row__label {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.setting-row .input {
+  min-width: 190px;
+}

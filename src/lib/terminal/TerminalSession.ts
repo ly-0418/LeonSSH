@@ -20,6 +20,8 @@ import { toUserMessage } from "../ipc/errors";
 import { closeTerminal, openTerminal, resizeTerminal, writeTerminal } from "../ipc/session";
 import type { RendererKind, TerminalId, TerminalStatus } from "../ipc/types";
 import { installRenderer, type RendererController } from "./renderer";
+import { CaretAnimator } from "./CaretAnimator";
+import { DEFAULT_CURSOR_CONFIG, cursorAnimationActive, type CursorConfig } from "./cursor";
 import { TERMINAL_OPTIONS, terminalTheme, type ThemeMode } from "./theme";
 
 const FIT_DEBOUNCE_MS = 60;
@@ -37,6 +39,8 @@ export interface TerminalSessionOptions {
   fontFamily?: string;
   cursorStyle?: "bar" | "underline";
   cursorWidth?: number;
+  /** Smooth blink / movement settings (additive to shape and width). */
+  cursor?: Partial<CursorConfig>;
   onStatus?: (patch: Partial<TerminalStatus>) => void;
   onNotice?: (message: string) => void;
   /** Reports the text typed since the last Enter (for autocompletion). */
@@ -66,6 +70,9 @@ export class TerminalSession {
   private channel: Channel<ArrayBuffer> | null = null;
   private readonly encoder = new TextEncoder();
   private renderer: RendererController | null = null;
+  private caret: CaretAnimator | null = null;
+  private cursorConfig: CursorConfig;
+  private themeMode: ThemeMode;
   private observer: ResizeObserver | null = null;
   private fitTimer: number | null = null;
   private terminalId: TerminalId | null = null;
@@ -77,6 +84,14 @@ export class TerminalSession {
   private bytesOut = 0;
 
   constructor(private readonly options: TerminalSessionOptions) {
+    this.themeMode = options.theme ?? "dark";
+    this.cursorConfig = {
+      ...DEFAULT_CURSOR_CONFIG,
+      shape: options.cursorStyle ?? DEFAULT_CURSOR_CONFIG.shape,
+      width: options.cursorWidth ?? DEFAULT_CURSOR_CONFIG.width,
+      ...options.cursor,
+    };
+
     this.terminal = new Terminal({
       ...TERMINAL_OPTIONS,
       fontSize: options.fontSize ?? 14,
@@ -89,6 +104,17 @@ export class TerminalSession {
     this.terminal.loadAddon(this.fitAddon);
     this.terminal.loadAddon(this.searchAddon);
     this.terminal.open(options.container);
+
+    // The overlay lives inside `.xterm` so it inherits the canvas stacking
+    // context; WebGL keeps painting the text texture underneath it.
+    const overlayHost = this.terminal.element ?? options.container;
+    this.caret = new CaretAnimator({
+      terminal: this.terminal,
+      container: overlayHost,
+      getConfig: () => this.cursorConfig,
+      getColor: () => this.terminal.options.theme?.cursor ?? "#4ade80",
+    });
+    this.applyNativeCursor();
 
     this.renderer = installRenderer(this.terminal, (kind: RendererKind, reason: string) => {
       this.options.onStatus?.({ renderer: kind });
@@ -238,6 +264,8 @@ export class TerminalSession {
       return;
     }
     this.disposed = true;
+      this.caret?.dispose();
+      this.caret = null;
 
     if (this.fitTimer !== null) {
       window.clearTimeout(this.fitTimer);
@@ -298,8 +326,40 @@ export class TerminalSession {
     if (this.disposed) {
       return;
     }
+    this.cursorConfig = { ...this.cursorConfig, shape: style, width };
     this.terminal.options.cursorStyle = style;
     this.terminal.options.cursorWidth = Math.min(6, Math.max(1, width));
+    this.caret?.updateConfig();
+  }
+
+  /** Applies the smooth blink / smooth move settings (settings drawer). */
+  setCursorConfig(patch: Partial<CursorConfig>): void {
+    if (this.disposed) {
+      return;
+    }
+    this.cursorConfig = { ...this.cursorConfig, ...patch };
+    this.applyNativeCursor();
+    this.caret?.updateConfig();
+    this.caret?.setColor();
+  }
+
+  /**
+   * Hides xterm's own cursor while the overlay is active: with WebGL the native
+   * cursor lives in the same texture as the glyphs and cannot be animated, so
+   * the DOM caret takes over. The logical cursor is untouched.
+   */
+  private applyNativeCursor(): void {
+    const base = terminalTheme(this.themeMode);
+    if (cursorAnimationActive(this.cursorConfig)) {
+      this.terminal.options.theme = {
+        ...base,
+        cursor: "rgba(0,0,0,0)",
+        cursorAccent: "rgba(0,0,0,0)",
+      };
+    } else {
+      this.terminal.options.theme = base;
+    }
+    this.terminal.refresh(0, Math.max(0, this.terminal.rows - 1));
   }
 
   /** Changes the terminal font size and refits the viewport. */
@@ -331,8 +391,9 @@ export class TerminalSession {
     if (this.disposed) {
       return;
     }
-    this.terminal.options.theme = terminalTheme(mode);
-    this.terminal.refresh(0, Math.max(0, this.terminal.rows - 1));
+    this.themeMode = mode;
+    this.applyNativeCursor();
+    this.caret?.setColor();
   }
 
   // ----------------------------------------------------------- I/O plumbing

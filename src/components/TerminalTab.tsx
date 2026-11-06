@@ -5,6 +5,7 @@ import { LINUX_COMMANDS, canonicalCommand, describeCommand } from "../lib/termin
 import { snippetInsertion, snippetTemplate } from "../lib/terminal/snippet";
 import { bumpCommandUsage, bumpSnippet, loadCommandUsage, loadSnippets } from "../lib/ipc/usage";
 import { useTerminal } from "../hooks/useTerminal";
+import type { CursorConfig } from "../lib/terminal/cursor";
 import type { ThemeMode } from "../lib/terminal/theme";
 
 
@@ -19,6 +20,8 @@ interface TerminalTabProps {
   fontFamily: string;
   cursorStyle: "bar" | "underline";
   cursorWidth: number;
+  /** Smooth blink / smooth move settings. */
+  cursorSmooth?: Pick<CursorConfig, "smoothBlink" | "blinkRadius" | "smoothMove">;
   state: TerminalStatus["state"];
   /** Bumped by the tab menu to re-open the session in place. */
   reconnectAt?: number;
@@ -39,6 +42,7 @@ export function TerminalTab({
   fontFamily,
     cursorStyle,
     cursorWidth,
+  cursorSmooth,
   state,
   reconnectAt,
   onStatus,
@@ -64,6 +68,7 @@ export function TerminalTab({
     fontFamily,
     cursorStyle,
     cursorWidth,
+    cursorSmooth,
     onStatus,
     onInputLine: (value) => {
       setLine(value);

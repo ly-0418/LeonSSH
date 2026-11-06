@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { SmoothMoveMode } from "./lib/terminal/cursor";
 
 import { FileManager } from "./components/file-manager/FileManager";
 import { ForwardPanel } from "./components/ForwardPanel";
@@ -73,6 +74,19 @@ export default function App() {
   const [cursorWidth, setCursorWidth] = useState<number>(() => {
     const stored = Number.parseInt(localStorage.getItem("leonssh.cursorWidth") ?? "", 10);
     return Number.isFinite(stored) && stored >= 1 && stored <= 6 ? stored : 2;
+  });
+
+  // Smooth caret animations (IntelliJ-style); additive to the shape settings.
+  const [smoothBlink, setSmoothBlink] = useState<boolean>(
+    () => localStorage.getItem("leonssh.cursorSmoothBlink") === "1",
+  );
+  const [blinkRadius, setBlinkRadius] = useState<number>(() => {
+    const stored = Number.parseInt(localStorage.getItem("leonssh.cursorBlinkRadius") ?? "", 10);
+    return Number.isFinite(stored) && stored >= 0 && stored <= 8 ? stored : 2;
+  });
+  const [smoothMove, setSmoothMove] = useState<SmoothMoveMode>(() => {
+    const stored = localStorage.getItem("leonssh.cursorSmoothMove");
+    return stored === "snappy" || stored === "gliding" ? stored : "off";
   });
   /** Incremented per tab to re-open its SSH session without remounting xterm. */
   const [reconnectTicks, setReconnectTicks] = useState<Record<string, number>>({});
@@ -599,6 +613,7 @@ export default function App() {
                     fontFamily={fontFamily}
                     cursorStyle={cursorStyle}
                     cursorWidth={cursorWidth}
+                    cursorSmooth={{ smoothBlink, blinkRadius, smoothMove }}
                     onStatus={makeStatusHandler(tab.key)}
                   />
                 </div>
@@ -740,6 +755,21 @@ export default function App() {
             setCursorWidth(width);
             localStorage.setItem("leonssh.cursorStyle", style);
             localStorage.setItem("leonssh.cursorWidth", String(width));
+          }}
+          smoothBlink={smoothBlink}
+          blinkRadius={blinkRadius}
+          smoothMove={smoothMove}
+          onChangeSmoothBlink={(value) => {
+            setSmoothBlink(value);
+            localStorage.setItem("leonssh.cursorSmoothBlink", value ? "1" : "0");
+          }}
+          onChangeBlinkRadius={(value) => {
+            setBlinkRadius(value);
+            localStorage.setItem("leonssh.cursorBlinkRadius", String(value));
+          }}
+          onChangeSmoothMove={(value) => {
+            setSmoothMove(value);
+            localStorage.setItem("leonssh.cursorSmoothMove", value);
           }}
           showBroadcast={showBroadcast}
           showForward={showForward}

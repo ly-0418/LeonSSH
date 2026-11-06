@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { TerminalStatus } from "../lib/ipc/types";
 import { TerminalSession } from "../lib/terminal/TerminalSession";
+import type { CursorConfig } from "../lib/terminal/cursor";
 import type { ThemeMode } from "../lib/terminal/theme";
 
 const INITIAL_STATUS: TerminalStatus = {
@@ -28,6 +29,8 @@ export interface UseTerminalOptions {
   fontFamily: string;
   cursorStyle: "bar" | "underline";
   cursorWidth: number;
+  /** Smooth blink / smooth move settings. */
+  cursorSmooth?: Pick<CursorConfig, "smoothBlink" | "blinkRadius" | "smoothMove">;
   onInputLine?: (line: string) => void;
   onExecuted?: (line: string) => void;
   onStatus?: (patch: Partial<TerminalStatus>) => void;
@@ -42,6 +45,7 @@ export function useTerminal({
   fontFamily,
   cursorStyle,
   cursorWidth,
+  cursorSmooth,
   onInputLine,
   onExecuted,
   onStatus,
@@ -77,6 +81,9 @@ export function useTerminal({
       title,
       theme: themeRef.current,
       fontSize: fontSizeRef.current,
+      cursorStyle,
+      cursorWidth,
+      cursor: cursorSmooth,
       onStatus: (patch) => statusRef.current?.(patch),
       onNotice: (message) => setNotice(message),
         onInputLine: (value) => onInputLineRef.current?.(value),
@@ -88,7 +95,7 @@ export function useTerminal({
       sessionRef.current = null;
       void session.dispose();
     };
-  }, [sessionId, title]);
+  }, [sessionId, title, cursorStyle, cursorWidth, cursorSmooth]);
 
   useEffect(() => {
     sessionRef.current?.setVisible(visible);

@@ -82,6 +82,7 @@ export class TerminalSession {
       fontSize: options.fontSize ?? 14,
       fontFamily: options.fontFamily ?? "Cascadia Mono, Consolas, monospace",
       cursorStyle: options.cursorStyle ?? "bar",
+      cursorInactiveStyle: "outline",
       cursorWidth: options.cursorWidth ?? 2,
       theme: terminalTheme(options.theme ?? "dark"),
     });

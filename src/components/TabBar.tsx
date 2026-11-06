@@ -43,6 +43,20 @@ interface MenuState {
   key: string;
 }
 
+/** Blurring xterm makes it paint the hollow "outline" cursor. */
+function blurTerminalFocus(): void {
+  const active = document.activeElement;
+  if (active instanceof HTMLElement) {
+    active.blur();
+  }
+}
+
+function refocusTerminal(): void {
+  document
+    .querySelector<HTMLElement>('.terminal-pane[data-visible="true"] .xterm-helper-textarea')
+    ?.focus();
+}
+
 /** Threshold before a press turns into a tab drag. */
 const DRAG_THRESHOLD = 6;
 /** Ignore further swaps for this long after one, preventing boundary jitter. */
@@ -214,6 +228,7 @@ export function TabBar({
     };
 
     const up = () => {
+      refocusTerminal();
       const state = dragRef.current;
       dragRef.current = null;
       if (state?.active === true) {
@@ -236,6 +251,8 @@ export function TabBar({
   }, [onReorder, tabs]);
 
   const beginDrag = (tab: TabItem, event: React.PointerEvent<HTMLDivElement>) => {
+    // Both left and right presses pause the terminal cursor.
+    blurTerminalFocus();
     if (event.button !== 0) {
       return;
     }

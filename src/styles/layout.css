@@ -2162,9 +2162,7 @@ input[type="password"]::-ms-reveal {
 
 .tab {
   touch-action: none;
-  cursor: grab;
-}
-
-.tab:active {
-  cursor: grabbing;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
 }

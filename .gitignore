@@ -34,3 +34,6 @@ src-tauri/**/data/
 # 临时文件
 *.tmp
 *.bak
+
+# Built artifacts (copied by scripts/copy-release.mjs)
+/release/

@@ -112,7 +112,9 @@ export class TerminalSession {
       terminal: this.terminal,
       container: overlayHost,
       getConfig: () => this.cursorConfig,
-      getColor: () => this.terminal.options.theme?.cursor ?? "#4ade80",
+      // Read the theme's caret colour from the source palette: the live theme
+      // cursor is made transparent while the overlay is active.
+      getColor: () => terminalTheme(this.themeMode).cursor ?? "#4ade80",
     });
     this.applyNativeCursor();
 

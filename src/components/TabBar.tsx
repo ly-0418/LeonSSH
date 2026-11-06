@@ -43,15 +43,6 @@ interface MenuState {
   key: string;
 }
 
-/** Pauses the terminal cursor (hollow box) while the mouse is held on a tab. */
-function pauseTerminalCursor(): void {
-  window.dispatchEvent(new CustomEvent("leonssh:cursor-pause"));
-}
-
-function resumeTerminalCursor(): void {
-  window.dispatchEvent(new CustomEvent("leonssh:cursor-resume"));
-}
-
 /** Threshold before a press turns into a tab drag. */
 const DRAG_THRESHOLD = 6;
 /** Ignore further swaps for this long after one, preventing boundary jitter. */
@@ -304,7 +295,6 @@ export function TabBar({
     };
 
     const up = () => {
-      resumeTerminalCursor();
       scrollDir = 0;
       window.cancelAnimationFrame(frame);
       ghostRef.current?.remove();
@@ -332,8 +322,6 @@ export function TabBar({
   }, []);
 
   const beginDrag = (tab: TabItem, event: React.PointerEvent<HTMLDivElement>) => {
-    // Both left and right presses pause the terminal cursor.
-    pauseTerminalCursor();
     if (event.button !== 0) {
       return;
     }

@@ -110,18 +110,6 @@ export function useTerminal({
     sessionRef.current?.setFontFamily(fontFamily);
   }, [fontFamily]);
 
-  // The tab bar pauses the cursor while the mouse is held on a tab.
-  useEffect(() => {
-    const pause = () => sessionRef.current?.pauseCursor();
-    const resume = () => sessionRef.current?.resumeCursor();
-    window.addEventListener("leonssh:cursor-pause", pause);
-    window.addEventListener("leonssh:cursor-resume", resume);
-    return () => {
-      window.removeEventListener("leonssh:cursor-pause", pause);
-      window.removeEventListener("leonssh:cursor-resume", resume);
-    };
-  }, []);
-
   const clearNotice = useCallback(() => setNotice(null), []);
   const focus = useCallback(() => sessionRef.current?.focus(), []);
 

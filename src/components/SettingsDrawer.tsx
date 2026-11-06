@@ -177,7 +177,7 @@ export function SettingsDrawer({
 
   return (
     <div
-      className="drawer-layer"
+      className={`drawer-layer${exiting ? " drawer-layer--leave" : ""}`}
       role="presentation"
       onPointerDown={(event) => {
         // Clicking the dimmed area outside the panel closes the drawer.

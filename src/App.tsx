@@ -375,7 +375,7 @@ export default function App() {
     window.setTimeout(() => {
       setSettingsOpen(false);
       setSettingsClosing(false);
-    }, 320);
+    }, 400);
   }, []);
 
   /** Slides the forward sheet out to the right. */
@@ -385,7 +385,7 @@ export default function App() {
       window.setTimeout(() => {
         setForwardOpen(false);
         setForwardClosing(false);
-      }, 320);
+    }, 400);
     } else {
       setForwardClosing(false);
       setForwardOpen(true);

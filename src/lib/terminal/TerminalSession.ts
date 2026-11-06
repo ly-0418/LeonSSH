@@ -492,16 +492,4 @@ export class TerminalSession {
   focus(): void {
     this.terminal.focus();
   }
-
-  /** While a tab is pressed: stop blinking and paint the hollow box cursor. */
-  pauseCursor(): void {
-    this.terminal.options.cursorInactiveStyle = "outline";
-    this.terminal.blur();
-  }
-
-  /** After the press: go back to the blinking bar. */
-  resumeCursor(): void {
-    this.terminal.options.cursorInactiveStyle = "bar";
-    this.terminal.focus();
-  }
 }

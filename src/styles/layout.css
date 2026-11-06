@@ -681,9 +681,13 @@ input[type="password"]::-ms-reveal {
     width: 560px;
     min-width: 480px;
   }
+  .sftp-overlay--leave {
+    animation: layer-fade-out 360ms ease forwards;
+  }
+
 
 .sftp-overlay--leave .sftp-sheet {
-  animation: forward-out 380ms cubic-bezier(0.55, 0, 0.85, 0.3) forwards;
+    animation: forward-out 360ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 @keyframes forward-in {
@@ -1406,8 +1410,12 @@ input[type="password"]::-ms-reveal {
 }
 
 .drawer--leave {
-  animation: drawer-out 320ms cubic-bezier(0.55, 0, 0.85, 0.3) forwards;
+    animation: drawer-out 360ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
+
+  .drawer-layer--leave {
+    animation: layer-fade-out 360ms ease forwards;
+  }
 
 @keyframes drawer-out {
   from {
@@ -2180,4 +2188,13 @@ input[type="password"]::-ms-reveal {
   cursor: default;
   user-select: none;
   -webkit-user-select: none;
+}
+/* Backdrop fades instead of popping out when a drawer closes. */
+@keyframes layer-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }

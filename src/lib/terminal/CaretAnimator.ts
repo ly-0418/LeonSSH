@@ -160,7 +160,23 @@ export class CaretAnimator {
   }
 
   private applyShape(config: CursorConfig): void {
-    const metrics = this.lastMetrics ?? this.measure();
+    let metrics = this.lastMetrics;
+    if (metrics === null || metrics.cellWidth < 1 || metrics.cellHeight < 1) {
+      metrics = this.measure();
+      this.lastMetrics = metrics;
+    }
+    if (metrics.cellWidth < 1 || metrics.cellHeight < 1) {
+      // The terminal may still be laid out after `open()`; retry next frame so
+      // the overlay never stays at zero size.
+      window.requestAnimationFrame(() => {
+        if (!this.attached) {
+          return;
+        }
+        this.lastMetrics = this.measure();
+        this.applyShape(this.options.getConfig());
+        this.snapToTarget();
+      });
+    }
     const color = this.options.getColor();
     if (config.shape === "underline") {
       this.element.style.width = `${metrics.cellWidth}px`;

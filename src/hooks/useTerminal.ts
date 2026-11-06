@@ -113,6 +113,14 @@ export function useTerminal({
     sessionRef.current?.setCursorStyle(cursorStyle, cursorWidth);
   }, [cursorStyle, cursorWidth]);
 
+  // Smooth caret settings are applied incrementally so the SSH session is
+  // never re-created by an animation tweak.
+  useEffect(() => {
+    if (cursorSmooth !== undefined) {
+      sessionRef.current?.setCursorConfig(cursorSmooth);
+    }
+  }, [cursorSmooth]);
+
   useEffect(() => {
     sessionRef.current?.setFontFamily(fontFamily);
   }, [fontFamily]);

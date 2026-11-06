@@ -2155,9 +2155,23 @@ input[type="password"]::-ms-reveal {
   letter-spacing: 0.02em;
 }
 
-/* Tab reordering: the dragged tab fades; the others glide into place (FLIP). */
+/* Tab reordering: the source becomes a translucent placeholder while a clone of
+   the tab follows the cursor (vuedraggable behaviour). */
 .tab--dragging {
-  opacity: 0.45;
+  opacity: 0.32;
+  border-style: dashed;
+  border-color: var(--border-strong);
+}
+
+.tab--ghost {
+  position: fixed;
+  z-index: 9999;
+  margin: 0;
+  pointer-events: none;
+  border-radius: 10px 10px 0 0;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+  background: var(--bg);
+  opacity: 0.96;
 }
 
 .tab {

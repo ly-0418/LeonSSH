@@ -93,6 +93,8 @@ export function TabBar({
   const suppressClickRef = useRef(false);
   const flipRef = useRef<Map<string, DOMRect> | null>(null);
   const nextSwapAtRef = useRef(0);
+  const ghostRef = useRef<HTMLDivElement | null>(null);
+  const grabOffsetRef = useRef({ x: 0, y: 0 });
 
   const syncArrows = useCallback(() => {
     const element = scrollRef.current;
@@ -195,6 +197,27 @@ export function TabBar({
         }
         state.active = true;
         setDraggingKey(state.key);
+        const source = tabRefs.current.get(state.key);
+        if (source !== undefined) {
+          const rect = source.getBoundingClientRect();
+          grabOffsetRef.current = {
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top,
+          };
+          const clone = source.cloneNode(true) as HTMLDivElement;
+          clone.classList.add("tab--ghost");
+          clone.style.width = `${rect.width}px`;
+          clone.style.height = `${rect.height}px`;
+          clone.style.left = `${rect.left}px`;
+          clone.style.top = `${rect.top}px`;
+          document.body.appendChild(clone);
+          ghostRef.current = clone;
+        }
+      }
+      const ghost = ghostRef.current;
+      if (ghost !== null) {
+        ghost.style.left = `${event.clientX - grabOffsetRef.current.x}px`;
+        ghost.style.top = `${event.clientY - grabOffsetRef.current.y}px`;
       }
       const element = document.elementFromPoint(event.clientX, event.clientY);
       const target = element instanceof Element ? element.closest<HTMLElement>("[data-tab-key]") : null;
@@ -229,6 +252,8 @@ export function TabBar({
 
     const up = () => {
       refocusTerminal();
+      ghostRef.current?.remove();
+      ghostRef.current = null;
       const state = dragRef.current;
       dragRef.current = null;
       if (state?.active === true) {

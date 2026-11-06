@@ -276,7 +276,15 @@ export class CaretAnimator {
   }
 
   private positionTransform(): string {
-    return `translate3d(${this.visualX}px, ${this.visualY}px, 0)`;
+    const config = this.options.getConfig();
+    const metrics = this.lastMetrics;
+    // The visual position is the cell's top-left corner; an underline caret has
+    // to be shifted down so it sits on the cell's baseline row.
+    const offsetY =
+      config.shape === "underline" && metrics !== null
+        ? Math.max(0, metrics.cellHeight - 3)
+        : 0;
+    return `translate3d(${this.visualX}px, ${this.visualY + offsetY}px, 0)`;
   }
 
   private renderPosition(): void {

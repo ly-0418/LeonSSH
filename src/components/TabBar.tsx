@@ -43,18 +43,13 @@ interface MenuState {
   key: string;
 }
 
-/** Blurring xterm makes it paint the hollow "outline" cursor. */
-function blurTerminalFocus(): void {
-  const active = document.activeElement;
-  if (active instanceof HTMLElement) {
-    active.blur();
-  }
+/** Pauses the terminal cursor (hollow box) while the mouse is held on a tab. */
+function pauseTerminalCursor(): void {
+  window.dispatchEvent(new CustomEvent("leonssh:cursor-pause"));
 }
 
-function refocusTerminal(): void {
-  document
-    .querySelector<HTMLElement>('.terminal-pane[data-visible="true"] .xterm-helper-textarea')
-    ?.focus();
+function resumeTerminalCursor(): void {
+  window.dispatchEvent(new CustomEvent("leonssh:cursor-resume"));
 }
 
 /** Threshold before a press turns into a tab drag. */
@@ -309,7 +304,7 @@ export function TabBar({
     };
 
     const up = () => {
-      refocusTerminal();
+      resumeTerminalCursor();
       scrollDir = 0;
       window.cancelAnimationFrame(frame);
       ghostRef.current?.remove();
@@ -338,7 +333,7 @@ export function TabBar({
 
   const beginDrag = (tab: TabItem, event: React.PointerEvent<HTMLDivElement>) => {
     // Both left and right presses pause the terminal cursor.
-    blurTerminalFocus();
+    pauseTerminalCursor();
     if (event.button !== 0) {
       return;
     }

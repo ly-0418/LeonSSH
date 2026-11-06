@@ -28,13 +28,16 @@ Windows 优先的可视化 SSH 客户端。**阶段 1–5 全部完成**：二�
 
 ## 下载
 
-| 文件 | 直接下载（GitHub） | 大小 |
-| --- | --- | --- |
-| Windows 安装包（推荐） | [LeonSSH_0.4.0_x64-setup.exe](https://github.com/ly-0418/LeonSSH/raw/main/release/LeonSSH_0.4.0_x64-setup.exe) | 4.15 MB |
-| 免安装可执行文件 | [leonssh.exe](https://github.com/ly-0418/LeonSSH/raw/main/release/leonssh.exe) | 16.4 MB |
+👉 **[前往 GitHub Releases 下载最新版本](https://github.com/ly-0418/LeonSSH/releases/latest)**
 
-安装包为 NSIS 单文件安装程序，`installMode: currentUser`，默认安装在 `%LOCALAPPDATA%\LeonSSH`。
-两个文件也在仓库的 [`release/`](release/) 目录中，可以直接浏览或下载历史版本。
+每个 Release 提供两个文件：
+
+| 文件 | 说明 |
+| --- | --- |
+| `LeonSSH_<版本>_x64-setup.exe` | NSIS 安装包（推荐），`currentUser` 安装到 `%LOCALAPPDATA%\LeonSSH` |
+| `leonssh.exe` | 免安装绿色版，双击即可运行（数据仍写在同目录 `data/`） |
+
+历史版本、更新说明都在 [Releases 页面](https://github.com/ly-0418/LeonSSH/releases)。
 窗口为**无边框**设计：应用顶栏即标题栏（按住可拖动、双击最大化），右上角自绘最小化 / 最大化-还原 / 关闭。
 
 ## 快速开始
@@ -51,19 +54,23 @@ pnpm tauri dev
 
 首次启动进入「新建会话」表单，默认值已指向 `127.0.0.1:2222`；填密码 `test` 后点「创建并连接」。
 
-## 构建产物
+## 构建与发布
 
 ```powershell
 pnpm build:release   # tauri build + 复制产物到 release/
 ```
 
-| 产物 | 路径 | 大小 |
-| --- | --- | --- |
-| 免安装可执行文件 | [`release/leonssh.exe`](release/leonssh.exe) | 16.4 MB |
-| NSIS 安装包 | [`release/LeonSSH_0.4.0_x64-setup.exe`](release/LeonSSH_0.4.0_x64-setup.exe) | 4.15 MB |
+`pnpm build:release` 会把 `src-tauri/target/release` 下的 exe 与当前版本的安装包复制到项目根目录 `release/`（该目录不入库）。
 
-`pnpm build:release` 会把 `src-tauri/target/release` 下的 exe 与当前版本的安装包复制到项目根目录 `release/`，方便随仓库发布。
-`src-tauri/target/release/...` 仍保留 Tauri 的原始输出。
+发布新版本：
+
+1. 修改 `package.json` / `src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml` 的版本号；
+2. `pnpm build:release`；
+3. 在 GitHub 创建 tag（如 `v0.4.0`）并新建 Release，上传 `release/` 里的两个文件：
+   - `leonssh.exe`
+   - `LeonSSH_<版本>_x64-setup.exe`
+
+> 仓库不存放二进制产物，避免 git 历史随版本膨胀；`README` 的下载入口始终指向 Releases。
 
 安装包 `installMode: currentUser`，默认装到 `%LOCALAPPDATA%\LeonSSH`；卸载删除程序与快捷方式，保留 `data/`。
 

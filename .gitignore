@@ -35,3 +35,6 @@ src-tauri/**/data/
 *.tmp
 *.bak
 
+
+# Local build output; published through GitHub Releases instead of git
+/release/

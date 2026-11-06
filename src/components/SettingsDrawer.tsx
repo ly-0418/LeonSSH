@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { invoke } from "@tauri-apps/api/core";
 import { FEATURE_DOCS } from "../lib/docs/featureDocs";
+import { BroadcastIcon, ForwardIcon } from "./icons";
 import { forgetKnownHost, listKnownHosts } from "../lib/ipc/sessions";
 import { toUserMessage } from "../lib/ipc/errors";
 import type { KnownHostEntry } from "../lib/ipc/types";
@@ -336,6 +337,7 @@ export function SettingsDrawer({
                     checked={showBroadcast}
                     onChange={(event) => onChangeTabVisibility("broadcast", event.target.checked)}
                   />
+                  <BroadcastIcon size={16} />
                   显示「广播」按钮
                 </label>
                 <label className="setting-toggle">
@@ -344,6 +346,7 @@ export function SettingsDrawer({
                     checked={showForward}
                     onChange={(event) => onChangeTabVisibility("forward", event.target.checked)}
                   />
+                  <ForwardIcon size={16} />
                   显示「转发」按钮
                 </label>
               </div>

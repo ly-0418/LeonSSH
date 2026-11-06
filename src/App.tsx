@@ -296,6 +296,21 @@ export default function App() {
     [tabs, activeKey, sessions.length],
   );
 
+  /** Moves a dragged tab to the drop position (order only, no reconnect). */
+  const reorderTabs = useCallback((fromKey: string, toKey: string) => {
+    setTabs((current) => {
+      const from = current.findIndex((tab) => tab.key === fromKey);
+      const to = current.findIndex((tab) => tab.key === toKey);
+      if (from < 0 || to < 0 || from === to) {
+        return current;
+      }
+      const next = [...current];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }, []);
+
   const makeStatusHandler = useCallback(
     (key: string) => (patch: Partial<TerminalStatus>) => {
       setTabs((prev) => {
@@ -530,6 +545,7 @@ export default function App() {
               })
             }
             onDuplicate={duplicateTab}
+            onReorder={reorderTabs}
             forwardOpen={forwardOpen}
             onToggleForward={toggleForward}
             broadcast={broadcast}

@@ -1,4 +1,7 @@
 :root {
+  /* Shared layout metrics: the fixed file manager uses these. */
+  --app-header-height: 36px;
+  --status-bar-height: 28px;
   /* Whole-UI scale, driven by the font-size setting (1 = 16px). */
   color-scheme: dark;
 

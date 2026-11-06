@@ -2154,3 +2154,12 @@ input[type="password"]::-ms-reveal {
   font-size: 11.5px;
   letter-spacing: 0.02em;
 }
+
+/* Tab reordering: the dragged tab fades, the hover target keeps its shape. */
+.tab--dragging {
+  opacity: 0.45;
+}
+
+.tab {
+  -webkit-user-drag: element;
+}

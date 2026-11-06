@@ -24,6 +24,8 @@ interface TabBarProps {
   onClose: (key: string) => void;
   onNewSession: () => void;
   onDuplicate: (key: string) => void;
+  /** Drag a tab onto another one to move it there. */
+  onReorder: (fromKey: string, toKey: string) => void;
   forwardOpen: boolean;
   onToggleForward: () => void;
   broadcast: boolean;
@@ -48,6 +50,7 @@ export function TabBar({
   onClose,
   onNewSession,
   onDuplicate,
+  onReorder,
   forwardOpen,
   onToggleForward,
   broadcast,
@@ -58,6 +61,7 @@ export function TabBar({
   onDisconnect,
 }: TabBarProps) {
   const [menu, setMenu] = useState<MenuState | null>(null);
+  const [draggingKey, setDraggingKey] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -160,7 +164,28 @@ export function TabBar({
           key={tab.key}
           role="tab"
           aria-selected={tab.key === activeKey}
-          className={`tab${tab.key === activeKey ? " tab--active" : ""}`}
+          className={`tab${tab.key === activeKey ? " tab--active" : ""}${draggingKey === tab.key ? " tab--dragging" : ""}`}
+          draggable
+          onDragStart={(event) => {
+            setDraggingKey(tab.key);
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("application/x-leonssh-tab", tab.key);
+          }}
+          onDragEnd={() => setDraggingKey(null)}
+          onDragOver={(event) => {
+            if (draggingKey !== null && draggingKey !== tab.key) {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+            }
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            const from = event.dataTransfer.getData("application/x-leonssh-tab") || draggingKey;
+            if (from !== null && from !== tab.key) {
+              onReorder(from, tab.key);
+            }
+            setDraggingKey(null);
+          }}
           onClick={() => onActivate(tab.key)}
           onAuxClick={(event) => {
             if (event.button === 1) {

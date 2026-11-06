@@ -183,9 +183,70 @@ export function TabBar({
     });
   }, [tabs]);
 
-  // Pointer-driven reorder: hover another tab while dragging to swap places.
+  // Pointer-driven reorder: a clone follows the cursor, the source becomes a
+  // placeholder, and dragging near an edge auto-scrolls the strip.
   useEffect(() => {
+    const lastPos = { x: 0, y: 0 };
+    let scrollDir = 0;
+    let frame = 0;
+
+    const evaluate = () => {
+      const state = dragRef.current;
+      if (state === null || !state.active) {
+        return;
+      }
+      const ghost = ghostRef.current;
+      if (ghost !== null) {
+        ghost.style.left = `${lastPos.x - grabOffsetRef.current.x}px`;
+        ghost.style.top = `${lastPos.y - grabOffsetRef.current.y}px`;
+      }
+      const element = document.elementFromPoint(lastPos.x, lastPos.y);
+      const target = element instanceof Element ? element.closest<HTMLElement>("[data-tab-key]") : null;
+      if (target === null) {
+        return;
+      }
+      const targetKey = target.dataset.tabKey ?? null;
+      if (targetKey === null || targetKey === state.key) {
+        return;
+      }
+      const fromIndex = tabs.findIndex((tab) => tab.key === state.key);
+      const toIndex = tabs.findIndex((tab) => tab.key === targetKey);
+      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+        return;
+      }
+      // Hysteresis: only swap once the pointer is clearly past the middle of the
+      // hovered tab, and never more often than the cooldown allows.
+      const now = Date.now();
+      if (now < nextSwapAtRef.current) {
+        return;
+      }
+      const rect = target.getBoundingClientRect();
+      const centre = rect.left + rect.width / 2;
+      const movingRight = toIndex > fromIndex;
+      if (movingRight
+        ? lastPos.x < centre + rect.width * 0.08
+        : lastPos.x > centre - rect.width * 0.08) {
+        return;
+      }
+      nextSwapAtRef.current = now + SWAP_COOLDOWN_MS;
+      snapshotTabs();
+      onReorder(state.key, targetKey);
+    };
+
+    const tick = () => {
+      const element = scrollRef.current;
+      if (element !== null && scrollDir !== 0) {
+        element.scrollLeft += scrollDir * 14;
+        evaluate();
+      }
+      if (dragRef.current?.active === true) {
+        frame = window.requestAnimationFrame(tick);
+      }
+    };
+
     const move = (event: PointerEvent) => {
+      lastPos.x = event.clientX;
+      lastPos.y = event.clientY;
       const state = dragRef.current;
       if (state === null) {
         return;
@@ -213,45 +274,39 @@ export function TabBar({
           document.body.appendChild(clone);
           ghostRef.current = clone;
         }
+        window.cancelAnimationFrame(frame);
+        frame = window.requestAnimationFrame(tick);
       }
-      const ghost = ghostRef.current;
-      if (ghost !== null) {
-        ghost.style.left = `${event.clientX - grabOffsetRef.current.x}px`;
-        ghost.style.top = `${event.clientY - grabOffsetRef.current.y}px`;
+
+      // Auto-scroll when the pointer nears either edge of the strip.
+      scrollDir = 0;
+      const scroller = scrollRef.current;
+      if (scroller !== null) {
+        const rect = scroller.getBoundingClientRect();
+        const EDGE = 48;
+        if (event.clientX <= rect.left + EDGE) {
+          scrollDir = -1;
+        } else if (event.clientX >= rect.right - EDGE) {
+          scrollDir = 1;
+        }
+        if (scrollDir === -1 && scroller.scrollLeft <= 0) {
+          scrollDir = 0;
+        }
+        if (
+          scrollDir === 1 &&
+          scroller.scrollLeft + scroller.clientWidth >= scroller.scrollWidth - 1
+        ) {
+          scrollDir = 0;
+        }
       }
-      const element = document.elementFromPoint(event.clientX, event.clientY);
-      const target = element instanceof Element ? element.closest<HTMLElement>("[data-tab-key]") : null;
-      if (target === null) {
-        return;
-      }
-      const targetKey = target.dataset.tabKey ?? null;
-      if (targetKey === null || targetKey === state.key) {
-        return;
-      }
-      const fromIndex = tabs.findIndex((tab) => tab.key === state.key);
-      const toIndex = tabs.findIndex((tab) => tab.key === targetKey);
-      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
-        return;
-      }
-      // Hysteresis: only swap once the pointer is clearly past the middle of the
-      // hovered tab, and never more often than the cooldown allows.
-      const now = Date.now();
-      if (now < nextSwapAtRef.current) {
-        return;
-      }
-      const rect = target.getBoundingClientRect();
-      const centre = rect.left + rect.width / 2;
-      const movingRight = toIndex > fromIndex;
-      if (movingRight ? event.clientX < centre + rect.width * 0.08 : event.clientX > centre - rect.width * 0.08) {
-        return;
-      }
-      nextSwapAtRef.current = now + SWAP_COOLDOWN_MS;
-      snapshotTabs();
-      onReorder(state.key, targetKey);
+
+      evaluate();
     };
 
     const up = () => {
       refocusTerminal();
+      scrollDir = 0;
+      window.cancelAnimationFrame(frame);
       ghostRef.current?.remove();
       ghostRef.current = null;
       const state = dragRef.current;
@@ -272,6 +327,7 @@ export function TabBar({
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
+      window.cancelAnimationFrame(frame);
     };
   }, [onReorder, tabs]);
 

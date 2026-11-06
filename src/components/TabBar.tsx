@@ -45,6 +45,8 @@ interface MenuState {
 
 /** Threshold before a press turns into a tab drag. */
 const DRAG_THRESHOLD = 6;
+/** Ignore further swaps for this long after one, preventing boundary jitter. */
+const SWAP_COOLDOWN_MS = 320;
 
 export function TabBar({
   tabs,
@@ -76,6 +78,7 @@ export function TabBar({
   const dragRef = useRef<{ key: string; startX: number; startY: number; active: boolean } | null>(null);
   const suppressClickRef = useRef(false);
   const flipRef = useRef<Map<string, DOMRect> | null>(null);
+  const nextSwapAtRef = useRef(0);
 
   const syncArrows = useCallback(() => {
     const element = scrollRef.current;
@@ -154,7 +157,7 @@ export function TabBar({
       element.style.transition = "none";
       element.style.transform = `translateX(${delta}px)`;
       void element.offsetWidth;
-      element.style.transition = "transform 190ms cubic-bezier(0.2, 0.8, 0.3, 1)";
+      element.style.transition = "transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1)";
       element.style.transform = "";
       const clear = () => {
         element.style.transition = "";
@@ -181,7 +184,10 @@ export function TabBar({
       }
       const element = document.elementFromPoint(event.clientX, event.clientY);
       const target = element instanceof Element ? element.closest<HTMLElement>("[data-tab-key]") : null;
-      const targetKey = target?.dataset.tabKey ?? null;
+      if (target === null) {
+        return;
+      }
+      const targetKey = target.dataset.tabKey ?? null;
       if (targetKey === null || targetKey === state.key) {
         return;
       }
@@ -190,6 +196,19 @@ export function TabBar({
       if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
         return;
       }
+      // Hysteresis: only swap once the pointer is clearly past the middle of the
+      // hovered tab, and never more often than the cooldown allows.
+      const now = Date.now();
+      if (now < nextSwapAtRef.current) {
+        return;
+      }
+      const rect = target.getBoundingClientRect();
+      const centre = rect.left + rect.width / 2;
+      const movingRight = toIndex > fromIndex;
+      if (movingRight ? event.clientX < centre + rect.width * 0.08 : event.clientX > centre - rect.width * 0.08) {
+        return;
+      }
+      nextSwapAtRef.current = now + SWAP_COOLDOWN_MS;
       snapshotTabs();
       onReorder(state.key, targetKey);
     };

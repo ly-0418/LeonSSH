@@ -43,11 +43,11 @@
 }
 
 .file-manager--enter {
-  animation: fm-slide-in 220ms cubic-bezier(0.22, 0.9, 0.24, 1);
+  animation: fm-slide-in 420ms cubic-bezier(0.22, 0.9, 0.24, 1);
 }
 
 .file-manager--leave {
-  animation: fm-slide-out 220ms cubic-bezier(0.55, 0, 0.85, 0.3) forwards;
+  animation: fm-slide-out 380ms cubic-bezier(0.55, 0, 0.85, 0.3) forwards;
   pointer-events: none;
 }
 

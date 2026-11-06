@@ -366,7 +366,7 @@ export default function App() {
   const closeFiles = useCallback(() => {
     setFilesExiting(true);
     setView("terminal");
-    window.setTimeout(() => setFilesExiting(false), 220);
+    window.setTimeout(() => setFilesExiting(false), 380);
   }, []);
 
   /** Slides the settings drawer out before unmounting it. */
@@ -375,7 +375,7 @@ export default function App() {
     window.setTimeout(() => {
       setSettingsOpen(false);
       setSettingsClosing(false);
-    }, 200);
+    }, 320);
   }, []);
 
   /** Slides the forward sheet out to the right. */
@@ -385,7 +385,7 @@ export default function App() {
       window.setTimeout(() => {
         setForwardOpen(false);
         setForwardClosing(false);
-      }, 200);
+      }, 320);
     } else {
       setForwardClosing(false);
       setForwardOpen(true);

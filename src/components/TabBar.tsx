@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { BroadcastIcon, ForwardIcon } from "./icons";
 import type { TerminalStatus } from "../lib/ipc/types";
 
 export interface TabItem {
@@ -226,8 +227,9 @@ export function TabBar({
         className={`tab-bar__action${broadcast ? " tab-bar__action--active" : ""}`}
         onClick={onToggleBroadcast}
         title="广播输入：在多个会话之间同步键入"
+        aria-label="广播输入"
       >
-        广播
+        <BroadcastIcon />
       </button>
       )}
       {showForward && (
@@ -237,8 +239,9 @@ export function TabBar({
         onClick={onToggleForward}
         disabled={activeKey === null}
         title="端口转发（-L / -R / -D）"
+        aria-label="端口转发"
       >
-        转发
+        <ForwardIcon />
       </button>
       )}
 

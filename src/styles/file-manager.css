@@ -1204,13 +1204,17 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 30px;
 }
 
 .file-menu__icon,
 .tab-menu__icon {
   flex: 0 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
   width: 18px;
-  text-align: center;
   font-family: "Segoe Fluent Icons", "Segoe MDL2 Assets", sans-serif;
   font-size: 13px;
   line-height: 1;
@@ -1222,5 +1226,8 @@
 }
 
 .file-menu__label {
+  display: flex;
+  align-items: center;
   flex: 1 1 auto;
+  line-height: 1.35;
 }

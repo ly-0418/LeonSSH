@@ -22,3 +22,28 @@ export function SettingsIcon({ size = 19 }: IconProps) {
     </svg>
   );
 }
+
+/** Broadcast input to every session (radio waves). */
+export function BroadcastIcon({ size = 15 }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="2.2" />
+      <path d="M7.8 8.2a6 6 0 0 0 0 7.6" />
+      <path d="M16.2 8.2a6 6 0 0 1 0 7.6" />
+      <path d="M5 5.4a9.7 9.7 0 0 0 0 13.2" />
+      <path d="M19 5.4a9.7 9.7 0 0 1 0 13.2" />
+    </svg>
+  );
+}
+
+/** Port forwarding (arrow through a bracket). */
+export function ForwardIcon({ size = 15 }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 7v10" />
+      <path d="M20 7v10" />
+      <path d="M8 12h8" />
+      <path d="m13 9 3 3-3 3" />
+    </svg>
+  );
+}

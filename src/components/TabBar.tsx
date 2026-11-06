@@ -256,6 +256,7 @@ export function TabBar({
               setMenu(null);
             }}
           >
+            <span className="tab-menu__icon">{"\uE711"}</span>
             关闭会话
           </button>
                     {(() => {
@@ -270,6 +271,7 @@ export function TabBar({
                     setMenu(null);
                   }}
                 >
+                  <span className="tab-menu__icon">{"\uE8CD"}</span>
                   断开连接
                 </button>
               ) : (
@@ -281,6 +283,7 @@ export function TabBar({
                     setMenu(null);
                   }}
                 >
+                  <span className="tab-menu__icon">{"\uE72C"}</span>
                   重新连接
                 </button>
               );
@@ -293,6 +296,7 @@ export function TabBar({
               setMenu(null);
             }}
           >
+            <span className="tab-menu__icon">{"\uE8C8"}</span>
             复制连接到新会话
           </button>
         </div>

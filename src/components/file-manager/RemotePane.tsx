@@ -248,9 +248,10 @@ function RemotePaneLoaded({
   function menuItems(entry: PaneEntry | null): FileMenuItem[] {
     if (entry === null) {
       return [
-        { label: "新建文件夹", onSelect: () => setPrompt({ kind: "folder" }) },
-        { label: "新建文件", onSelect: () => setPrompt({ kind: "file" }) },
-        { label: "在终端中打开", onSelect: () => onOpenInTerminal?.(pane.path) },
+        { icon: "\uE8F4", label: "新建文件夹", onSelect: () => setPrompt({ kind: "folder" }) },
+        { icon: "\uE8A5", label: "新建文件", onSelect: () => setPrompt({ kind: "file" }) },
+        { icon: "\uE72C", label: "刷新", onSelect: () => void pane.refresh() },
+        { icon: "\uE756", label: "在终端中打开", onSelect: () => onOpenInTerminal?.(pane.path) },
       ];
     }
 
@@ -258,17 +259,19 @@ function RemotePaneLoaded({
     if (targets.length > 1) {
       return [
         {
+          icon: "\uE74D",
           label: `批量删除（${targets.length} 项）`,
           danger: true,
           onSelect: () => setBatchDelete(targets),
         },
-        { label: `批量复制到...`, onSelect: () => openTransfer(targets, "copy") },
-        { label: `批量移动到...`, onSelect: () => openTransfer(targets, "move") },
+        { icon: "\uE8C8", label: `批量复制到...`, onSelect: () => openTransfer(targets, "copy") },
+        { icon: "\uE8DE", label: `批量移动到...`, onSelect: () => openTransfer(targets, "move") },
       ];
     }
 
     const common: FileMenuItem[] = [
       {
+        icon: "\uE8C8",
         label: "复制到当前目录",
         onSelect: () => {
           void run(async () => {
@@ -276,9 +279,10 @@ function RemotePaneLoaded({
           });
         },
       },
-      { label: "复制到...", onSelect: () => openTransfer([entry], "copy") },
-      { label: "移动到...", onSelect: () => openTransfer([entry], "move") },
+      { icon: "\uE8C8", label: "复制到...", onSelect: () => openTransfer([entry], "copy") },
+      { icon: "\uE8DE", label: "移动到...", onSelect: () => openTransfer([entry], "move") },
       {
+        icon: "\uE72E",
         label: "权限",
         onSelect: () => {
           setChmodMode(entry.permissions ?? 0o644);
@@ -289,17 +293,17 @@ function RemotePaneLoaded({
 
     if (entry.isDir) {
       return [
-        { label: "在终端中打开", onSelect: () => onOpenInTerminal?.(entry.path) },
-        { label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
-        { label: "删除文件夹", danger: true, onSelect: () => setPendingDelete(entry) },
+        { icon: "\uE756", label: "在终端中打开", onSelect: () => onOpenInTerminal?.(entry.path) },
+        { icon: "\uE8AC", label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
+        { icon: "\uE74D", label: "删除文件夹", danger: true, onSelect: () => setPendingDelete(entry) },
         ...common,
       ];
     }
 
     return [
-      { label: "编辑", onSelect: () => onOpenFile?.(entry) },
-      { label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
-      { label: "删除", danger: true, onSelect: () => setPendingDelete(entry) },
+      { icon: "\uE70F", label: "编辑", onSelect: () => onOpenFile?.(entry) },
+      { icon: "\uE8AC", label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
+      { icon: "\uE74D", label: "删除", danger: true, onSelect: () => setPendingDelete(entry) },
       ...common,
     ];
   }

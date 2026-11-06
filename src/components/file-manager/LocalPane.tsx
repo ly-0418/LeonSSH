@@ -126,20 +126,21 @@ export function LocalPane({
   function menuItems(entry: FileEntry | null): FileMenuItem[] {
     if (entry === null) {
       return [
-        { label: "新建文件夹", onSelect: () => setPrompt({ kind: "folder" }) },
-        { label: "新建文件", onSelect: () => setPrompt({ kind: "file" }) },
+        { icon: "\uE8F4", label: "新建文件夹", onSelect: () => setPrompt({ kind: "folder" }) },
+        { icon: "\uE8A5", label: "新建文件", onSelect: () => setPrompt({ kind: "file" }) },
+        { icon: "\uE72C", label: "刷新", onSelect: () => void pane.refresh() },
       ];
     }
     if (entry.isDir) {
       return [
-        { label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
-        { label: "删除文件夹", danger: true, onSelect: () => setPendingDelete(entry) },
+        { icon: "\uE8AC", label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
+        { icon: "\uE74D", label: "删除文件夹", danger: true, onSelect: () => setPendingDelete(entry) },
       ];
     }
     return [
-      { label: "编辑（系统默认工具）", onSelect: () => void run(() => openLocalFile(entry.path)) },
-      { label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
-      { label: "删除", danger: true, onSelect: () => setPendingDelete(entry) },
+      { icon: "\uE70F", label: "编辑（系统默认工具）", onSelect: () => void run(() => openLocalFile(entry.path)) },
+      { icon: "\uE8AC", label: "重命名", onSelect: () => setPrompt({ kind: "rename", entry }) },
+      { icon: "\uE74D", label: "删除", danger: true, onSelect: () => setPendingDelete(entry) },
     ];
   }
 

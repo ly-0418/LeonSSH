@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 
 export interface FileMenuItem {
   label: string;
+  /** Segoe Fluent Icons glyph shown on the left of the label. */
+  icon?: string;
   danger?: boolean;
   onSelect: () => void;
 }
@@ -15,7 +17,7 @@ interface FileContextMenuProps {
 }
 
 const ITEM_HEIGHT = 32;
-const MENU_WIDTH = 178;
+const MENU_WIDTH = 208;
 
 /** Lightweight context menu for the file tables. */
 export function FileContextMenu({ x, y, items, onClose }: FileContextMenuProps) {
@@ -62,7 +64,8 @@ export function FileContextMenu({ x, y, items, onClose }: FileContextMenuProps) 
             onClose();
           }}
         >
-          {item.label}
+          {item.icon !== undefined && <span className="file-menu__icon">{item.icon}</span>}
+          <span className="file-menu__label">{item.label}</span>
         </button>
       ))}
     </div>

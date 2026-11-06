@@ -95,6 +95,10 @@ export function TabBar({
   const nextSwapAtRef = useRef(0);
   const ghostRef = useRef<HTMLDivElement | null>(null);
   const grabOffsetRef = useRef({ x: 0, y: 0 });
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
+  const onReorderRef = useRef(onReorder);
+  onReorderRef.current = onReorder;
 
   const syncArrows = useCallback(() => {
     const element = scrollRef.current;
@@ -230,7 +234,7 @@ export function TabBar({
       }
       nextSwapAtRef.current = now + SWAP_COOLDOWN_MS;
       snapshotTabs();
-      onReorder(state.key, targetKey);
+      onReorderRef.current(state.key, targetKey);
     };
 
     const tick = () => {
@@ -329,7 +333,7 @@ export function TabBar({
       window.removeEventListener("pointercancel", up);
       window.cancelAnimationFrame(frame);
     };
-  }, [onReorder, tabs]);
+  }, []);
 
   const beginDrag = (tab: TabItem, event: React.PointerEvent<HTMLDivElement>) => {
     // Both left and right presses pause the terminal cursor.

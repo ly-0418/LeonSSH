@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { BroadcastIcon, ForwardIcon } from "./icons";
 import type { TerminalStatus } from "../lib/ipc/types";
@@ -43,6 +43,9 @@ interface MenuState {
   key: string;
 }
 
+/** Threshold before a press turns into a tab drag. */
+const DRAG_THRESHOLD = 6;
+
 export function TabBar({
   tabs,
   activeKey,
@@ -66,6 +69,13 @@ export function TabBar({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+
+  // HTML5 drag-and-drop is unreliable inside WebView2, so tabs are reordered by
+  // tracking the pointer ourselves (same approach as the file manager).
+  const tabRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const dragRef = useRef<{ key: string; startX: number; startY: number; active: boolean } | null>(null);
+  const suppressClickRef = useRef(false);
+  const flipRef = useRef<Map<string, DOMRect> | null>(null);
 
   const syncArrows = useCallback(() => {
     const element = scrollRef.current;
@@ -115,6 +125,113 @@ export function TabBar({
     };
   }, [tabs.length, syncArrows]);
 
+  /** FLIP: record where every tab sits before the order changes. */
+  const snapshotTabs = () => {
+    const snapshot = new Map<string, DOMRect>();
+    tabRefs.current.forEach((element, key) => {
+      snapshot.set(key, element.getBoundingClientRect());
+    });
+    flipRef.current = snapshot;
+  };
+
+  // Animate the tabs into their new slots after a reorder.
+  useLayoutEffect(() => {
+    const previous = flipRef.current;
+    flipRef.current = null;
+    if (previous === null) {
+      return;
+    }
+    previous.forEach((before, key) => {
+      const element = tabRefs.current.get(key);
+      if (element === undefined) {
+        return;
+      }
+      const after = element.getBoundingClientRect();
+      const delta = before.left - after.left;
+      if (Math.abs(delta) < 1) {
+        return;
+      }
+      element.style.transition = "none";
+      element.style.transform = `translateX(${delta}px)`;
+      void element.offsetWidth;
+      element.style.transition = "transform 190ms cubic-bezier(0.2, 0.8, 0.3, 1)";
+      element.style.transform = "";
+      const clear = () => {
+        element.style.transition = "";
+        element.removeEventListener("transitionend", clear);
+      };
+      element.addEventListener("transitionend", clear);
+    });
+  }, [tabs]);
+
+  // Pointer-driven reorder: hover another tab while dragging to swap places.
+  useEffect(() => {
+    const move = (event: PointerEvent) => {
+      const state = dragRef.current;
+      if (state === null) {
+        return;
+      }
+      if (!state.active) {
+        const travelled = Math.hypot(event.clientX - state.startX, event.clientY - state.startY);
+        if (travelled < DRAG_THRESHOLD) {
+          return;
+        }
+        state.active = true;
+        setDraggingKey(state.key);
+      }
+      const element = document.elementFromPoint(event.clientX, event.clientY);
+      const target = element instanceof Element ? element.closest<HTMLElement>("[data-tab-key]") : null;
+      const targetKey = target?.dataset.tabKey ?? null;
+      if (targetKey === null || targetKey === state.key) {
+        return;
+      }
+      const fromIndex = tabs.findIndex((tab) => tab.key === state.key);
+      const toIndex = tabs.findIndex((tab) => tab.key === targetKey);
+      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+        return;
+      }
+      snapshotTabs();
+      onReorder(state.key, targetKey);
+    };
+
+    const up = () => {
+      const state = dragRef.current;
+      dragRef.current = null;
+      if (state?.active === true) {
+        suppressClickRef.current = true;
+        window.setTimeout(() => {
+          suppressClickRef.current = false;
+        }, 0);
+      }
+      setDraggingKey(null);
+    };
+
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+  }, [onReorder, tabs]);
+
+  const beginDrag = (tab: TabItem, event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+    const target = event.target as HTMLElement;
+    if (target.closest(".tab__close") !== null) {
+      return;
+    }
+    dragRef.current = {
+      key: tab.key,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false,
+    };
+  };
+
   useEffect(() => {
     if (menu === null) {
       return;
@@ -159,65 +276,57 @@ export function TabBar({
           className={`tab-bar__scroll${canScrollLeft ? " tab-bar__scroll--fade-left" : ""}${canScrollRight ? " tab-bar__scroll--fade-right" : ""}`}
           ref={scrollRef}
         >
-      {tabs.map((tab) => (
-        <div
-          key={tab.key}
-          role="tab"
-          aria-selected={tab.key === activeKey}
-          className={`tab${tab.key === activeKey ? " tab--active" : ""}${draggingKey === tab.key ? " tab--dragging" : ""}`}
-          draggable
-          onDragStart={(event) => {
-            setDraggingKey(tab.key);
-            event.dataTransfer.effectAllowed = "move";
-            event.dataTransfer.setData("application/x-leonssh-tab", tab.key);
-          }}
-          onDragEnd={() => setDraggingKey(null)}
-          onDragOver={(event) => {
-            if (draggingKey !== null && draggingKey !== tab.key) {
-              event.preventDefault();
-              event.dataTransfer.dropEffect = "move";
-            }
-          }}
-          onDrop={(event) => {
-            event.preventDefault();
-            const from = event.dataTransfer.getData("application/x-leonssh-tab") || draggingKey;
-            if (from !== null && from !== tab.key) {
-              onReorder(from, tab.key);
-            }
-            setDraggingKey(null);
-          }}
-          onClick={() => onActivate(tab.key)}
-          onAuxClick={(event) => {
-            if (event.button === 1) {
-              onClose(tab.key);
-            }
-          }}
-          onContextMenu={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onActivate(tab.key);
-            setMenu({ x: event.clientX, y: event.clientY, key: tab.key });
-          }}
-        >
-          <span className={STATE_DOT[tab.status.state] ?? STATE_DOT.closed} />
-          <span className="tab__title" title={tab.status.endpoint ?? tab.title}>
-            {tab.title}
-          </span>
-          <button
-            type="button"
-            className="tab__close"
-            title="关闭会话"
-            aria-label="关闭会话"
-            onClick={(event) => {
-              event.stopPropagation();
-              onClose(tab.key);
-            }}
-          >
-            ✕
-          </button>
-        </div>
-      ))}
-
+          {tabs.map((tab) => (
+            <div
+              key={tab.key}
+              ref={(element) => {
+                if (element === null) {
+                  tabRefs.current.delete(tab.key);
+                } else {
+                  tabRefs.current.set(tab.key, element);
+                }
+              }}
+              data-tab-key={tab.key}
+              role="tab"
+              aria-selected={tab.key === activeKey}
+              className={`tab${tab.key === activeKey ? " tab--active" : ""}${draggingKey === tab.key ? " tab--dragging" : ""}`}
+              onPointerDown={(event) => beginDrag(tab, event)}
+              onClick={() => {
+                if (suppressClickRef.current) {
+                  return;
+                }
+                onActivate(tab.key);
+              }}
+              onAuxClick={(event) => {
+                if (event.button === 1) {
+                  onClose(tab.key);
+                }
+              }}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onActivate(tab.key);
+                setMenu({ x: event.clientX, y: event.clientY, key: tab.key });
+              }}
+            >
+              <span className={STATE_DOT[tab.status.state] ?? STATE_DOT.closed} />
+              <span className="tab__title" title={tab.status.endpoint ?? tab.title}>
+                {tab.title}
+              </span>
+              <button
+                type="button"
+                className="tab__close"
+                title="关闭会话"
+                aria-label="关闭会话"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onClose(tab.key);
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
         </div>
         <button
           type="button"
@@ -243,35 +352,33 @@ export function TabBar({
         ＋
       </button>
 
-
-
       <span className="tab-bar__spacer" />
       {showBroadcast && (
-      <button
-        type="button"
-        className={`tab-bar__action${broadcast ? " tab-bar__action--active" : ""}`}
-        onClick={onToggleBroadcast}
-        title="广播输入：在多个会话之间同步键入"
-        aria-label="广播输入"
-      >
-        <BroadcastIcon />
-      </button>
+        <button
+          type="button"
+          className={`tab-bar__action${broadcast ? " tab-bar__action--active" : ""}`}
+          onClick={onToggleBroadcast}
+          title="广播输入：在多个会话之间同步键入"
+          aria-label="广播输入"
+        >
+          <BroadcastIcon />
+        </button>
       )}
       {showForward && (
-      <button
-        type="button"
-        className={`tab-bar__action${forwardOpen ? " tab-bar__action--active" : ""}`}
-        onClick={onToggleForward}
-        disabled={activeKey === null}
-        title="端口转发（-L / -R / -D）"
-        aria-label="端口转发"
-      >
-        <ForwardIcon />
-      </button>
+        <button
+          type="button"
+          className={`tab-bar__action${forwardOpen ? " tab-bar__action--active" : ""}`}
+          onClick={onToggleForward}
+          disabled={activeKey === null}
+          title="端口转发（-L / -R / -D）"
+          aria-label="端口转发"
+        >
+          <ForwardIcon />
+        </button>
       )}
 
       {menu !== null && (
-          <div
+        <div
           className="tab-menu"
           style={{ left: menu.x, top: menu.y }}
           onClick={(event) => event.stopPropagation()}
@@ -287,35 +394,35 @@ export function TabBar({
             <span className="tab-menu__icon">{"\uE711"}</span>
             关闭会话
           </button>
-                    {(() => {
-              const target = tabs.find((tab) => tab.key === menu.key);
-              const connected = target !== undefined && target.status.terminalId !== null;
-              return connected ? (
-                <button
-                  type="button"
-                  className="tab-menu__item"
-                  onClick={() => {
-                    onDisconnect(menu.key);
-                    setMenu(null);
-                  }}
-                >
-                  <span className="tab-menu__icon">{"\uE8CD"}</span>
-                  断开连接
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="tab-menu__item"
-                  onClick={() => {
-                    onReconnect(menu.key);
-                    setMenu(null);
-                  }}
-                >
-                  <span className="tab-menu__icon">{"\uE72C"}</span>
-                  重新连接
-                </button>
-              );
-            })()}
+          {(() => {
+            const target = tabs.find((tab) => tab.key === menu.key);
+            const connected = target !== undefined && target.status.terminalId !== null;
+            return connected ? (
+              <button
+                type="button"
+                className="tab-menu__item"
+                onClick={() => {
+                  onDisconnect(menu.key);
+                  setMenu(null);
+                }}
+              >
+                <span className="tab-menu__icon">{"\uE8CD"}</span>
+                断开连接
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="tab-menu__item"
+                onClick={() => {
+                  onReconnect(menu.key);
+                  setMenu(null);
+                }}
+              >
+                <span className="tab-menu__icon">{"\uE72C"}</span>
+                重新连接
+              </button>
+            );
+          })()}
           <button
             type="button"
             className="tab-menu__item"

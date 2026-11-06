@@ -2155,11 +2155,16 @@ input[type="password"]::-ms-reveal {
   letter-spacing: 0.02em;
 }
 
-/* Tab reordering: the dragged tab fades, the hover target keeps its shape. */
+/* Tab reordering: the dragged tab fades; the others glide into place (FLIP). */
 .tab--dragging {
   opacity: 0.45;
 }
 
 .tab {
-  -webkit-user-drag: element;
+  touch-action: none;
+  cursor: grab;
+}
+
+.tab:active {
+  cursor: grabbing;
 }

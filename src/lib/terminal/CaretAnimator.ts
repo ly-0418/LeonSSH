@@ -95,6 +95,7 @@ export class CaretAnimator {
       return;
     }
     this.applyShape(config);
+    this.renderPosition();
     // A jump-mode change while moving should settle immediately.
     if (config.smoothMove === "off") {
       this.snapToTarget();

@@ -70,6 +70,14 @@ pnpm build:release   # tauri build + 复制产物到 release/
    - `leonssh.exe`
    - `LeonSSH_<版本>_x64-setup.exe`
 
+脚本化发布（需要已登录的 [GitHub CLI](https://cli.github.com/)）：
+
+```powershell
+pwsh scripts/publish-release.ps1 -Notes "本版更新说明"
+```
+
+未安装 gh 时脚本会打印手动发布步骤，会上传 `release/` 里的两个文件并创建对应 tag。
+
 > 仓库不存放二进制产物，避免 git 历史随版本膨胀；`README` 的下载入口始终指向 Releases。
 
 安装包 `installMode: currentUser`，默认装到 `%LOCALAPPDATA%\LeonSSH`；卸载删除程序与快捷方式，保留 `data/`。

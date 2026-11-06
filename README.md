@@ -136,8 +136,8 @@ docker/sshd/                验收用真实 sshd 镜像
 
 ## 已知限制
 
-- 仅密码认证（`auth_method`/`private_key_path` 字段已预留）
-- SFTP 只做单文件传输，无目录递归/拖拽
+- 支持密码与私钥认证；私钥口令同样存入 Windows 凭据管理器
+- SFTP 支持文件与整个文件夹递归传输，暂不支持跨会话队列持久化/历史记录
 - SOCKS5 无认证、无 UDP
 - 标签页不跨重启恢复
 - 本机 crates.io 连接不稳定：依赖通过镜像拉取后同步到 cargo 缓存（`tools/sync-cargo-cache.ps1`），项目本身不含镜像配置

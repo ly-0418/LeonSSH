@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { appVersion, openExternalUrl } from "../lib/ipc/app";
 import { UpdateAvailableIcon } from "./icons";
-import { setAvailableUpdate } from "../lib/updateStore";
+import { getAvailableUpdate, setAvailableUpdate, subscribeAvailableUpdate } from "../lib/updateStore";
 import {
   checkForUpdate,
   fetchRecentReleases,
@@ -38,6 +38,28 @@ export function UpdatePanel() {
   const [releases, setReleases] = useState<ReleaseNote[]>([]);
   const [releasesLoading, setReleasesLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  // The startup / 30-minute check may already know about a new version: show it
+  // here immediately instead of waiting for a manual check.
+  useEffect(() => {
+    return subscribeAvailableUpdate((info) => {
+      if (info !== null) {
+        setUpdate(info);
+        setState((current) => (current === "checking" ? current : "available"));
+      } else {
+        // The background check found us up to date; drop a stale banner.
+        setState((current) => (current === "available" ? "current" : current));
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    const initial = getAvailableUpdate();
+    if (initial !== null) {
+      setUpdate(initial);
+      setState("available");
+    }
+  }, []);
 
   useEffect(() => {
     void appVersion()

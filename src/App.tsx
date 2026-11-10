@@ -142,7 +142,14 @@ export default function App() {
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
+          // At most once every 6 hours: keeps us far below GitHub's anonymous
+          // API quota (60 requests/hour).
+          const last = Number(localStorage.getItem("leonssh.lastUpdateCheck") ?? "0");
+          if (Number.isFinite(last) && Date.now() - last < 6 * 60 * 60 * 1000) {
+            return;
+          }
           const current = await appVersion();
+          localStorage.setItem("leonssh.lastUpdateCheck", String(Date.now()));
           const result = await checkForUpdate(current);
           if (result.kind !== "update") {
             return;

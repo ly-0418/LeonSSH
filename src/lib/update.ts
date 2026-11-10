@@ -5,6 +5,8 @@
  * Network failures are reported as `error` so the UI can stay quiet.
  */
 
+import { invoke } from "@tauri-apps/api/core";
+
 const RELEASES_API = "https://api.github.com/repos/ly-0418/LeonSSH/releases/latest";
 const RELEASES_PAGE = "https://github.com/ly-0418/LeonSSH/releases/latest";
 
@@ -20,7 +22,43 @@ export interface UpdateInfo {
 export type UpdateCheck =
   | { kind: "update"; info: UpdateInfo }
   | { kind: "current" }
-  | { kind: "error" };
+  | { kind: "error"; message: string };
+
+const CACHE_TTL_MS = 30 * 60 * 1000;
+
+interface Cached<T> {
+  at: number;
+  value: T;
+}
+
+function readCache<T>(key: string): Cached<T> | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as Cached<T>;
+    if (typeof parsed.at !== "number") {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache<T>(key: string, value: T): void {
+  try {
+    localStorage.setItem(key, JSON.stringify({ at: Date.now(), value }));
+  } catch {
+    // storage full / private mode: caching is optional
+  }
+}
+
+/** Mirrors a failure into the app log so support can see what WebView2 got. */
+function logFailure(scope: string, message: string): void {
+  void invoke("frontend_error", { message: `update-check/${scope}: ${message}` }).catch(() => undefined);
+}
 
 interface GitHubRelease {
   tag_name?: string;
@@ -60,7 +98,16 @@ export function releasesPageUrl(): string {
 }
 
 /** Queries GitHub and classifies the result; never throws. */
-export async function checkForUpdate(currentVersion: string): Promise<UpdateCheck> {
+export async function checkForUpdate(
+  currentVersion: string,
+  options: { force?: boolean } = {},
+): Promise<UpdateCheck> {
+  // The unauthenticated API allows 60 requests per hour; cache results so a
+  // few opens of the settings tab cannot exhaust the quota.
+  const cached = readCache<UpdateCheck>("leonssh.updateCache");
+  if (options.force !== true && cached !== null && Date.now() - cached.at < CACHE_TTL_MS) {
+    return cached.value;
+  }
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), 8000);
   try {
@@ -70,7 +117,13 @@ export async function checkForUpdate(currentVersion: string): Promise<UpdateChec
       cache: "no-store",
     });
     if (!response.ok) {
-      return { kind: "error" };
+      const reason =
+        response.status === 403
+          ? "GitHub 接口限流（未登录每小时 60 次），请稍后再试或直接打开发布页"
+          : `HTTP ${response.status}`;
+      logFailure("latest", reason);
+      // A stale cached answer (even "current") still beats an error banner.
+      return cached?.value ?? { kind: "error", message: reason };
     }
     const data = (await response.json()) as GitHubRelease;
     if (data.draft === true || data.prerelease === true) {
@@ -78,12 +131,15 @@ export async function checkForUpdate(currentVersion: string): Promise<UpdateChec
     }
     const version = (data.tag_name ?? "").replace(/^v/i, "").trim();
     if (version.length === 0) {
-      return { kind: "error" };
+      logFailure("latest", "response has no tag_name");
+      return { kind: "error", message: "响应缺少版本号" };
     }
     if (!isNewerVersion(version, currentVersion)) {
-      return { kind: "current" };
+      const current: UpdateCheck = { kind: "current" };
+      writeCache("leonssh.updateCache", current);
+      return current;
     }
-    return {
+    const result: UpdateCheck = {
       kind: "update",
       info: {
         version,
@@ -91,8 +147,12 @@ export async function checkForUpdate(currentVersion: string): Promise<UpdateChec
         notes: data.body ?? "",
       },
     };
-  } catch {
-    return { kind: "error" };
+    writeCache("leonssh.updateCache", result);
+    return result;
+  } catch (error) {
+    const reason = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    logFailure("latest", reason);
+    return cached?.value ?? { kind: "error", message: reason };
   } finally {
     window.clearTimeout(timer);
   }
@@ -114,6 +174,11 @@ interface GitHubReleaseListEntry extends GitHubRelease {
 
 /** Reads the newest releases (GitHub returns them newest first). */
 export async function fetchRecentReleases(limit = 10): Promise<ReleaseNote[]> {
+  const cacheKey = `leonssh.releaseList.${limit}`;
+  const cached = readCache<ReleaseNote[]>(cacheKey);
+  if (cached !== null && Date.now() - cached.at < CACHE_TTL_MS) {
+    return cached.value;
+  }
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), 9000);
   try {
@@ -123,13 +188,14 @@ export async function fetchRecentReleases(limit = 10): Promise<ReleaseNote[]> {
       cache: "no-store",
     });
     if (!response.ok) {
-      return [];
+      logFailure("list", `HTTP ${response.status}`);
+      return cached?.value ?? [];
     }
     const data = (await response.json()) as GitHubReleaseListEntry[];
     if (!Array.isArray(data)) {
       return [];
     }
-    return data
+    const mapped = data
       .filter((entry) => entry.draft !== true)
       .slice(0, limit)
       .map((entry) => ({
@@ -141,8 +207,12 @@ export async function fetchRecentReleases(limit = 10): Promise<ReleaseNote[]> {
         prerelease: entry.prerelease === true,
       }))
       .filter((entry) => entry.version.length > 0);
-  } catch {
-    return [];
+    writeCache(cacheKey, mapped);
+    return mapped;
+  } catch (error) {
+    const reason = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    logFailure("list", reason);
+    return cached?.value ?? [];
   } finally {
     window.clearTimeout(timer);
   }

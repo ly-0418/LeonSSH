@@ -30,6 +30,7 @@ function formatDate(value: string | null): string {
 export function UpdatePanel() {
   const [version, setVersion] = useState("");
   const [state, setState] = useState<CheckState>("idle");
+  const [errorText, setErrorText] = useState("");
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
   const [releases, setReleases] = useState<ReleaseNote[]>([]);
   const [releasesLoading, setReleasesLoading] = useState(true);
@@ -58,10 +59,13 @@ export function UpdatePanel() {
     if (version.length === 0) {
       setVersion(current);
     }
-    const result = await checkForUpdate(current);
+    const result = await checkForUpdate(current, { force: true });
     if (result.kind === "update") {
       setUpdate(result.info);
       setState("available");
+    } else if (result.kind === "error") {
+      setErrorText(result.message);
+      setState("error");
     } else {
       setState(result.kind);
     }
@@ -99,7 +103,7 @@ export function UpdatePanel() {
           <span className="update-panel__status">
             {state === "checking" && "正在连接 GitHub…"}
             {state === "current" && "已是最新版本"}
-            {state === "error" && "检查失败，请稍后再试"}
+            {state === "error" && (errorText.length > 0 ? `检查失败：${errorText}` : "检查失败，请稍后再试")}
             {state === "available" && `发现新版本 v${update?.version ?? ""}`}
           </span>
         </div>

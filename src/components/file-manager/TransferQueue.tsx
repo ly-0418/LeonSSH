@@ -131,11 +131,15 @@ export function TransferQueue({ tasks, terminalId, speeds, height, onCancel }: T
                 </span>
                 <span className="fq__time">{formatDuration(task.startedAt, task.finishedAt)}</span>
                 <span className="fq__status">{statusLabel(task)}</span>
-                {(task.status === "running" || task.status === "queued") && (
-                  <button type="button" className="fq__cancel" onClick={() => onCancel(task.id)}>
-                    取消
-                  </button>
-                )}
+                {/* Always rendered so the grid keeps its column count while a
+                    task is queued/running (the cancel button used to wrap). */}
+                <span className="fq__actions">
+                  {(task.status === "running" || task.status === "queued") && (
+                    <button type="button" className="fq__cancel" onClick={() => onCancel(task.id)}>
+                      取消
+                    </button>
+                  )}
+                </span>
                 {failed && task.error !== null && (
                   <span className="fq__error" title={task.error}>
                     失败原因：{task.error}

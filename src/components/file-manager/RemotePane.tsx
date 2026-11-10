@@ -202,6 +202,10 @@ function RemotePaneLoaded({
   const [prompt, setPrompt] = useState<RemotePrompt | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PaneEntry | null>(null);
   const [batchDelete, setBatchDelete] = useState<PaneEntry[] | null>(null);
+  /** Progress of a running batch delete: { done, total, current }. */
+  const [batchProgress, setBatchProgress] = useState<
+    { total: number; done: number; current: string } | null
+  >(null);
   const [opError, setOpError] = useState<string | null>(null);
   const [transferPrompt, setTransferPrompt] = useState<{ entries: PaneEntry[]; mode: "copy" | "move" } | null>(null);
   const [copyPath, setCopyPath] = useState("");
@@ -492,12 +496,24 @@ function RemotePaneLoaded({
                 onClick={() => {
                   const targets = batchDelete;
                   setBatchDelete(null);
-                  void run(async () => {
-                    for (const item of targets) {
-                      await removeRemote(terminalId, item.path, item.isDir);
+                  void (async () => {
+                    setOpError(null);
+                    setBatchProgress({ total: targets.length, done: 0, current: targets[0]?.name ?? "" });
+                    try {
+                      for (let index = 0; index < targets.length; index += 1) {
+                        const item = targets[index];
+                        setBatchProgress({ total: targets.length, done: index, current: item.name });
+                        await removeRemote(terminalId, item.path, item.isDir);
+                        setBatchProgress({ total: targets.length, done: index + 1, current: item.name });
+                      }
+                      await pane.refresh();
+                    } catch (err) {
+                      setOpError(toUserMessage(err));
+                      await pane.refresh().catch(() => undefined);
+                    } finally {
+                      setBatchProgress(null);
                     }
-                    await pane.refresh();
-                  });
+                  })();
                 }}
               >
                 删除
@@ -505,6 +521,45 @@ function RemotePaneLoaded({
               <button type="button" className="button button--ghost" onClick={() => setBatchDelete(null)}>
                 取消
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {batchProgress !== null && (
+        <div className="modal-backdrop" role="presentation">
+          <div className="modal" role="dialog" aria-modal="true" aria-live="polite">
+            <h2 className="modal__title">
+              <span className="fm-progress__spinner" aria-hidden="true" />
+              {"  "}正在删除文件
+            </h2>
+            <div className="fm-progress">
+              <div className="fm-progress__row">
+                <span>
+                  已完成 <strong>{batchProgress.done}</strong> / {batchProgress.total}
+                </span>
+                <span>
+                  {batchProgress.total > 0
+                    ? `${Math.round((batchProgress.done / batchProgress.total) * 100)}%`
+                    : ""}
+                </span>
+              </div>
+              <div className="fm-progress__track">
+                <div
+                  className="fm-progress__fill"
+                  style={{
+                    width: `${
+                      batchProgress.total > 0
+                        ? Math.round((batchProgress.done / batchProgress.total) * 100)
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
+              <div className="fm-progress__current" title={batchProgress.current}>
+                正在处理：{batchProgress.current}
+              </div>
+              <p className="modal__hint">目录会递归删除，删除期间请不要关闭窗口。</p>
             </div>
           </div>
         </div>

@@ -365,19 +365,38 @@ for ($i = 0; $i -lt 40; $i++) {
         .replace("__PID__", &installer_pid.to_string())
         .replace("__SETUP__", &setup)
         .replace("__FALLBACK__", &fallback);
-    let spawned = std::process::Command::new("powershell")
-        .args([
-            "-NoProfile",
-            "-WindowStyle",
-            "Hidden",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            &script,
-        ])
-        .spawn();
-    if let Err(error) = spawned {
-        tracing::error!(%error, "could not start the update helper");
+    // Run from a .ps1 file instead of `-Command`: the script contains quotes and
+    // newlines, and passing it inline could leave PowerShell waiting for input
+    // (an empty console window that never does anything).
+    let helper = std::env::temp_dir().join("leonssh-update-helper.ps1");
+    if let Err(error) = std::fs::write(&helper, script.as_bytes()) {
+        tracing::error!(%error, "could not write the update helper");
+    } else {
+        #[cfg(windows)]
+        let spawned = {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            std::process::Command::new("powershell")
+                .args([
+                    "-NoProfile",
+                    "-WindowStyle",
+                    "Hidden",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                ])
+                .arg(&helper)
+                .creation_flags(CREATE_NO_WINDOW)
+                .spawn()
+        };
+        #[cfg(not(windows))]
+        let spawned = std::process::Command::new("powershell")
+            .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
+            .arg(&helper)
+            .spawn();
+        if let Err(error) = spawned {
+            tracing::error!(%error, "could not start the update helper");
+        }
     }
 
     // Give the installer a moment to start before this process releases the exe.

@@ -24,7 +24,7 @@ import type { SessionSummary, TerminalStatus } from "./lib/ipc/types";
 import type { ThemeMode } from "./lib/terminal/theme";
 import { appVersion, openExternalUrl } from "./lib/ipc/app";
 import { checkForUpdate, downloadInstaller, type UpdateInfo } from "./lib/update";
-import { setAvailableUpdate } from "./lib/updateStore";
+import { getAvailableUpdate, setAvailableUpdate } from "./lib/updateStore";
 
 const INITIAL_STATUS: TerminalStatus = {
   terminalId: null,
@@ -145,8 +145,23 @@ export default function App() {
     target?.focus();
   }, [settingsOpen, sessionDialog, pendingDelete, view]);
 
-  // Check for updates as soon as the UI is up, then download the installer in
-  // the background. Installing stays a single click (and quits the app first).
+  /** Downloads the installer quietly; the dialog only shows after a click. */
+  const startUpdateDownload = useCallback(async (info: UpdateInfo) => {
+    setUpdatePhase("downloading");
+    setInstallError("");
+    setUpdateProgress({ received: 0, total: null });
+    try {
+      const path = await downloadInstaller(info, setUpdateProgress);
+      setInstallerPath(path);
+      setUpdatePhase("ready");
+    } catch (error) {
+      setInstallError(error instanceof Error ? error.message : String(error));
+      setUpdatePhase("error");
+    }
+  }, []);
+
+  // Check for updates as soon as the UI is up. A hit only shows the badge in the
+  // status bar; the dialog opens when the user clicks it.
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
@@ -158,29 +173,32 @@ export default function App() {
           return;
         }
         setAvailableUpdate(result.info);
-        setUpdateNotice(result.info);
-        setUpdatePhase("downloading");
-        const path = await downloadInstaller(result.info, (progress) => {
-          if (!cancelled) {
-            setUpdateProgress(progress);
-          }
-        });
-        if (!cancelled) {
-          setInstallerPath(path);
-          setUpdatePhase("ready");
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setInstallError(error instanceof Error ? error.message : String(error));
-          setUpdatePhase("error");
-        }
+        void startUpdateDownload(result.info);
+      } catch {
+        // update checks are best effort
       }
     };
     void run();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [startUpdateDownload]);
+
+  // The badge and the settings tab ask for the dialog explicitly.
+  useEffect(() => {
+    const open = () => {
+      const info = getAvailableUpdate();
+      if (info === null) {
+        return;
+      }
+      setUpdateNotice(info);
+      if (installerPath === null && updatePhase !== "downloading") {
+        void startUpdateDownload(info);
+      }
+    };
+    window.addEventListener("leonssh:open-update", open);
+    return () => window.removeEventListener("leonssh:open-update", open);
+  }, [installerPath, updatePhase, startUpdateDownload]);
 
   // Only live connections block the window close: closed/failed tabs do not.
   const liveSessionCount = tabs.filter(
@@ -805,6 +823,15 @@ export default function App() {
 
             <pre className="update-notes">{updateNotice.notes}</pre>
             <div className="modal__actions">
+              {updatePhase === "error" && (
+                <button
+                  type="button"
+                  className="button button--primary"
+                  onClick={() => void startUpdateDownload(updateNotice)}
+                >
+                  重试下载
+                </button>
+              )}
               {updatePhase === "ready" && installerPath !== null && (
                 <button
                   type="button"

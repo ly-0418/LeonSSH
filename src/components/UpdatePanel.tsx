@@ -111,22 +111,7 @@ export function UpdatePanel() {
           </span>
         </div>
 
-        {update !== null && (
-          <div className="update-panel__notes update-panel__notes--highlight">
-            <div className="update-panel__row update-panel__row--tight">
-              <strong>新版本 v{update.version}</strong>
-              <button
-                type="button"
-                className="button button--primary button--sm"
-                onClick={() => openUrl(update.url)}
-              >
-                前往下载
-              </button>
-            </div>
-            <pre className="update-panel__body">{update.notes}</pre>
-          </div>
-        )}
-      </div>
+        </div>
 
       <div className="setting-group">
         <h3 className="setting-group__title">最近 {RECENT_LIMIT} 个版本</h3>

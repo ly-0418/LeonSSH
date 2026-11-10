@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { appVersion, openExternalUrl } from "../lib/ipc/app";
+import { appVersion } from "../lib/ipc/app";
 import { subscribeAvailableUpdate } from "../lib/updateStore";
 import type { UpdateInfo } from "../lib/update";
 import { UpdateAvailableIcon } from "./icons";
@@ -36,10 +36,10 @@ export function StatusBar({ endpoint, sessionName, state }: StatusBarProps) {
           <button
             type="button"
             className="status-bar__update"
-            title={`发现新版本 v${update.version}，点击前往下载`}
-            aria-label={`发现新版本 v${update.version}`}
+            title={`发现新版本 v${update.version}，点击更新`}
+            aria-label={`发现新版本 v${update.version}，点击更新`}
             onClick={() => {
-              void openExternalUrl(update.url).catch(() => undefined);
+              window.dispatchEvent(new CustomEvent("leonssh:open-update"));
             }}
           >
             <UpdateAvailableIcon size={22} />

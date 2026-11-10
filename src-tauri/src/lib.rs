@@ -42,7 +42,55 @@ fn urlencode(input: &str) -> String {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// Brings the already-running window to the front instead of starting a second
+/// copy. Returns true when another instance owns the mutex.
+#[cfg(windows)]
+fn focus_existing_instance() -> bool {
+    use windows_sys::Win32::Foundation::{ERROR_ALREADY_EXISTS, GetLastError};
+    use windows_sys::Win32::System::Threading::CreateMutexW;
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        FindWindowW, SetForegroundWindow, ShowWindow, SW_RESTORE,
+    };
+
+    fn wide(value: &str) -> Vec<u16> {
+        value.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    unsafe {
+        let name = wide("Local\\LeonSSH.SingleInstance");
+        // Keep the handle alive for the whole process lifetime on purpose.
+        let handle = CreateMutexW(std::ptr::null(), 1, name.as_ptr());
+        if handle.is_null() {
+            return false;
+        }
+        if GetLastError() != ERROR_ALREADY_EXISTS {
+            return false;
+        }
+        // Windows may need a moment before the first window exists.
+        let title = wide("LeonSSH");
+        for _ in 0..20 {
+            let hwnd = FindWindowW(std::ptr::null(), title.as_ptr());
+            if !hwnd.is_null() {
+                ShowWindow(hwnd, SW_RESTORE);
+                SetForegroundWindow(hwnd);
+                return true;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(150));
+        }
+        true
+    }
+}
+
+#[cfg(not(windows))]
+fn focus_existing_instance() -> bool {
+    false
+}
+
 pub fn run() {
+    if focus_existing_instance() {
+        return;
+    }
+
     let paths = paths::Paths::resolve();
     paths::init_tracing(&paths);
     paths::record_boot_stamp();

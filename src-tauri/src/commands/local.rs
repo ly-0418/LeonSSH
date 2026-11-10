@@ -323,20 +323,62 @@ pub fn apply_update(app: tauri::AppHandle, path: String) -> Result<(), AppError>
     let installer_pid = child.id();
 
     // Detached helper: waits for the installer, relaunches the freshly installed
-    // app, and finally deletes the setup file from %TEMP%.
+    // app (the install folder comes from the uninstall registry key, because the
+    // user may have chosen a custom location), and deletes the setup file.
     let setup = installer.display().to_string().replace('\'', "''");
-    let installed = std::env::var("LOCALAPPDATA")
+    let fallback = std::env::var("LOCALAPPDATA")
         .map(|dir| format!("{dir}\\LeonSSH\\leonssh.exe").replace('\'', "''"))
         .unwrap_or_default();
-    let original = std::env::current_exe()
-        .map(|path| path.display().to_string().replace('\'', "''"))
-        .unwrap_or_default();
-    let script = format!(
-        "$setup = '{setup}';          $target = '{installed}';          $original = '{original}';          $started = Get-Date;          Wait-Process -Id {installer_pid} -ErrorAction SilentlyContinue;          $deadline = (Get-Date).AddMinutes(3);          $launched = $false;          while ((Get-Date) -lt $deadline -and -not $launched) {{            if (Test-Path -LiteralPath $target) {{              $item = Get-Item -LiteralPath $target;              if ($item.LastWriteTime -ge $started.AddSeconds(-5)) {{                Start-Process -FilePath $target; $launched = $true; break              }}            }}            Start-Sleep -Seconds 2          }};          if (-not $launched -and (Test-Path -LiteralPath $original)) {{ Start-Process -FilePath $original }};          for ($i = 0; $i -lt 40; $i++) {{            try {{ Remove-Item -LiteralPath $setup -Force -ErrorAction Stop; break }}            catch {{ Start-Sleep -Seconds 3 }}          }}"
-    );
-    let _ = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &script])
+    let template = r#"$log = Join-Path $env:TEMP 'leonssh-update.log'
+"helper start " + (Get-Date -Format s) | Out-File -LiteralPath $log -Append
+Wait-Process -Id __PID__ -ErrorAction SilentlyContinue
+"installer exited " + (Get-Date -Format s) | Out-File -LiteralPath $log -Append
+$start = (Get-Date).AddSeconds(-5)
+$key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\LeonSSH'
+$target = ''
+if (Test-Path $key) {
+  $loc = (Get-ItemProperty -Path $key -Name InstallLocation -ErrorAction SilentlyContinue).InstallLocation
+  if ($loc) { $target = Join-Path ($loc.Trim('"')) 'leonssh.exe' }
+}
+if (-not (Test-Path -LiteralPath $target)) { $target = '__FALLBACK__' }
+"target " + $target | Out-File -LiteralPath $log -Append
+$deadline = (Get-Date).AddMinutes(3)
+while ((Get-Date) -lt $deadline) {
+  if (Test-Path -LiteralPath $target) {
+    $item = Get-Item -LiteralPath $target
+    if ($item.LastWriteTime -ge $start) { break }
+  }
+  Start-Sleep -Seconds 2
+}
+if (Test-Path -LiteralPath $target) {
+  Start-Process -FilePath $target
+  "launched " + $target | Out-File -LiteralPath $log -Append
+} else {
+  "target missing " + $target | Out-File -LiteralPath $log -Append
+}
+for ($i = 0; $i -lt 40; $i++) {
+  try { Remove-Item -LiteralPath '__SETUP__' -Force -ErrorAction Stop; "deleted setup" | Out-File -LiteralPath $log -Append; break }
+  catch { Start-Sleep -Seconds 3 }
+}
+"helper done " + (Get-Date -Format s) | Out-File -LiteralPath $log -Append"#;
+    let script = template
+        .replace("__PID__", &installer_pid.to_string())
+        .replace("__SETUP__", &setup)
+        .replace("__FALLBACK__", &fallback);
+    let spawned = std::process::Command::new("powershell")
+        .args([
+            "-NoProfile",
+            "-WindowStyle",
+            "Hidden",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            &script,
+        ])
         .spawn();
+    if let Err(error) = spawned {
+        tracing::error!(%error, "could not start the update helper");
+    }
 
     // Give the installer a moment to start before this process releases the exe.
     std::thread::sleep(std::time::Duration::from_millis(400));

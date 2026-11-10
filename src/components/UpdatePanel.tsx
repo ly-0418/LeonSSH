@@ -117,7 +117,7 @@ export function UpdatePanel() {
                   window.dispatchEvent(new CustomEvent("leonssh:open-update"));
                 }}
               >
-                <UpdateAvailableIcon size={18} />
+                <UpdateAvailableIcon size={22} />
               </button>
             </span>
           ) : (

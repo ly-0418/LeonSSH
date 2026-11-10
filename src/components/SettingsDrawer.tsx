@@ -1,4 +1,5 @@
 import { SMOOTH_MOVE_OPTIONS, type SmoothMoveMode } from "../lib/terminal/cursor";
+import { UpdatePanel } from "./UpdatePanel";
 import { useEffect, useRef, useState } from "react";
 
 import { invoke } from "@tauri-apps/api/core";
@@ -524,6 +525,8 @@ export function SettingsDrawer({
                 ))}
               </div>
             )}
+
+            {tab === "config" && <UpdatePanel />}
 
             {tab === "hosts" && (
               <div className="setting-group">

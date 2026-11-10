@@ -22,6 +22,8 @@ import { closeTerminal, writeTerminal } from "./lib/ipc/session";
 import { deleteSession, listSessions } from "./lib/ipc/sessions";
 import type { SessionSummary, TerminalStatus } from "./lib/ipc/types";
 import type { ThemeMode } from "./lib/terminal/theme";
+import { appVersion, openExternalUrl } from "./lib/ipc/app";
+import { checkForUpdate, type UpdateInfo } from "./lib/update";
 
 const INITIAL_STATUS: TerminalStatus = {
   terminalId: null,
@@ -120,6 +122,8 @@ export default function App() {
   const forceClose = useRef(false);
   const [pendingClose, setPendingClose] = useState<{ key: string; count: number; finish: () => void } | null>(null);
   const [pendingSessionClose, setPendingSessionClose] = useState<string | null>(null);
+  /** Newer release found by the silent startup check. */
+  const [updateNotice, setUpdateNotice] = useState<UpdateInfo | null>(null);
   const confirmedSessionClose = useRef<Set<string>>(new Set());
   // Dialogs and drawers steal focus; hand it back to the active terminal.
   useEffect(() => {
@@ -131,6 +135,29 @@ export default function App() {
     );
     target?.focus();
   }, [settingsOpen, sessionDialog, pendingDelete, view]);
+
+  // Silent update check a few seconds after startup: never blocks the UI and
+  // stays quiet on network errors. "稍后" remembers the skipped version.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const current = await appVersion();
+          const result = await checkForUpdate(current);
+          if (result.kind !== "update") {
+            return;
+          }
+          if (localStorage.getItem("leonssh.skippedUpdate") === result.info.version) {
+            return;
+          }
+          setUpdateNotice(result.info);
+        } catch {
+          // update checks are best effort
+        }
+      })();
+    }, 5000);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // Only live connections block the window close: closed/failed tabs do not.
   const liveSessionCount = tabs.filter(
@@ -718,6 +745,38 @@ export default function App() {
           }}
           onCancel={() => setPendingSessionClose(null)}
         />
+      )}
+
+      {updateNotice !== null && (
+        <div className="modal-backdrop" role="presentation">
+          <div className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <h2 className="modal__title">发现新版本 v{updateNotice.version}</h2>
+            <p className="modal__body">当前版本已落后，更新包通过 GitHub Releases 分发。</p>
+            <pre className="update-notes">{updateNotice.notes}</pre>
+            <div className="modal__actions">
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={() => {
+                  void openExternalUrl(updateNotice.url).catch(() => undefined);
+                  setUpdateNotice(null);
+                }}
+              >
+                前往下载
+              </button>
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => {
+                  localStorage.setItem("leonssh.skippedUpdate", updateNotice.version);
+                  setUpdateNotice(null);
+                }}
+              >
+                稍后提醒
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {pendingClose !== null && (

@@ -94,6 +94,129 @@ export function FileTable({
     return () => observer.disconnect();
   }, []);
 
+  // Rubber-band selection (Windows Explorer style): dragging on the empty area
+  // paints a rectangle and selects every row it touches.
+  const [band, setBand] = useState<{ left: number; top: number; width: number; height: number } | null>(
+    null,
+  );
+  const bandStart = useRef<{ x: number; y: number; additive: boolean } | null>(null);
+  const bandFrame = useRef(0);
+
+  const bandNames = (rect: { left: number; top: number; width: number; height: number }): string[] => {
+    const first = Math.max(0, Math.floor(rect.top / ROW_HEIGHT));
+    const last = Math.min(entries.length - 1, Math.floor((rect.top + rect.height) / ROW_HEIGHT));
+    if (last < first) {
+      return [];
+    }
+    return entries.slice(first, last + 1).map((entry) => entry.name);
+  };
+
+  const applyBand = (rect: { left: number; top: number; width: number; height: number }) => {
+    const names = bandNames(rect);
+    if (onSelectAll === undefined) {
+      for (const name of names) {
+        onSelect(name, "toggle");
+      }
+      return;
+    }
+    if (bandStart.current?.additive === true) {
+      const merged = new Set(selected);
+      for (const name of names) {
+        merged.add(name);
+      }
+      onSelectAll([...merged]);
+    } else {
+      onSelectAll(names);
+    }
+  };
+
+  const updateBand = (clientX: number, clientY: number) => {
+    const body = bodyRef.current;
+    const start = bandStart.current;
+    if (body === null || start === null) {
+      return;
+    }
+    const box = body.getBoundingClientRect();
+    const x = clientX - box.left;
+    const y = clientY - box.top + body.scrollTop;
+    const left = Math.min(start.x, x);
+    const top = Math.min(start.y, y);
+    const rect = {
+      left,
+      top,
+      width: Math.abs(x - start.x),
+      height: Math.abs(y - start.y),
+    };
+    setBand(rect);
+    // A plain click (no real movement) must not turn into a one-row selection.
+    if (rect.width > 3 || rect.height > 3) {
+      applyBand(rect);
+    }
+  };
+
+  const stopBand = () => {
+    bandStart.current = null;
+    setBand(null);
+    if (bandFrame.current !== 0) {
+      window.cancelAnimationFrame(bandFrame.current);
+      bandFrame.current = 0;
+    }
+  };
+
+  const startBand = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+    const target = event.target as HTMLElement;
+    if (target.closest(".fm-row") !== null || target.closest(".fm-table__head") !== null) {
+      return;
+    }
+    const body = bodyRef.current;
+    if (body === null) {
+      return;
+    }
+    const box = body.getBoundingClientRect();
+    bandStart.current = {
+      x: event.clientX - box.left,
+      y: event.clientY - box.top + body.scrollTop,
+      additive: event.ctrlKey || event.metaKey,
+    };
+    if (!bandStart.current.additive) {
+      onSelectAll?.([]);
+    }
+    body.setPointerCapture(event.pointerId);
+    setBand({ left: bandStart.current.x, top: bandStart.current.y, width: 0, height: 0 });
+  };
+
+  const moveBand = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (bandStart.current === null) {
+      return;
+    }
+    updateBand(event.clientX, event.clientY);
+    // Auto-scroll while the pointer is outside the body (Windows-like).
+    const body = bodyRef.current;
+    if (body === null || bandFrame.current !== 0) {
+      return;
+    }
+    const box = body.getBoundingClientRect();
+    const outside = event.clientY < box.top || event.clientY > box.bottom;
+    if (!outside) {
+      return;
+    }
+    const step = event.clientY < box.top ? -12 : 12;
+    let lastY = event.clientY;
+    const tick = () => {
+      if (bandStart.current === null) {
+        bandFrame.current = 0;
+        return;
+      }
+      body.scrollTop += step;
+      updateBand(event.clientX, lastY);
+      bandFrame.current = window.requestAnimationFrame(tick);
+    };
+    bandFrame.current = window.requestAnimationFrame(tick);
+  };
+
   const headerCheckRef = useRef<HTMLInputElement | null>(null);
   // A Set keeps select-all O(n) instead of O(n²) on folders with thousands of files.
   const selectedSet = useMemo(() => new Set(selected), [selected]);
@@ -143,8 +266,12 @@ export function FileTable({
       </div>
       {loading && <div className="fm-table__loadingbar" aria-hidden="true" />}
       <div
-        className="fm-table__body"
+        className={`fm-table__body${band !== null ? " fm-table__body--banding" : ""}`}
         ref={bodyRef}
+        onPointerDown={startBand}
+        onPointerMove={moveBand}
+        onPointerUp={stopBand}
+        onPointerCancel={stopBand}
           onDragOver={(event) => {
             if (onDropEntries !== undefined) {
               event.preventDefault();
@@ -174,6 +301,17 @@ export function FileTable({
       >
         {entries.length === 0 && (
           <div className="fm-table__empty">{loading ? "加载中…" : "空目录（右键可新建）"}</div>
+        )}
+        {band !== null && (
+          <div
+            className="fm-band"
+            style={{
+              left: band.left,
+              top: band.top,
+              width: band.width,
+              height: band.height,
+            }}
+          />
         )}
         <div className="fm-table__spacer" style={{ height: entries.length * ROW_HEIGHT }}>
         {windowed.map((entry, index) => (

@@ -1323,3 +1323,22 @@
     transform: rotate(360deg);
   }
 }
+
+/* Rubber-band selection rectangle (Windows Explorer style). */
+.fm-band {
+  position: absolute;
+  z-index: 6;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.fm-table__body {
+  position: relative;
+}
+
+.fm-table__body--banding {
+  user-select: none;
+  cursor: default;
+}

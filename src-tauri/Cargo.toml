@@ -1,6 +1,6 @@
 [package]
 name = "leonssh"
-version = "0.4.0"
+version = "0.4.1"
 description = "LeonSSH - a Windows-first visual SSH client"
 authors = ["LeonSSH"]
 edition = "2024"

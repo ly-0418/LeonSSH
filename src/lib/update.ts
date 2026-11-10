@@ -167,7 +167,10 @@ export async function checkForUpdate(
   currentVersion: string,
   options: { force?: boolean } = {},
 ): Promise<UpdateCheck> {
-  const cached = readCache<UpdateCheck>("leonssh.updateCache");
+  // The key includes the running version: a downgraded/upgraded build must not
+  // reuse an answer that was computed for a different baseline.
+  const cacheKey = `leonssh.updateCache.${currentVersion}`;
+  const cached = readCache<UpdateCheck>(cacheKey);
   if (options.force !== true && cached !== null && Date.now() - cached.at < CACHE_TTL_MS) {
     return cached.value;
   }
@@ -176,7 +179,7 @@ export async function checkForUpdate(
     const release = data as GitHubRelease;
     if (release.draft === true || release.prerelease === true) {
       const current: UpdateCheck = { kind: "current" };
-      writeCache("leonssh.updateCache", current);
+      writeCache(cacheKey, current);
       return current;
     }
     const version = (release.tag_name ?? "").replace(/^v/i, "").trim();
@@ -185,7 +188,7 @@ export async function checkForUpdate(
     }
     if (!isNewerVersion(version, currentVersion)) {
       const current: UpdateCheck = { kind: "current" };
-      writeCache("leonssh.updateCache", current);
+      writeCache(cacheKey, current);
       return current;
     }
     const result: UpdateCheck = {
@@ -196,7 +199,7 @@ export async function checkForUpdate(
         notes: release.body ?? "",
       },
     };
-    writeCache("leonssh.updateCache", result);
+    writeCache(cacheKey, result);
     return result;
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);

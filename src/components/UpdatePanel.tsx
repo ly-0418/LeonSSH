@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { appVersion, openExternalUrl } from "../lib/ipc/app";
+import { setAvailableUpdate } from "../lib/updateStore";
 import {
   checkForUpdate,
   fetchRecentReleases,
@@ -62,11 +63,13 @@ export function UpdatePanel() {
     const result = await checkForUpdate(current, { force: true });
     if (result.kind === "update") {
       setUpdate(result.info);
+      setAvailableUpdate(result.info);
       setState("available");
     } else if (result.kind === "error") {
       setErrorText(result.message);
       setState("error");
     } else {
+      setAvailableUpdate(null);
       setState(result.kind);
     }
   }, [version]);

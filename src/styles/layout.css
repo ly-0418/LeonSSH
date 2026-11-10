@@ -2157,7 +2157,6 @@ input[type="password"]::-ms-reveal {
 
 /* Version pinned to the right edge of the status bar. */
 .status-bar__version {
-  margin-left: auto;
   color: var(--text-faint);
   font-size: 11.5px;
   letter-spacing: 0.02em;
@@ -2427,4 +2426,37 @@ input[type="password"]::-ms-reveal {
 .release-item__body .update-panel__body {
   max-height: 260px;
   width: 100%;
+}
+
+/* Status bar: right cluster with the update badge before the version. */
+.status-bar__right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-bar__update {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--accent-cyan);
+  cursor: pointer;
+  animation: update-badge-pulse 2.4s ease-in-out infinite;
+}
+
+.status-bar__update:hover {
+  color: #7dd3fc;
+  background: rgba(56, 189, 248, 0.14);
+}
+
+@keyframes update-badge-pulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
 }

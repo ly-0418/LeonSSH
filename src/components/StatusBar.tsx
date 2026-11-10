@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 
-import { appVersion } from "../lib/ipc/app";
+import { appVersion, openExternalUrl } from "../lib/ipc/app";
+import { subscribeAvailableUpdate } from "../lib/updateStore";
+import type { UpdateInfo } from "../lib/update";
+import { UpdateAvailableIcon } from "./icons";
 import type { TerminalStatus } from "../lib/ipc/types";
 
 interface StatusBarProps {
@@ -9,14 +12,16 @@ interface StatusBarProps {
   state: TerminalStatus["state"];
 }
 
-/** Minimal bottom bar: connection endpoint of the active session. */
+/** Minimal bottom bar: connection endpoint, update badge and app version. */
 export function StatusBar({ endpoint, sessionName, state }: StatusBarProps) {
   const [version, setVersion] = useState("");
+  const [update, setUpdate] = useState<UpdateInfo | null>(null);
 
   useEffect(() => {
     void appVersion()
       .then(setVersion)
       .catch(() => setVersion(""));
+    return subscribeAvailableUpdate(setUpdate);
   }, []);
 
   return (
@@ -26,7 +31,22 @@ export function StatusBar({ endpoint, sessionName, state }: StatusBarProps) {
       <span className="status-bar__endpoint" title={endpoint ?? "未连接"}>
         {endpoint ?? "未连接"}
       </span>
-      {version.length > 0 && <span className="status-bar__version">v{version}</span>}
+      <span className="status-bar__right">
+        {update !== null && (
+          <button
+            type="button"
+            className="status-bar__update"
+            title={`发现新版本 v${update.version}，点击前往下载`}
+            aria-label={`发现新版本 v${update.version}`}
+            onClick={() => {
+              void openExternalUrl(update.url).catch(() => undefined);
+            }}
+          >
+            <UpdateAvailableIcon />
+          </button>
+        )}
+        {version.length > 0 && <span className="status-bar__version">v{version}</span>}
+      </span>
     </footer>
   );
 }

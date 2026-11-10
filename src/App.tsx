@@ -24,6 +24,7 @@ import type { SessionSummary, TerminalStatus } from "./lib/ipc/types";
 import type { ThemeMode } from "./lib/terminal/theme";
 import { appVersion, openExternalUrl } from "./lib/ipc/app";
 import { checkForUpdate, type UpdateInfo } from "./lib/update";
+import { setAvailableUpdate } from "./lib/updateStore";
 
 const INITIAL_STATUS: TerminalStatus = {
   terminalId: null,
@@ -152,8 +153,10 @@ export default function App() {
           localStorage.setItem("leonssh.lastUpdateCheck", String(Date.now()));
           const result = await checkForUpdate(current);
           if (result.kind !== "update") {
+            setAvailableUpdate(null);
             return;
           }
+          setAvailableUpdate(result.info);
           if (localStorage.getItem("leonssh.skippedUpdate") === result.info.version) {
             return;
           }

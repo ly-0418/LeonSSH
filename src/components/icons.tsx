@@ -47,3 +47,27 @@ export function ForwardIcon({ size = 15 }: IconProps) {
     </svg>
   );
 }
+/** Arrow-up-right in a circle: "update available" badge in the status bar. */
+export function UpdateAvailableIcon({ size = 13 }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 4 A8 8 0 0 1 17.66 17.66" />
+      <path d="M14.86 19.46 A8 8 0 0 1 6.97 18.22" />
+      <path d="M4.87 15.63 A8 8 0 0 1 4.01 11.58" />
+      <path d="M4.87 8.37 A8 8 0 0 1 5.78 6.97" />
+      <path d="M8.37 4.87 A8 8 0 0 1 8.75 4.69" />
+      <path d="M12 8 V16" />
+      <path d="M8 11.5 L12 8 L16 11.5" />
+    </svg>
+  );
+}

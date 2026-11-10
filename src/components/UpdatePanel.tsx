@@ -6,6 +6,7 @@ import { setAvailableUpdate } from "../lib/updateStore";
 import {
   checkForUpdate,
   fetchRecentReleases,
+  peekCachedReleases,
   releasesPageUrl,
   type ReleaseNote,
   type UpdateInfo,
@@ -42,11 +43,24 @@ export function UpdatePanel() {
     void appVersion()
       .then(setVersion)
       .catch(() => setVersion(""));
+    // Paint the cached list immediately, then always revalidate: a release may
+    // have been published after the cache was written.
+    const cachedList = peekCachedReleases(RECENT_LIMIT);
+    if (cachedList !== null) {
+      setReleases(cachedList);
+      setExpanded((current) => current ?? cachedList[0]?.version ?? null);
+    }
     setReleasesLoading(true);
-    void fetchRecentReleases(RECENT_LIMIT).then((list) => {
-      setReleases(list);
+    void fetchRecentReleases(RECENT_LIMIT, { force: true }).then((list) => {
+      if (list.length > 0) {
+        setReleases(list);
+        setExpanded((current) =>
+          current !== null && list.some((item) => item.version === current)
+            ? current
+            : list[0]?.version ?? null,
+        );
+      }
       setReleasesLoading(false);
-      setExpanded((current) => current ?? list[0]?.version ?? null);
     });
   }, []);
 
@@ -66,6 +80,11 @@ export function UpdatePanel() {
       setUpdate(result.info);
       setAvailableUpdate(result.info);
       setState("available");
+      void fetchRecentReleases(RECENT_LIMIT, { force: true }).then((list) => {
+        if (list.length > 0) {
+          setReleases(list);
+        }
+      });
     } else if (result.kind === "error") {
       setErrorText(result.message);
       setState("error");

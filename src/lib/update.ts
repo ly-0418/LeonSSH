@@ -208,10 +208,18 @@ export async function checkForUpdate(
   }
 }
 
-export async function fetchRecentReleases(limit = 10): Promise<ReleaseNote[]> {
+/** Cached list for instant paint; may miss a release published recently. */
+export function peekCachedReleases(limit = 10): ReleaseNote[] | null {
+  return readCache<ReleaseNote[]>(`leonssh.releaseList.${limit}`)?.value ?? null;
+}
+
+export async function fetchRecentReleases(
+  limit = 10,
+  options: { force?: boolean } = {},
+): Promise<ReleaseNote[]> {
   const cacheKey = `leonssh.releaseList.${limit}`;
   const cached = readCache<ReleaseNote[]>(cacheKey);
-  if (cached !== null && Date.now() - cached.at < CACHE_TTL_MS) {
+  if (options.force !== true && cached !== null && Date.now() - cached.at < CACHE_TTL_MS) {
     return cached.value;
   }
   try {

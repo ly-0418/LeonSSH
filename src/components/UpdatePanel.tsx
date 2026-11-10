@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { appVersion, openExternalUrl } from "../lib/ipc/app";
+import { UpdateAvailableIcon } from "./icons";
 import { setAvailableUpdate } from "../lib/updateStore";
 import {
   checkForUpdate,
@@ -109,12 +110,14 @@ export function UpdatePanel() {
               发现新版本 v{update?.version ?? ""}
               <button
                 type="button"
-                className="button button--primary button--sm"
+                className="update-badge-button"
+                title={`发现新版本 v${update?.version ?? ""}，点击更新`}
+                aria-label={`发现新版本 v${update?.version ?? ""}，点击更新`}
                 onClick={() => {
                   window.dispatchEvent(new CustomEvent("leonssh:open-update"));
                 }}
               >
-                更新
+                <UpdateAvailableIcon size={18} />
               </button>
             </span>
           ) : (

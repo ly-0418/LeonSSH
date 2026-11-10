@@ -2470,3 +2470,24 @@ input[type="password"]::-ms-reveal {
   color: var(--accent-cyan);
   font-weight: 600;
 }
+
+/* Same look as the status-bar badge, reused in the settings tab. */
+.update-badge-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent-cyan);
+  cursor: pointer;
+  animation: update-badge-pulse 2.4s ease-in-out infinite;
+}
+
+.update-badge-button:hover {
+  color: #7dd3fc;
+  background: rgba(56, 189, 248, 0.14);
+}

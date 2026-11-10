@@ -84,7 +84,7 @@ export function UpdatePanel() {
         <h3 className="setting-group__title">版本更新</h3>
         <p className="modal__hint">
           当前版本 <strong>v{version.length > 0 ? version : "…"}</strong>
-          ；更新包通过 GitHub Releases 分发，检查更新只读取版本号，不会自动下载。
+          ；更新包通过 GitHub Releases 分发，检查更新只读取版本号，不会自动下载。官方接口不可用（或限流）时会自动切换国内镜像。
         </p>
 
         <div className="update-panel__row">

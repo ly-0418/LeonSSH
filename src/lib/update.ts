@@ -97,3 +97,53 @@ export async function checkForUpdate(currentVersion: string): Promise<UpdateChec
     window.clearTimeout(timer);
   }
 }
+
+export interface ReleaseNote {
+  version: string;
+  title: string;
+  publishedAt: string | null;
+  notes: string;
+  url: string;
+  prerelease: boolean;
+}
+
+interface GitHubReleaseListEntry extends GitHubRelease {
+  name?: string;
+  published_at?: string;
+}
+
+/** Reads the newest releases (GitHub returns them newest first). */
+export async function fetchRecentReleases(limit = 10): Promise<ReleaseNote[]> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 9000);
+  try {
+    const response = await fetch(`${RELEASES_API.replace(/\/latest$/, "")}?per_page=${limit}`, {
+      headers: { Accept: "application/vnd.github+json" },
+      signal: controller.signal,
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      return [];
+    }
+    const data = (await response.json()) as GitHubReleaseListEntry[];
+    if (!Array.isArray(data)) {
+      return [];
+    }
+    return data
+      .filter((entry) => entry.draft !== true)
+      .slice(0, limit)
+      .map((entry) => ({
+        version: (entry.tag_name ?? "").replace(/^v/i, "").trim(),
+        title: entry.name ?? entry.tag_name ?? "",
+        publishedAt: entry.published_at ?? null,
+        notes: entry.body ?? "",
+        url: entry.html_url ?? RELEASES_PAGE,
+        prerelease: entry.prerelease === true,
+      }))
+      .filter((entry) => entry.version.length > 0);
+  } catch {
+    return [];
+  } finally {
+    window.clearTimeout(timer);
+  }
+}

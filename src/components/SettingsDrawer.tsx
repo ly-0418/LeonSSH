@@ -37,7 +37,7 @@ interface SettingsDrawerProps {
   onClose: () => void;
 }
 
-type SettingsTab = "theme" | "config" | "logs" | "docs" | "hosts" | "about";
+type SettingsTab = "theme" | "config" | "hosts" | "logs" | "docs" | "updates";
 
 const TABS: Array<{ key: SettingsTab; label: string }> = [
   { key: "theme", label: "界面样式" },
@@ -45,6 +45,7 @@ const TABS: Array<{ key: SettingsTab; label: string }> = [
   { key: "hosts", label: "主机" },
   { key: "logs", label: "日志" },
   { key: "docs", label: "功能说明" },
+  { key: "updates", label: "版本更新" },
 ];
 
 /** Right-side settings drawer: categories on the left, content on the right. */
@@ -487,6 +488,8 @@ export function SettingsDrawer({
               </div>
             )}
 
+            {tab === "updates" && <UpdatePanel />}
+
             {tab === "docs" && (
               <div className="setting-group">
                 <h3 className="setting-group__title">功能说明</h3>
@@ -526,7 +529,6 @@ export function SettingsDrawer({
               </div>
             )}
 
-            {tab === "config" && <UpdatePanel />}
 
             {tab === "hosts" && (
               <div className="setting-group">

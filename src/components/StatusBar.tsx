@@ -42,7 +42,7 @@ export function StatusBar({ endpoint, sessionName, state }: StatusBarProps) {
               void openExternalUrl(update.url).catch(() => undefined);
             }}
           >
-            <UpdateAvailableIcon size={18} />
+            <UpdateAvailableIcon size={22} />
           </button>
         )}
         {version.length > 0 && <span className="status-bar__version">v{version}</span>}

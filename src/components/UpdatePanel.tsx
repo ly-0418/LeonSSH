@@ -103,15 +103,30 @@ export function UpdatePanel() {
           >
             打开发布页
           </button>
-          <span className="update-panel__status">
-            {state === "checking" && "正在连接 GitHub…"}
-            {state === "current" && "已是最新版本"}
-            {state === "error" && (errorText.length > 0 ? `检查失败：${errorText}` : "检查失败，请稍后再试")}
-            {state === "available" && `发现新版本 v${update?.version ?? ""}`}
-          </span>
-        </div>
 
+          {state === "available" ? (
+            <span className="update-panel__available">
+              发现新版本 v{update?.version ?? ""}
+              <button
+                type="button"
+                className="button button--primary button--sm"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent("leonssh:open-update"));
+                }}
+              >
+                更新
+              </button>
+            </span>
+          ) : (
+            <span className="update-panel__status">
+              {state === "checking" && "正在连接 GitHub…"}
+              {state === "current" && "已是最新版本"}
+              {state === "error" &&
+                (errorText.length > 0 ? `检查失败：${errorText}` : "检查失败，请稍后再试")}
+            </span>
+          )}
         </div>
+      </div>
 
       <div className="setting-group">
         <h3 className="setting-group__title">最近 {RECENT_LIMIT} 个版本</h3>

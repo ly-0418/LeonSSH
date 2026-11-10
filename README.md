@@ -68,7 +68,7 @@ pnpm build:release   # tauri build + 复制产物到 release/
 
 1. 修改 `package.json` / `src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml` 的版本号；
 2. `pnpm build:release`；
-3. 在 GitHub 创建 tag（如 `v0.4.6`）并新建 Release，上传 `release/` 里的两个文件：
+3. 在 GitHub 创建 tag（如 `v0.4.7`）并新建 Release，上传 `release/` 里的两个文件：
    - `leonssh.exe`
    - `LeonSSH_<版本>_x64-setup.exe`
 

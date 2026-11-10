@@ -147,6 +147,9 @@ export default function App() {
     target?.focus();
   }, [settingsOpen, sessionDialog, pendingDelete, view]);
 
+  /** Version whose installer already sits in %TEMP% (avoids re-downloading). */
+  const downloadedVersion = useRef<string | null>(null);
+
   /** Downloads the installer quietly; the dialog only shows after a click. */
   const startUpdateDownload = useCallback(async (info: UpdateInfo) => {
     setUpdatePhase("downloading");
@@ -154,6 +157,7 @@ export default function App() {
     setUpdateProgress({ received: 0, total: null });
     try {
       const path = await downloadInstaller(info, setUpdateProgress);
+      downloadedVersion.current = info.version;
       setInstallerPath(path);
       setUpdatePhase("ready");
     } catch (error) {
@@ -193,12 +197,15 @@ export default function App() {
         if (result.kind === "update") {
           remember(result.info);
           setAvailableUpdate(result.info);
-          void startUpdateDownload(result.info);
+          if (downloadedVersion.current !== result.info.version) {
+            void startUpdateDownload(result.info);
+          }
           return;
         }
         if (result.kind === "current") {
           remember(null);
           setAvailableUpdate(null);
+          downloadedVersion.current = null;
           return;
         }
         // All endpoints failed (offline / rate limited): keep the badge from a
@@ -220,17 +227,22 @@ export default function App() {
         const info = JSON.parse(stored) as UpdateInfo;
         if (typeof info.version === "string" && info.version.length > 0) {
           setAvailableUpdate(info);
-          void startUpdateDownload(info);
+          if (downloadedVersion.current !== info.version) {
+            void startUpdateDownload(info);
+          }
         }
       }
     } catch {
       // malformed cache: ignore
     }
 
+    // Re-check every 30 minutes while the app stays open.
+    const interval = window.setInterval(() => void attempt(0), 30 * 60 * 1000);
     void attempt(2);
     return () => {
       cancelled = true;
       window.clearTimeout(retryTimer);
+      window.clearInterval(interval);
     };
   }, [startUpdateDownload]);
 

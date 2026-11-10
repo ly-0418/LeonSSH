@@ -2672,7 +2672,7 @@ dependencies = [
 
 [[package]]
 name = "leonssh"
-version = "0.4.12"
+version = "0.4.11"
 dependencies = [
  "bytes",
  "keyring",

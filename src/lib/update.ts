@@ -272,6 +272,9 @@ export async function downloadInstaller(
 
   let lastError = "下载失败";
   for (const url of candidates) {
+    // Progress belongs to one attempt: reset it so a mirror fallback does not
+    // look like the download jumping backwards.
+    onProgress?.({ received: 0, total: null });
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), 90_000);
     try {

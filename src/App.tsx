@@ -149,9 +149,15 @@ export default function App() {
 
   /** Version whose installer already sits in %TEMP% (avoids re-downloading). */
   const downloadedVersion = useRef<string | null>(null);
+  /** Version currently being downloaded, so parallel checks cannot race. */
+  const downloadInFlight = useRef<string | null>(null);
 
   /** Downloads the installer quietly; the dialog only shows after a click. */
   const startUpdateDownload = useCallback(async (info: UpdateInfo) => {
+    if (downloadInFlight.current === info.version) {
+      return;
+    }
+    downloadInFlight.current = info.version;
     setUpdatePhase("downloading");
     setInstallError("");
     setUpdateProgress({ received: 0, total: null });
@@ -163,6 +169,8 @@ export default function App() {
     } catch (error) {
       setInstallError(error instanceof Error ? error.message : String(error));
       setUpdatePhase("error");
+    } finally {
+      downloadInFlight.current = null;
     }
   }, []);
 

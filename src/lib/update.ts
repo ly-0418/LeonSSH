@@ -9,6 +9,8 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
+import { tempDir, join } from "@tauri-apps/api/path";
+import { writeFile } from "@tauri-apps/plugin-fs";
 
 const RELEASES_PAGE = "https://github.com/ly-0418/LeonSSH/releases/latest";
 const REPO_PATH = "/repos/ly-0418/LeonSSH";
@@ -235,4 +237,71 @@ export async function fetchRecentReleases(limit = 10): Promise<ReleaseNote[]> {
     logFailure("list", reason);
     return cached?.value ?? [];
   }
+}
+
+export interface DownloadProgress {
+  received: number;
+  total: number | null;
+}
+
+/** Downloads the release installer next to the app so it can be launched. */
+export async function downloadInstaller(
+  info: UpdateInfo,
+  onProgress?: (progress: DownloadProgress) => void,
+): Promise<string> {
+  const fileName = `LeonSSH_${info.version}_x64-setup.exe`;
+  const official = `https://github.com/ly-0418/LeonSSH/releases/download/v${info.version}/${fileName}`;
+  // The proxies send CORS headers, github.com itself does not, so WebView2 can
+  // only read the bytes through a proxy.
+  const candidates = [
+    `https://gh-proxy.com/${official}`,
+    `https://ghfast.top/${official}`,
+    official,
+  ];
+
+  let lastError = "下载失败";
+  for (const url of candidates) {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 90_000);
+    try {
+      const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+      if (!response.ok || response.body === null) {
+        lastError = `HTTP ${response.status}`;
+        continue;
+      }
+      const totalHeader = Number.parseInt(response.headers.get("content-length") ?? "", 10);
+      const total = Number.isFinite(totalHeader) && totalHeader > 0 ? totalHeader : null;
+      const reader = response.body.getReader();
+      const chunks: Uint8Array[] = [];
+      let received = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        chunks.push(value);
+        received += value.byteLength;
+        onProgress?.({ received, total });
+      }
+      if (received === 0) {
+        lastError = "空文件";
+        continue;
+      }
+      const merged = new Uint8Array(received);
+      let offset = 0;
+      for (const chunk of chunks) {
+        merged.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      const dir = await tempDir();
+      const target = await join(dir, `leonssh-update-${info.version}.exe`);
+      await writeFile(target, merged);
+      return target;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }
+  throw new Error(lastError);
 }

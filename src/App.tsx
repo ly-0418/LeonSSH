@@ -23,7 +23,7 @@ import { deleteSession, listSessions } from "./lib/ipc/sessions";
 import type { SessionSummary, TerminalStatus } from "./lib/ipc/types";
 import type { ThemeMode } from "./lib/terminal/theme";
 import { appVersion, openExternalUrl } from "./lib/ipc/app";
-import { checkForUpdate, type UpdateInfo } from "./lib/update";
+import { checkForUpdate, downloadInstaller, type UpdateInfo } from "./lib/update";
 import { setAvailableUpdate } from "./lib/updateStore";
 
 const INITIAL_STATUS: TerminalStatus = {
@@ -125,6 +125,14 @@ export default function App() {
   const [pendingSessionClose, setPendingSessionClose] = useState<string | null>(null);
   /** Newer release found by the silent startup check. */
   const [updateNotice, setUpdateNotice] = useState<UpdateInfo | null>(null);
+  type UpdatePhase = "idle" | "downloading" | "ready" | "error";
+  const [updatePhase, setUpdatePhase] = useState<UpdatePhase>("idle");
+  const [updateProgress, setUpdateProgress] = useState<{ received: number; total: number | null }>({
+    received: 0,
+    total: null,
+  });
+  const [installerPath, setInstallerPath] = useState<string | null>(null);
+  const [installError, setInstallError] = useState("");
   const confirmedSessionClose = useRef<Set<string>>(new Set());
   // Dialogs and drawers steal focus; hand it back to the active terminal.
   useEffect(() => {
@@ -137,36 +145,41 @@ export default function App() {
     target?.focus();
   }, [settingsOpen, sessionDialog, pendingDelete, view]);
 
-  // Silent update check a few seconds after startup: never blocks the UI and
-  // stays quiet on network errors. "稍后" remembers the skipped version.
+  // Check for updates as soon as the UI is up, then download the installer in
+  // the background. Installing stays a single click (and quits the app first).
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void (async () => {
-        try {
-          // At most once every 6 hours: keeps us far below GitHub's anonymous
-          // API quota (60 requests/hour).
-          const last = Number(localStorage.getItem("leonssh.lastUpdateCheck") ?? "0");
-          if (Number.isFinite(last) && Date.now() - last < 6 * 60 * 60 * 1000) {
-            return;
-          }
-          const current = await appVersion();
-          localStorage.setItem("leonssh.lastUpdateCheck", String(Date.now()));
-          const result = await checkForUpdate(current);
-          if (result.kind !== "update") {
-            setAvailableUpdate(null);
-            return;
-          }
-          setAvailableUpdate(result.info);
-          if (localStorage.getItem("leonssh.skippedUpdate") === result.info.version) {
-            return;
-          }
-          setUpdateNotice(result.info);
-        } catch {
-          // update checks are best effort
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const current = await appVersion();
+        const result = await checkForUpdate(current);
+        if (cancelled || result.kind !== "update") {
+          setAvailableUpdate(null);
+          return;
         }
-      })();
-    }, 5000);
-    return () => window.clearTimeout(timer);
+        setAvailableUpdate(result.info);
+        setUpdateNotice(result.info);
+        setUpdatePhase("downloading");
+        const path = await downloadInstaller(result.info, (progress) => {
+          if (!cancelled) {
+            setUpdateProgress(progress);
+          }
+        });
+        if (!cancelled) {
+          setInstallerPath(path);
+          setUpdatePhase("ready");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setInstallError(error instanceof Error ? error.message : String(error));
+          setUpdatePhase("error");
+        }
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Only live connections block the window close: closed/failed tabs do not.
@@ -761,28 +774,68 @@ export default function App() {
         <div className="modal-backdrop" role="presentation">
           <div className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <h2 className="modal__title">发现新版本 v{updateNotice.version}</h2>
-            <p className="modal__body">当前版本已落后，更新包通过 GitHub Releases 分发。</p>
+
+            {updatePhase === "downloading" && (
+              <p className="modal__body">
+                正在下载安装包
+                {updateProgress.total !== null && updateProgress.total > 0
+                  ? `（${Math.min(100, Math.round((updateProgress.received / updateProgress.total) * 100))}%）`
+                  : "…"}
+                ，下载完成后可直接安装。
+              </p>
+            )}
+            {updatePhase === "ready" && (
+              <p className="modal__body">安装包已下载完成。点击「立即安装」将关闭当前窗口并自动安装新版本。</p>
+            )}
+            {updatePhase === "error" && (
+              <p className="modal__body">
+                自动下载失败：{installError.length > 0 ? installError : "网络异常"}。可以打开发布页手动下载安装包。
+              </p>
+            )}
+            {updatePhase === "downloading" && updateProgress.total !== null && updateProgress.total > 0 && (
+              <div className="fm-progress__track" style={{ margin: "6px 0 2px" }}>
+                <div
+                  className="fm-progress__fill"
+                  style={{
+                    width: `${Math.min(100, Math.round((updateProgress.received / updateProgress.total) * 100))}%`,
+                  }}
+                />
+              </div>
+            )}
+
             <pre className="update-notes">{updateNotice.notes}</pre>
             <div className="modal__actions">
+              {updatePhase === "ready" && installerPath !== null && (
+                <button
+                  type="button"
+                  className="button button--primary"
+                  onClick={() => {
+                    void invoke("apply_update", { path: installerPath }).catch((error: unknown) => {
+                      setInstallError(error instanceof Error ? error.message : String(error));
+                      setUpdatePhase("error");
+                    });
+                  }}
+                >
+                  立即安装
+                </button>
+              )}
               <button
                 type="button"
-                className="button button--primary"
+                className="button button--ghost"
                 onClick={() => {
                   void openExternalUrl(updateNotice.url).catch(() => undefined);
-                  setUpdateNotice(null);
                 }}
               >
-                前往下载
+                打开发布页
               </button>
               <button
                 type="button"
                 className="button button--ghost"
                 onClick={() => {
-                  localStorage.setItem("leonssh.skippedUpdate", updateNotice.version);
                   setUpdateNotice(null);
                 }}
               >
-                稍后提醒
+                稍后
               </button>
             </div>
           </div>

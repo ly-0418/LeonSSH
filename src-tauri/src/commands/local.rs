@@ -298,6 +298,34 @@ pub fn shell_icon(name: String, is_dir: bool) -> Result<ShellIcon, AppError> {
         Err(AppError::Internal("仅支持 Windows".into()))
     }
 }
+/// Launches the downloaded NSIS installer and exits so it can replace the exe.
+///
+/// Only files named `leonssh-update-*.exe` are accepted: the frontend downloads
+/// the release asset itself, this command merely runs it.
+#[tauri::command]
+pub fn apply_update(app: tauri::AppHandle, path: String) -> Result<(), AppError> {
+    let installer = std::path::PathBuf::from(&path);
+    if !installer.is_file() {
+        return Err(AppError::InvalidArgument("安装包不存在".into()));
+    }
+    let name = installer
+        .file_name()
+        .map(|value| value.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+    if !name.starts_with("leonssh-update-") || !name.ends_with(".exe") {
+        return Err(AppError::InvalidArgument("安装包文件名不合法".into()));
+    }
+    tracing::info!(path = %installer.display(), "launching the downloaded update");
+    std::process::Command::new(&installer)
+        .arg("/S")
+        .spawn()
+        .map_err(|err| AppError::Internal(format!("无法启动安装程序: {err}")))?;
+    // Give the installer a moment to start before this process releases the exe.
+    std::thread::sleep(std::time::Duration::from_millis(400));
+    app.exit(0);
+    Ok(())
+}
+
 /// Confirmed shutdown: exits the app so every session is closed by the state
 /// teardown (window.destroy() is blocked by the capability ACL).
 #[tauri::command]

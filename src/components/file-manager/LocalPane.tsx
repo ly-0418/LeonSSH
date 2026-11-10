@@ -83,6 +83,10 @@ export function LocalPane({
   const [menu, setMenu] = useState<{ x: number; y: number; entry: FileEntry | null } | null>(null);
   const [prompt, setPrompt] = useState<PromptState | null>(null);
   const [pendingDelete, setPendingDelete] = useState<FileEntry | null>(null);
+  const [batchDelete, setBatchDelete] = useState<FileEntry[] | null>(null);
+  const [batchProgress, setBatchProgress] = useState<{ total: number; done: number; current: string } | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -124,6 +128,24 @@ export function LocalPane({
   );
 
   function menuItems(entry: FileEntry | null): FileMenuItem[] {
+    if (entry !== null) {
+      // Multi-selection wins over the single row that was right-clicked.
+      const selected = pane.selectedEntries;
+      const targets =
+        selected.some((item) => item.name === entry.name) && selected.length > 1
+          ? selected
+          : [entry];
+      if (targets.length > 1) {
+        return [
+          {
+            icon: "\uE74D",
+            label: `批量删除（${targets.length} 项）`,
+            danger: true,
+            onSelect: () => setBatchDelete(targets),
+          },
+        ];
+      }
+    }
     if (entry === null) {
       return [
         { icon: "\uE8F4", label: "新建文件夹", onSelect: () => setPrompt({ kind: "folder" }) },
@@ -251,6 +273,67 @@ persistKey={persistKey} onDropEntries={onRemoteDrop}
           }}
           onCancel={() => setPendingDelete(null)}
         />
+      )}
+      {batchDelete !== null && (
+        <ConfirmDialog
+          title="批量删除"
+          message={`确定删除选中的 ${batchDelete.length} 项吗？文件夹会被递归删除，且不可恢复。`}
+          confirmLabel="删除"
+          onConfirm={() => {
+            const targets = batchDelete;
+            setBatchDelete(null);
+            void (async () => {
+              setError(null);
+              setBatchProgress({ total: targets.length, done: 0, current: targets[0]?.name ?? "" });
+              try {
+                for (let index = 0; index < targets.length; index += 1) {
+                  const item = targets[index];
+                  setBatchProgress({ total: targets.length, done: index, current: item.name });
+                  await deleteLocal(item.path, item.isDir);
+                  setBatchProgress({ total: targets.length, done: index + 1, current: item.name });
+                }
+                await pane.refresh();
+              } catch (err) {
+                setError(toUserMessage(err));
+                await pane.refresh().catch(() => undefined);
+              } finally {
+                setBatchProgress(null);
+              }
+            })();
+          }}
+          onCancel={() => setBatchDelete(null)}
+        />
+      )}
+
+      {batchProgress !== null && (
+        <div className="modal-backdrop" role="presentation">
+          <div className="modal" role="dialog" aria-modal="true" aria-live="polite">
+            <h2 className="modal__title">
+              <span className="fm-progress__spinner" aria-hidden="true" />
+              {"  "}正在删除文件
+            </h2>
+            <div className="fm-progress">
+              <div className="fm-progress__row">
+                <span>
+                  已完成 <strong>{batchProgress.done}</strong> / {batchProgress.total}
+                </span>
+                <span>{Math.round((batchProgress.done / Math.max(1, batchProgress.total)) * 100)}%</span>
+              </div>
+              <div className="fm-progress__track">
+                <div
+                  className="fm-progress__fill"
+                  style={{
+                    width: `${Math.round((batchProgress.done / Math.max(1, batchProgress.total)) * 100)}%`,
+                  }}
+                />
+              </div>
+              <div className="fm-progress__current" title={batchProgress.current}>
+                正在处理：{batchProgress.current}
+              </div>
+              <p className="modal__hint">文件夹会递归删除，删除期间请不要关闭窗口。</p>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );

@@ -316,16 +316,23 @@ pub fn apply_update(app: tauri::AppHandle, path: String) -> Result<(), AppError>
         return Err(AppError::InvalidArgument("安装包文件名不合法".into()));
     }
     tracing::info!(path = %installer.display(), "launching the downloaded update");
-    std::process::Command::new(&installer)
+    let child = std::process::Command::new(&installer)
         .arg("/S")
         .spawn()
         .map_err(|err| AppError::Internal(format!("无法启动安装程序: {err}")))?;
+    let installer_pid = child.id();
 
-    // The setup file lives in %TEMP%: once the installer has copied it, delete it.
-    // A detached PowerShell survives our exit and retries while the file is busy.
-    let target = installer.display().to_string().replace('\'', "''");
+    // Detached helper: waits for the installer, relaunches the freshly installed
+    // app, and finally deletes the setup file from %TEMP%.
+    let setup = installer.display().to_string().replace('\'', "''");
+    let installed = std::env::var("LOCALAPPDATA")
+        .map(|dir| format!("{dir}\\LeonSSH\\leonssh.exe").replace('\'', "''"))
+        .unwrap_or_default();
+    let original = std::env::current_exe()
+        .map(|path| path.display().to_string().replace('\'', "''"))
+        .unwrap_or_default();
     let script = format!(
-        "for ($i = 0; $i -lt 40; $i++) {{            try {{ Remove-Item -LiteralPath '{target}' -Force -ErrorAction Stop; break }}            catch {{ Start-Sleep -Seconds 3 }} }}"
+        "$setup = '{setup}';          $target = '{installed}';          $original = '{original}';          $started = Get-Date;          Wait-Process -Id {installer_pid} -ErrorAction SilentlyContinue;          $deadline = (Get-Date).AddMinutes(3);          $launched = $false;          while ((Get-Date) -lt $deadline -and -not $launched) {{            if (Test-Path -LiteralPath $target) {{              $item = Get-Item -LiteralPath $target;              if ($item.LastWriteTime -ge $started.AddSeconds(-5)) {{                Start-Process -FilePath $target; $launched = $true; break              }}            }}            Start-Sleep -Seconds 2          }};          if (-not $launched -and (Test-Path -LiteralPath $original)) {{ Start-Process -FilePath $original }};          for ($i = 0; $i -lt 40; $i++) {{            try {{ Remove-Item -LiteralPath $setup -Force -ErrorAction Stop; break }}            catch {{ Start-Sleep -Seconds 3 }}          }}"
     );
     let _ = std::process::Command::new("powershell")
         .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &script])

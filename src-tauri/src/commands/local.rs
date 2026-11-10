@@ -320,6 +320,17 @@ pub fn apply_update(app: tauri::AppHandle, path: String) -> Result<(), AppError>
         .arg("/S")
         .spawn()
         .map_err(|err| AppError::Internal(format!("无法启动安装程序: {err}")))?;
+
+    // The setup file lives in %TEMP%: once the installer has copied it, delete it.
+    // A detached PowerShell survives our exit and retries while the file is busy.
+    let target = installer.display().to_string().replace('\'', "''");
+    let script = format!(
+        "for ($i = 0; $i -lt 40; $i++) {{            try {{ Remove-Item -LiteralPath '{target}' -Force -ErrorAction Stop; break }}            catch {{ Start-Sleep -Seconds 3 }} }}"
+    );
+    let _ = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &script])
+        .spawn();
+
     // Give the installer a moment to start before this process releases the exe.
     std::thread::sleep(std::time::Duration::from_millis(400));
     app.exit(0);

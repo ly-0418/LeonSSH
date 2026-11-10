@@ -120,6 +120,8 @@ export default function App() {
 
   const [pendingDelete, setPendingDelete] = useState<SessionSummary | null>(null);
   const [closeRequested, setCloseRequested] = useState(false);
+  /** Why the window is closing: plain quit, or install the downloaded update. */
+  const [closeReason, setCloseReason] = useState<"quit" | "install">("quit");
   const forceClose = useRef(false);
   const [pendingClose, setPendingClose] = useState<{ key: string; count: number; finish: () => void } | null>(null);
   const [pendingSessionClose, setPendingSessionClose] = useState<string | null>(null);
@@ -218,6 +220,7 @@ export default function App() {
           return;
         }
         event.preventDefault();
+        setCloseReason("quit");
         setCloseRequested(true);
       })
       .then((dispose) => {
@@ -329,8 +332,28 @@ export default function App() {
     [tabs],
   );
 
+  // Runs once the close confirmation (if any) has passed: either install the
+  // downloaded update or simply quit. Installing keeps the same session check
+  // as closing the window, so an update never silently drops connections.
+  const executeClose = useCallback(() => {
+    const installing = closeReason === "install" && installerPath !== null;
+    setCloseRequested(false);
+    forceClose.current = true;
+    if (installing) {
+      void invoke("apply_update", { path: installerPath }).catch((error: unknown) => {
+        forceClose.current = false;
+        setInstallError(error instanceof Error ? error.message : String(error));
+        setUpdatePhase("error");
+        setUpdateNotice((info) => info);
+      });
+      return;
+    }
+    void invoke("quit_app");
+  }, [closeReason, installerPath]);
+
   // The caption ✕ goes through here: no sessions => quit directly, sessions => ask.
   const requestClose = useCallback(() => {
+    setCloseReason("quit");
     if (liveSessionCount === 0) {
       void invoke("quit_app");
       return;
@@ -760,15 +783,14 @@ export default function App() {
 
       {closeRequested && (
         <ConfirmDialog
-          title="关闭 LeonSSH"
-          message={`当前有 ${liveSessionCount} 个会话正在进行，关闭后连接会被断开。确认关闭吗？`}
-          confirmLabel="关闭"
-          onConfirm={() => {
-            setCloseRequested(false);
-            forceClose.current = true;
-            void invoke("frontend_error", { message: "close-confirmed" });
-            void invoke("quit_app");
-          }}
+          title={closeReason === "install" ? "安装更新并关闭 LeonSSH" : "关闭 LeonSSH"}
+          message={
+            closeReason === "install"
+              ? `当前有 ${liveSessionCount} 个会话正在进行，安装更新会关闭窗口并断开连接。确认继续吗？`
+              : `当前有 ${liveSessionCount} 个会话正在进行，关闭后连接会被断开。确认关闭吗？`
+          }
+          confirmLabel={closeReason === "install" ? "安装并关闭" : "关闭"}
+          onConfirm={executeClose}
           onCancel={() => setCloseRequested(false)}
         />
       )}
@@ -837,10 +859,20 @@ export default function App() {
                   type="button"
                   className="button button--primary"
                   onClick={() => {
-                    void invoke("apply_update", { path: installerPath }).catch((error: unknown) => {
-                      setInstallError(error instanceof Error ? error.message : String(error));
-                      setUpdatePhase("error");
-                    });
+                    setCloseReason("install");
+                    if (liveSessionCount === 0) {
+                      setCloseRequested(false);
+                      forceClose.current = true;
+                      void invoke("apply_update", { path: installerPath }).catch(
+                        (error: unknown) => {
+                          forceClose.current = false;
+                          setInstallError(error instanceof Error ? error.message : String(error));
+                          setUpdatePhase("error");
+                        },
+                      );
+                      return;
+                    }
+                    setCloseRequested(true);
                   }}
                 >
                   立即安装

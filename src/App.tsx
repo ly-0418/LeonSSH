@@ -163,26 +163,74 @@ export default function App() {
   }, []);
 
   // Check for updates as soon as the UI is up. A hit only shows the badge in the
-  // status bar; the dialog opens when the user clicks it.
+  // status bar; the dialog opens when the user clicks it. The found version is
+  // remembered so the badge survives a restart even if the next check fails.
   useEffect(() => {
     let cancelled = false;
-    const run = async () => {
+    let retryTimer = 0;
+
+    const remember = (info: UpdateInfo | null) => {
+      try {
+        if (info === null) {
+          localStorage.removeItem("leonssh.pendingUpdate");
+        } else {
+          localStorage.setItem("leonssh.pendingUpdate", JSON.stringify(info));
+        }
+      } catch {
+        // storage is optional
+      }
+    };
+
+    const attempt = async (retriesLeft: number) => {
       try {
         const current = await appVersion();
-        const result = await checkForUpdate(current);
-        if (cancelled || result.kind !== "update") {
+        // Ignore the 30-minute cache: a restart should always re-validate, and
+        // the mirrors keep us far below the GitHub rate limit.
+        const result = await checkForUpdate(current, { force: true });
+        if (cancelled) {
+          return;
+        }
+        if (result.kind === "update") {
+          remember(result.info);
+          setAvailableUpdate(result.info);
+          void startUpdateDownload(result.info);
+          return;
+        }
+        if (result.kind === "current") {
+          remember(null);
           setAvailableUpdate(null);
           return;
         }
-        setAvailableUpdate(result.info);
-        void startUpdateDownload(result.info);
+        // All endpoints failed (offline / rate limited): keep the badge from a
+        // previous run and try again later.
+        if (retriesLeft > 0) {
+          retryTimer = window.setTimeout(() => void attempt(retriesLeft - 1), 60_000);
+        }
       } catch {
-        // update checks are best effort
+        if (retriesLeft > 0) {
+          retryTimer = window.setTimeout(() => void attempt(retriesLeft - 1), 60_000);
+        }
       }
     };
-    void run();
+
+    // Show the badge immediately from the previous run, then re-validate.
+    try {
+      const stored = localStorage.getItem("leonssh.pendingUpdate");
+      if (stored !== null) {
+        const info = JSON.parse(stored) as UpdateInfo;
+        if (typeof info.version === "string" && info.version.length > 0) {
+          setAvailableUpdate(info);
+          void startUpdateDownload(info);
+        }
+      }
+    } catch {
+      // malformed cache: ignore
+    }
+
+    void attempt(2);
     return () => {
       cancelled = true;
+      window.clearTimeout(retryTimer);
     };
   }, [startUpdateDownload]);
 

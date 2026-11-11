@@ -427,10 +427,6 @@ export function SettingsDrawer({
             )}
 
             {tab === "config" && (
-              <SnippetSettings enabled={completionEnabled} onChangeEnabled={onChangeCompletion} />
-            )}
-
-            {tab === "config" && (
               <div className="setting-group">
                 <h3 className="setting-group__title">标签栏按钮</h3>
                 <p className="modal__hint">
@@ -455,6 +451,10 @@ export function SettingsDrawer({
                   显示「转发」按钮
                 </label>
               </div>
+            )}
+
+            {tab === "config" && (
+              <SnippetSettings enabled={completionEnabled} onChangeEnabled={onChangeCompletion} />
             )}
 
             {tab === "logs" && (

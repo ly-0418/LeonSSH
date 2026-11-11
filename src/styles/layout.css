@@ -2540,11 +2540,6 @@ input[type="password"]::-ms-reveal {
   background: var(--bg-panel);
 }
 
-.snippet-item--deleted {
-  opacity: 0.6;
-  border-style: dashed;
-}
-
 .snippet-item__main {
   display: flex;
   align-items: center;

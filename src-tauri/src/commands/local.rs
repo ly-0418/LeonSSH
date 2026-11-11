@@ -326,6 +326,10 @@ pub fn apply_update(app: tauri::AppHandle, path: String) -> Result<(), AppError>
     // app (the install folder comes from the uninstall registry key, because the
     // user may have chosen a custom location), and deletes the setup file.
     let setup = installer.display().to_string().replace('\'', "''");
+    let target_version = name
+        .trim_start_matches("leonssh-update-")
+        .trim_end_matches(".exe")
+        .to_string();
     let fallback = std::env::var("LOCALAPPDATA")
         .map(|dir| format!("{dir}\\LeonSSH\\leonssh.exe").replace('\'', "''"))
         .unwrap_or_default();
@@ -333,7 +337,7 @@ pub fn apply_update(app: tauri::AppHandle, path: String) -> Result<(), AppError>
 "helper start " + (Get-Date -Format s) | Out-File -LiteralPath $log -Append
 Wait-Process -Id __PID__ -ErrorAction SilentlyContinue
 "installer exited " + (Get-Date -Format s) | Out-File -LiteralPath $log -Append
-$start = (Get-Date).AddSeconds(-5)
+$version = '__VERSION__'
 $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\LeonSSH'
 $target = ''
 if (Test-Path $key) {
@@ -342,14 +346,19 @@ if (Test-Path $key) {
 }
 if (-not (Test-Path -LiteralPath $target)) { $target = '__FALLBACK__' }
 "target " + $target | Out-File -LiteralPath $log -Append
+# The installer keeps the original file timestamps, so wait for the uninstall
+# registry entry to report the new version instead of comparing mtimes.
 $deadline = (Get-Date).AddMinutes(3)
 while ((Get-Date) -lt $deadline) {
-  if (Test-Path -LiteralPath $target) {
-    $item = Get-Item -LiteralPath $target
-    if ($item.LastWriteTime -ge $start) { break }
+  $current = ''
+  if (Test-Path $key) {
+    $current = (Get-ItemProperty -Path $key -Name DisplayVersion -ErrorAction SilentlyContinue).DisplayVersion
   }
-  Start-Sleep -Seconds 2
+  if ($current -eq $version) { "version " + $current + " installed" | Out-File -LiteralPath $log -Append; break }
+  if (-not (Test-Path -LiteralPath $target)) { break }
+  Start-Sleep -Seconds 1
 }
+Start-Sleep -Seconds 2
 if (Test-Path -LiteralPath $target) {
   Start-Process -FilePath $target
   "launched " + $target | Out-File -LiteralPath $log -Append
@@ -364,7 +373,8 @@ for ($i = 0; $i -lt 40; $i++) {
     let script = template
         .replace("__PID__", &installer_pid.to_string())
         .replace("__SETUP__", &setup)
-        .replace("__FALLBACK__", &fallback);
+        .replace("__FALLBACK__", &fallback)
+        .replace("__VERSION__", &target_version);
     // Run from a .ps1 file instead of `-Command`: the script contains quotes and
     // newlines, and passing it inline could leave PowerShell waiting for input
     // (an empty console window that never does anything).

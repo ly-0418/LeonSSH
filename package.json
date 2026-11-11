@@ -1,7 +1,7 @@
 {
   "name": "leonssh",
   "private": true,
-  "version": "0.5.2",
+  "version": "0.5.3",
   "type": "module",
   "description": "LeonSSH - a Windows-first visual SSH client (Tauri 2 + russh + xterm.js)",
   "scripts": {

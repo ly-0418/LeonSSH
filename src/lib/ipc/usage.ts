@@ -34,3 +34,31 @@ export async function bumpSnippet(line: string): Promise<void> {
     // Learning is best-effort.
   }
 }
+/** Learned snippet plus the user's override (edited text or hidden). */
+export interface SnippetEntry {
+  original: string;
+  template: string;
+  count: number;
+  edited: boolean;
+  deleted: boolean;
+}
+
+export async function loadSnippetCatalog(): Promise<SnippetEntry[]> {
+  try {
+    return await invoke<SnippetEntry[]>("command_snippet_catalog");
+  } catch {
+    return [];
+  }
+}
+
+export async function setSnippetOverride(
+  original: string,
+  template: string,
+  deleted: boolean,
+): Promise<void> {
+  await invoke("command_snippet_override_set", { original, template, deleted });
+}
+
+export async function clearSnippetOverride(original: string): Promise<void> {
+  await invoke("command_snippet_override_clear", { original });
+}

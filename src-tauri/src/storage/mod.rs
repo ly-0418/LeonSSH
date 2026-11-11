@@ -130,7 +130,22 @@ async fn migrate(pool: &SqlitePool) -> Result<(), AppError> {
     .execute(pool)
     .await?;
 
-    sqlx::query("PRAGMA user_version = 5").execute(pool).await?;
+    // User-edited / deleted command snippets: the learned row stays untouched so
+    // an edit or deletion can always be reverted from the settings tab.
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS snippet_overrides (
+            original   TEXT PRIMARY KEY,
+            template   TEXT NOT NULL,
+            deleted    INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("PRAGMA user_version = 6").execute(pool).await?;
     Ok(())
 }
 

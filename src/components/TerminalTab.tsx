@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { TerminalStatus } from "../lib/ipc/types";
 import { LINUX_COMMANDS, canonicalCommand, describeCommand } from "../lib/terminal/commands";
 import { snippetInsertion, snippetTemplate } from "../lib/terminal/snippet";
-import { bumpCommandUsage, bumpSnippet, loadCommandUsage, loadSnippets } from "../lib/ipc/usage";
+import { bumpCommandUsage, bumpSnippet, loadCommandUsage, loadSnippetCatalog } from "../lib/ipc/usage";
 import { useTerminal } from "../hooks/useTerminal";
 import type { CursorConfig } from "../lib/terminal/cursor";
 import type { ThemeMode } from "../lib/terminal/theme";
@@ -22,6 +22,8 @@ interface TerminalTabProps {
   cursorWidth: number;
   /** Smooth blink / smooth move settings. */
   cursorSmooth?: Pick<CursorConfig, "smoothBlink" | "blinkRadius" | "smoothMove">;
+  /** Settings → 配置参数: command completion can be turned off entirely. */
+  completionEnabled?: boolean;
   state: TerminalStatus["state"];
   /** Bumped by the tab menu to re-open the session in place. */
   reconnectAt?: number;
@@ -43,6 +45,7 @@ export function TerminalTab({
     cursorStyle,
     cursorWidth,
   cursorSmooth,
+  completionEnabled = true,
   state,
   reconnectAt,
   onStatus,
@@ -56,6 +59,8 @@ export function TerminalTab({
   const [panelStyle, setPanelStyle] = useState<{ left: number; top: number } | null>(null);
   const [usage, setUsage] = useState<Record<string, number>>({});
   const [snippets, setSnippets] = useState<Record<string, number>>({});
+  /** Effective template -> learned/original row, so edits still count usage. */
+  const snippetOriginals = useRef<Record<string, string>>({});
   const suggestListRef = useRef<HTMLDivElement | null>(null);
   const paneRef = useRef<HTMLElement | null>(null);
   /** Keeps the popup closed after accepting a file (no deeper level). */
@@ -90,7 +95,8 @@ export function TerminalTab({
       if (raw.includes(" ") || raw.includes("|")) {
         const template = snippetTemplate(raw);
         if (template !== null) {
-          void bumpSnippet(template).then(() =>
+          const original = snippetOriginals.current[template] ?? template;
+          void bumpSnippet(original).then(() =>
             setSnippets((current) => ({ ...current, [template]: (current[template] ?? 0) + 1 })),
           );
         }
@@ -101,7 +107,7 @@ export function TerminalTab({
   const typed = line.trimStart();
   const isCompound = typed.includes(" ") || typed.includes("|");
   const commandMatches =
-    !suggestDismissed && typed.length > 0 && !isCompound
+    completionEnabled && !suggestDismissed && typed.length > 0 && !isCompound
       ? LINUX_COMMANDS.filter(
           (command) =>
             (command.name.startsWith(typed) ||
@@ -113,7 +119,7 @@ export function TerminalTab({
           .slice(0, 8)
       : [];
   const snippetMatches =
-    !suggestDismissed && isCompound
+    completionEnabled && !suggestDismissed && isCompound
       ? Object.entries(snippets)
           .filter(([item]) => item.startsWith(typed) && item !== typed)
           .sort((a, b) => b[1] - a[1])
@@ -245,19 +251,32 @@ export function TerminalTab({
   // Usage counters come from SQLite: they persist across restarts and upgrades.
   useEffect(() => {
     let cancelled = false;
-    void loadSnippets().then((counts) => {
-      if (!cancelled) {
-        // Collapse legacy rows so "cd opt" and "cd /usr" share one template.
-        const merged: Record<string, number> = {};
-        for (const [line, count] of Object.entries(counts)) {
-          const key = snippetTemplate(line) ?? line;
-          merged[key] = (merged[key] ?? 0) + count;
+    const reload = () => {
+      void loadSnippetCatalog().then((rows) => {
+        if (cancelled) {
+          return;
         }
+        const merged: Record<string, number> = {};
+        const originals: Record<string, string> = {};
+        for (const row of rows) {
+          if (row.deleted) {
+            continue;
+          }
+          // Collapse legacy rows so "cd opt" and "cd /usr" share one template.
+          const key = snippetTemplate(row.template) ?? row.template;
+          merged[key] = (merged[key] ?? 0) + row.count;
+          originals[key] = row.original;
+        }
+        snippetOriginals.current = originals;
         setSnippets(merged);
-      }
-    });
+      });
+    };
+    reload();
+    // The settings tab edits/deletes snippets; refresh an already-open terminal.
+    window.addEventListener("leonssh:snippets-changed", reload);
     return () => {
       cancelled = true;
+      window.removeEventListener("leonssh:snippets-changed", reload);
     };
   }, []);
   useEffect(() => {

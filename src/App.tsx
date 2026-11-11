@@ -80,6 +80,10 @@ export default function App() {
   });
 
   // Smooth caret animations (IntelliJ-style); additive to the shape settings.
+  const [completionEnabled, setCompletionEnabled] = useState<boolean>(
+    () => localStorage.getItem("leonssh.completionEnabled") !== "0",
+  );
+
   const [smoothBlink, setSmoothBlink] = useState<boolean>(
     () => localStorage.getItem("leonssh.cursorSmoothBlink") === "1",
   );
@@ -781,6 +785,7 @@ export default function App() {
                     cursorStyle={cursorStyle}
                     cursorWidth={cursorWidth}
                     cursorSmooth={cursorSmooth}
+                    completionEnabled={completionEnabled}
                     onStatus={makeStatusHandler(tab.key)}
                   />
                 </div>
@@ -1012,6 +1017,11 @@ export default function App() {
             setCursorWidth(width);
             localStorage.setItem("leonssh.cursorStyle", style);
             localStorage.setItem("leonssh.cursorWidth", String(width));
+          }}
+          completionEnabled={completionEnabled}
+          onChangeCompletion={(value) => {
+            setCompletionEnabled(value);
+            localStorage.setItem("leonssh.completionEnabled", value ? "1" : "0");
           }}
           smoothBlink={smoothBlink}
           blinkRadius={blinkRadius}

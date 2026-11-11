@@ -1,4 +1,5 @@
 import { SMOOTH_MOVE_OPTIONS, type SmoothMoveMode } from "../lib/terminal/cursor";
+import { SnippetSettings } from "./SnippetSettings";
 import { UpdatePanel } from "./UpdatePanel";
 import { useEffect, useRef, useState } from "react";
 
@@ -29,6 +30,10 @@ interface SettingsDrawerProps {
   onChangeSmoothBlink: (value: boolean) => void;
   onChangeBlinkRadius: (value: number) => void;
   onChangeSmoothMove: (value: SmoothMoveMode) => void;
+
+  /** Command completion toggle (Settings → 配置参数). */
+  completionEnabled: boolean;
+  onChangeCompletion: (enabled: boolean) => void;
 
   showBroadcast: boolean;
   showForward: boolean;
@@ -66,6 +71,8 @@ export function SettingsDrawer({
   onChangeSmoothBlink,
   onChangeBlinkRadius,
   onChangeSmoothMove,
+  completionEnabled,
+  onChangeCompletion,
   showBroadcast,
   showForward,
   onChangeTabVisibility,
@@ -417,6 +424,10 @@ export function SettingsDrawer({
               </div>
 
               </>
+            )}
+
+            {tab === "config" && (
+              <SnippetSettings enabled={completionEnabled} onChangeEnabled={onChangeCompletion} />
             )}
 
             {tab === "config" && (

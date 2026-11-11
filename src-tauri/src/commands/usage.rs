@@ -52,3 +52,75 @@ pub async fn command_snippet_bump(state: State<'_, AppState>, line: String) -> R
     .await?;
     Ok(())
 }
+/// One learned snippet together with the user's override (edited text / hidden).
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SnippetRow {
+    pub original: String,
+    pub template: String,
+    pub count: i64,
+    pub edited: bool,
+    pub deleted: bool,
+}
+
+#[tauri::command]
+pub async fn command_snippet_catalog(
+    state: State<'_, AppState>,
+) -> Result<Vec<SnippetRow>, AppError> {
+    let rows = sqlx::query_as::<_, (String, String, i64, i64, i64)>(
+        "SELECT s.line, COALESCE(o.template, s.line), s.count, \
+                CASE WHEN o.original IS NULL THEN 0 ELSE 1 END, COALESCE(o.deleted, 0) \
+         FROM command_snippets s \
+         LEFT JOIN snippet_overrides o ON o.original = s.line \
+         ORDER BY s.count DESC, s.line ASC",
+    )
+    .fetch_all(state.db())
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|(original, template, count, overridden, deleted)| SnippetRow {
+            original,
+            template,
+            count,
+            edited: overridden == 1 && deleted == 0,
+            deleted: deleted == 1,
+        })
+        .collect())
+}
+
+#[tauri::command]
+pub async fn command_snippet_override_set(
+    state: State<'_, AppState>,
+    original: String,
+    template: String,
+    deleted: bool,
+) -> Result<(), AppError> {
+    let trimmed = template.trim();
+    if trimmed.is_empty() || trimmed.len() > 300 {
+        return Err(AppError::InvalidArgument("命令内容为空或过长".into()));
+    }
+    sqlx::query(
+        "INSERT INTO snippet_overrides (original, template, deleted, updated_at) \
+         VALUES (?, ?, ?, datetime('now')) \
+         ON CONFLICT(original) DO UPDATE SET template = excluded.template, \
+             deleted = excluded.deleted, updated_at = datetime('now')",
+    )
+    .bind(&original)
+    .bind(trimmed)
+    .bind(if deleted { 1 } else { 0 })
+    .execute(state.db())
+    .await?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn command_snippet_override_clear(
+    state: State<'_, AppState>,
+    original: String,
+) -> Result<(), AppError> {
+    sqlx::query("DELETE FROM snippet_overrides WHERE original = ?")
+        .bind(original)
+        .execute(state.db())
+        .await?;
+    Ok(())
+}

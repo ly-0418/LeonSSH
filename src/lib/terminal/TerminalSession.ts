@@ -47,6 +47,8 @@ export interface TerminalSessionOptions {
   onInputLine?: (line: string) => void;
   /** Fires when Enter submits a non-empty line (for usage counting). */
   onExecuted?: (line: string) => void;
+  /** Fires once a command has produced output: ok=false looks like a failure. */
+  onCommandFinished?: (line: string, ok: boolean) => void;
 }
 
 type BroadcastHandler = (data: string) => void;
@@ -69,6 +71,9 @@ export class TerminalSession {
   /** A fresh channel per connection: reusing one after close drops output. */
   private channel: Channel<ArrayBuffer> | null = null;
   private readonly encoder = new TextEncoder();
+  private readonly decoder = new TextDecoder();
+  /** Command waiting for its output, so only successful ones are remembered. */
+  private pendingCommand: { line: string; output: string; timer: number } | null = null;
   private renderer: RendererController | null = null;
   private caret: CaretAnimator | null = null;
   private cursorConfig: CursorConfig;
@@ -406,6 +411,7 @@ export class TerminalSession {
       if (char === "\r" || char === "\n") {
         if (this.inputLine.trim().length > 0) {
           this.options.onExecuted?.(this.inputLine);
+          this.watchCommand(this.inputLine);
         }
         this.inputLine = "";
       } else if (char === "\x7f") {
@@ -470,6 +476,40 @@ export class TerminalSession {
     }
     this.bytesIn.value += payload.byteLength;
     this.terminal.write(new Uint8Array(payload));
+    const pending = this.pendingCommand;
+    if (pending !== null) {
+      pending.output = (pending.output + this.decoder.decode(payload)).slice(-6000);
+      // Evaluate shortly after output stops arriving.
+      window.clearTimeout(pending.timer);
+      pending.timer = window.setTimeout(() => this.finishCommand(), 350);
+    }
+  }
+
+  /** Starts the success/failure window after a command was submitted. */
+  private watchCommand(line: string): void {
+    if (this.pendingCommand !== null) {
+      window.clearTimeout(this.pendingCommand.timer);
+      this.finishCommand();
+    }
+    const timer = window.setTimeout(() => this.finishCommand(), 4000);
+    this.pendingCommand = { line, output: "", timer };
+  }
+
+  private finishCommand(): void {
+    const pending = this.pendingCommand;
+    if (pending === null) {
+      return;
+    }
+    this.pendingCommand = null;
+    window.clearTimeout(pending.timer);
+    const text = pending.output.toLowerCase();
+    // Heuristic: shells print these for failed commands. Learning a broken
+    // snippet would pollute the suggestion list, so err on the side of failure.
+    const failed =
+      /command not found|no such file|permission denied|not a directory|is a directory|cannot (create|remove|open|access|stat|find)|could not|couldn't|failed to|error:|fatal:|invalid option|unknown option|unrecognized option|usage:|not found|connection refused|operation not permitted/.test(
+        text,
+      );
+    this.options.onCommandFinished?.(pending.line, !failed);
   }
 
   private async handleInput(data: string): Promise<void> {

@@ -92,15 +92,21 @@ export function TerminalTab({
           setUsage((current) => ({ ...current, [canonical]: (current[canonical] ?? 0) + 1 })),
         );
       }
-      if (raw.includes(" ") || raw.includes("|")) {
-        const template = snippetTemplate(raw);
-        if (template !== null) {
-          const original = snippetOriginals.current[template] ?? template;
-          void bumpSnippet(original).then(() =>
-            setSnippets((current) => ({ ...current, [template]: (current[template] ?? 0) + 1 })),
-          );
-        }
+    },
+    onCommandFinished: (raw, ok) => {
+      // Only successful commands become suggestions; a failed command would be
+      // learned as a broken snippet.
+      if (!ok || !(raw.includes(" ") || raw.includes("|"))) {
+        return;
       }
+      const template = snippetTemplate(raw);
+      if (template === null) {
+        return;
+      }
+      const original = snippetOriginals.current[template] ?? template;
+      void bumpSnippet(original).then(() =>
+        setSnippets((current) => ({ ...current, [template]: (current[template] ?? 0) + 1 })),
+      );
     },
   });
 

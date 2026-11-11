@@ -33,6 +33,7 @@ export interface UseTerminalOptions {
   cursorSmooth?: Pick<CursorConfig, "smoothBlink" | "blinkRadius" | "smoothMove">;
   onInputLine?: (line: string) => void;
   onExecuted?: (line: string) => void;
+  onCommandFinished?: (line: string, ok: boolean) => void;
   onStatus?: (patch: Partial<TerminalStatus>) => void;
 }
 
@@ -48,6 +49,7 @@ export function useTerminal({
   cursorSmooth,
   onInputLine,
   onExecuted,
+  onCommandFinished,
   onStatus,
 }: UseTerminalOptions) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -66,6 +68,8 @@ export function useTerminal({
   const onInputLineRef = useRef(onInputLine);
   const onExecutedRef = useRef(onExecuted);
   onExecutedRef.current = onExecuted;
+  const onCommandFinishedRef = useRef(onCommandFinished);
+  onCommandFinishedRef.current = onCommandFinished;
   onInputLineRef.current = onInputLine;
   fontSizeRef.current = fontSize;
 
@@ -88,6 +92,7 @@ export function useTerminal({
       onNotice: (message) => setNotice(message),
         onInputLine: (value) => onInputLineRef.current?.(value),
         onExecuted: (line) => onExecutedRef.current?.(line),
+        onCommandFinished: (line, ok) => onCommandFinishedRef.current?.(line, ok),
     });
     sessionRef.current = session;
 

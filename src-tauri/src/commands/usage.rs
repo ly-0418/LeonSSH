@@ -124,3 +124,20 @@ pub async fn command_snippet_override_clear(
         .await?;
     Ok(())
 }
+
+/// Permanently forget a learned snippet (it may be learned again later).
+#[tauri::command]
+pub async fn command_snippet_delete(
+    state: State<'_, AppState>,
+    original: String,
+) -> Result<(), AppError> {
+    sqlx::query("DELETE FROM command_snippets WHERE line = ?")
+        .bind(&original)
+        .execute(state.db())
+        .await?;
+    sqlx::query("DELETE FROM snippet_overrides WHERE original = ?")
+        .bind(original)
+        .execute(state.db())
+        .await?;
+    Ok(())
+}

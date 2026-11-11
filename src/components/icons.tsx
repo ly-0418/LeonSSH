@@ -71,3 +71,25 @@ export function UpdateAvailableIcon({ size = 13 }: IconProps) {
     </svg>
   );
 }
+
+/** Eye with a slash: hide this suggestion. */
+export function EyeOffIcon({ size = 16 }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 12s3.5-6 9-6c1.4 0 2.7.4 3.8 1" />
+      <path d="M21 12s-3.5 6-9 6c-1.4 0-2.7-.4-3.8-1" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+      <path d="m4 4 16 16" />
+    </svg>
+  );
+}
+
+/** Plain eye: make this suggestion visible again. */
+export function EyeIcon({ size = 16 }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}

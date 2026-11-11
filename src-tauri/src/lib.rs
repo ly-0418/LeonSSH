@@ -235,6 +235,7 @@ pub fn run() {
             commands::usage::command_snippet_catalog,
             commands::usage::command_snippet_override_set,
             commands::usage::command_snippet_override_clear,
+            commands::usage::command_snippet_delete,
             commands::sessions::session_export_json,
             commands::sessions::session_import_json,
             commands::sessions::test_connection,

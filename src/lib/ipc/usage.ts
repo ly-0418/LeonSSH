@@ -62,3 +62,8 @@ export async function setSnippetOverride(
 export async function clearSnippetOverride(original: string): Promise<void> {
   await invoke("command_snippet_override_clear", { original });
 }
+
+/** Permanently forget a learned snippet (it may be learned again later). */
+export async function deleteSnippet(original: string): Promise<void> {
+  await invoke("command_snippet_delete", { original });
+}

@@ -12,12 +12,32 @@ export interface SortState {
   dir: 1 | -1;
 }
 
+/** Windows Explorer-like collation: Latin/numeric names first, CJK after them. */
+const nameCollator = new Intl.Collator("zh-Hans-CN", { numeric: true, sensitivity: "base" });
+
+function scriptRank(name: string): number {
+  for (const char of name) {
+    const code = char.codePointAt(0) ?? 0;
+    // ASCII (letters, digits, punctuation) sorts before CJK and other scripts.
+    return code <= 0x7f ? 0 : 1;
+  }
+  return 0;
+}
+
+export function compareNames(a: string, b: string): number {
+  const rank = scriptRank(a) - scriptRank(b);
+  if (rank !== 0) {
+    return rank;
+  }
+  return nameCollator.compare(a, b);
+}
+
 function sortEntries(entries: FileEntry[]): FileEntry[] {
   return [...entries].sort((a, b) => {
     if (a.isDir !== b.isDir) {
       return a.isDir ? -1 : 1;
     }
-    return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    return compareNames(a.name, b.name);
   });
 }
 
@@ -87,12 +107,12 @@ function compare(a: FileEntry, b: FileEntry, sort: SortState): number {
       if (a.isDir !== b.isDir) {
         return (a.isDir ? -1 : 1) * dir;
       }
-      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }) * dir;
+      return compareNames(a.name, b.name) * dir;
     default:
       if (a.isDir !== b.isDir) {
         return a.isDir ? -1 : 1;
       }
-      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }) * dir;
+      return compareNames(a.name, b.name) * dir;
   }
 }
 

@@ -2,6 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 
 import { toUserMessage } from "../lib/ipc/errors";
 import {
+  CheckIcon,
+  CrossIcon,
+  EditIcon,
+  PlayIcon,
+  StopIcon,
+  TrashIcon,
+} from "./icons";
+import {
   createForward,
   deleteForward,
   listForwards,
@@ -264,19 +272,23 @@ export function ForwardPanel({ terminalId, sessionId, title }: ForwardPanelProps
                   </span>
                   <button
                     type="button"
-                    className="button button--primary button--sm"
+                    className="forward__icon forward__icon--start"
                     disabled={busy}
+                    title="保存修改"
+                    aria-label="保存修改"
                     onClick={() => void saveEdit(rule)}
                   >
-                    保存
+                    <CheckIcon />
                   </button>
                   <button
                     type="button"
-                    className="button button--ghost button--sm"
+                    className="forward__icon"
                     disabled={busy}
+                    title="取消"
+                    aria-label="取消"
                     onClick={() => setEditing(null)}
                   >
-                    取消
+                    <CrossIcon />
                   </button>
                 </>
               ) : (
@@ -287,30 +299,38 @@ export function ForwardPanel({ terminalId, sessionId, title }: ForwardPanelProps
                   </span>
                   <button
                     type="button"
-                    className="button button--sm"
+                    className={`forward__icon${rule.running ? " forward__icon--stop" : " forward__icon--start"}`}
                     disabled={busy}
+                    title={rule.running ? "停止转发" : "启动转发"}
+                    aria-label={rule.running ? "停止转发" : "启动转发"}
                     onClick={() => void toggle(rule)}
                   >
-                    {rule.running ? "停止" : "启动"}
+                    {rule.running ? <StopIcon /> : <PlayIcon />}
                   </button>
-                  <button
-                    type="button"
-                    className="button button--ghost button--sm"
-                    disabled={busy || rule.running}
-                    title={rule.running ? "运行中的规则需要先停止才能修改" : "编辑规则"}
-                    onClick={() => beginEdit(rule)}
-                  >
-                    编辑
-                  </button>
-                  <button
-                    type="button"
-                    className="button button--ghost button--sm"
-                    disabled={busy || rule.running}
-                    title={rule.running ? "运行中的规则需要先停止才能删除" : "删除规则"}
-                    onClick={() => void remove(rule)}
-                  >
-                    删除
-                  </button>
+                  {!rule.running && (
+                    <>
+                      <button
+                        type="button"
+                        className="forward__icon"
+                        disabled={busy}
+                        title="编辑规则"
+                        aria-label="编辑规则"
+                        onClick={() => beginEdit(rule)}
+                      >
+                        <EditIcon />
+                      </button>
+                      <button
+                        type="button"
+                        className="forward__icon forward__icon--danger"
+                        disabled={busy}
+                        title="删除规则"
+                        aria-label="删除规则"
+                        onClick={() => void remove(rule)}
+                      >
+                        <TrashIcon />
+                      </button>
+                    </>
+                  )}
                 </>
               )}
             </li>

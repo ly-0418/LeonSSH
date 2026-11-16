@@ -2648,3 +2648,37 @@ input[type="password"]::-ms-reveal {
   line-height: 8px;
   list-style: none;
 }
+
+/* Icon-only forwarding actions. */
+.forward__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.forward__icon:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.forward__icon--start {
+  color: var(--accent);
+}
+
+.forward__icon--stop {
+  color: var(--warn-text);
+}
+
+.forward__icon--danger:hover:not(:disabled) {
+  color: var(--danger-text);
+  background: var(--danger-bg);
+}

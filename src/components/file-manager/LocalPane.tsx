@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import type { FileEntry } from "../../lib/fs/types";
 import {
@@ -289,11 +290,16 @@ persistKey={persistKey} onDropEntries={onRemoteDrop}
               try {
                 for (let index = 0; index < targets.length; index += 1) {
                   const item = targets[index];
-                  setBatchProgress({ total: targets.length, done: index, current: item.name });
-                  // Let React paint the updated row before the delete call.
+                  // flushSync forces the commit now; the rAF below then paints it
+                  // even though the whole loop runs in the same task.
+                  flushSync(() =>
+                    setBatchProgress({ total: targets.length, done: index, current: item.name }),
+                  );
                   await nextFrame();
                   await deleteLocal(item.path, item.isDir);
-                  setBatchProgress({ total: targets.length, done: index + 1, current: item.name });
+                  flushSync(() =>
+                    setBatchProgress({ total: targets.length, done: index + 1, current: item.name }),
+                  );
                   await nextFrame();
                 }
                 setBatchProgress({

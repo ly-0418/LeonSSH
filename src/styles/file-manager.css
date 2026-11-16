@@ -1297,6 +1297,24 @@
   border-radius: 999px;
   background: var(--accent);
   transition: width 0.18s ease;
+  /* Moving stripes make it obvious that work is still happening even while a
+     single recursive delete is running (one step can take a while). */
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.18) 0 8px,
+    transparent 8px 16px
+  );
+  background-size: 23px 100%;
+  animation: fm-progress-stripes 0.9s linear infinite;
+}
+
+@keyframes fm-progress-stripes {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 23px 0;
+  }
 }
 
 .fm-progress__current {

@@ -2655,8 +2655,8 @@ input[type="password"]::-ms-reveal {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 34px;
+  height: 34px;
   padding: 0;
   border: 1px solid transparent;
   border-radius: 6px;
@@ -2675,10 +2675,16 @@ input[type="password"]::-ms-reveal {
 }
 
 .forward__icon--stop {
-  color: var(--warn-text);
+  color: var(--danger-text);
 }
 
 .forward__icon--danger:hover:not(:disabled) {
   color: var(--danger-text);
   background: var(--danger-bg);
+}
+
+/* Bigger glyphs inside the enlarged forwarding action buttons. */
+.forward__icon svg {
+  width: 20px;
+  height: 20px;
 }

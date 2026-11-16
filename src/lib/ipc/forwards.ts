@@ -72,3 +72,21 @@ export async function startAllForwards(terminalId: string, sessionId: number): P
     throw normalizeError(error);
   }
 }
+/** Edits a stopped rule (running rules must be stopped first). */
+export async function updateForward(
+  id: number,
+  bindPort: number,
+  targetHost: string | null,
+  targetPort: number | null,
+): Promise<ForwardView> {
+  try {
+    return await invoke<ForwardView>("forward_update", {
+      id,
+      bindPort,
+      targetHost,
+      targetPort,
+    });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}

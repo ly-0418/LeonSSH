@@ -57,6 +57,34 @@ pub async fn forward_create(
     Ok(to_view(&state, record).await)
 }
 
+/// Edits a saved rule. Running rules must be stopped first: their sockets were
+/// bound with the old values and cannot be re-pointed in place.
+#[tauri::command]
+pub async fn forward_update(
+    state: State<'_, AppState>,
+    id: i64,
+    bind_port: u16,
+    target_host: Option<String>,
+    target_port: Option<u16>,
+) -> Result<ForwardView, AppError> {
+    if state.forward_manager().running_ids().await.contains(&id) {
+        return Err(AppError::InvalidArgument(
+            "运行中的规则需要先停止才能修改".into(),
+        ));
+    }
+    let record = forwards::update(
+        state.db(),
+        id,
+        "127.0.0.1",
+        bind_port,
+        target_host.as_deref(),
+        target_port,
+    )
+    .await?;
+    tracing::info!(rule = id, "forward rule updated");
+    Ok(to_view(&state, record).await)
+}
+
 #[tauri::command]
 pub async fn forward_delete(state: State<'_, AppState>, id: i64) -> Result<(), AppError> {
     state.forward_manager().stop(id).await;

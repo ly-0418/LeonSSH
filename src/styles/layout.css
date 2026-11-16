@@ -2624,3 +2624,27 @@ input[type="password"]::-ms-reveal {
   opacity: 0.62;
   border-style: dashed;
 }
+
+/* Inline editor for a stopped forwarding rule. */
+.forward__edit-fields {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.forward__edit-fields .forward__port {
+  width: 78px;
+}
+
+.forward__edit-fields .forward__host {
+  width: 140px;
+}
+
+/* Blank separator lines inside the feature guide. */
+.docs-line--blank {
+  height: 8px;
+  line-height: 8px;
+  list-style: none;
+}

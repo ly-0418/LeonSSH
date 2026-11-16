@@ -210,3 +210,33 @@ mod tests {
         assert!(list_for_session(&pool, session_id).await.unwrap().is_empty());
     }
 }
+
+/// Updates the connection fields of a stopped rule (the kind is immutable).
+pub async fn update(
+    pool: &SqlitePool,
+    id: i64,
+    bind_host: &str,
+    bind_port: u16,
+    target_host: Option<&str>,
+    target_port: Option<u16>,
+) -> Result<ForwardRecord, AppError> {
+    if bind_port == 0 {
+        return Err(AppError::InvalidArgument("绑定端口不能为 0".into()));
+    }
+    let existing = get(pool, id).await?;
+    if existing.kind != "dynamic" && target_host.unwrap_or("").trim().is_empty() {
+        return Err(AppError::InvalidArgument("目标主机不能为空".into()));
+    }
+    sqlx::query(
+        "UPDATE forwards SET bind_host = ?, bind_port = ?, target_host = ?, target_port = ? \
+         WHERE id = ?",
+    )
+    .bind(bind_host.trim())
+    .bind(bind_port as i64)
+    .bind(target_host)
+    .bind(target_port.map(|port| port as i64))
+    .bind(id)
+    .execute(pool)
+    .await?;
+    get(pool, id).await
+}

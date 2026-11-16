@@ -531,8 +531,13 @@ export function SettingsDrawer({
                   <section key={section.id} className="docs-section docs-section--match">
                     <h4 className="docs-section__title">{section.title}</h4>
                     <ul className="docs-section__list">
-                      {section.body.map((line) => (
-                        <li key={line}>{line}</li>
+                      {section.body.map((line, index) => (
+                        <li
+                          key={`${section.id}-${index}`}
+                          className={line.length === 0 ? "docs-line--blank" : undefined}
+                        >
+                          {line.length === 0 ? "\u00a0" : line}
+                        </li>
                       ))}
                     </ul>
                   </section>

@@ -7,6 +7,7 @@ import {
   listForwards,
   startForward,
   stopForward,
+  updateForward,
   type ForwardView,
 } from "../lib/ipc/forwards";
 
@@ -26,6 +27,10 @@ export function ForwardPanel({ terminalId, sessionId, title }: ForwardPanelProps
   const [rules, setRules] = useState<ForwardView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Inline editor for a stopped rule. */
+  const [editing, setEditing] = useState<
+    { id: number; bindPort: string; targetHost: string; targetPort: string } | null
+  >(null);
 
   const [kind, setKind] = useState("local");
   const [bindPort, setBindPort] = useState("8080");
@@ -84,6 +89,50 @@ export function ForwardPanel({ terminalId, sessionId, title }: ForwardPanelProps
       } else {
         await startForward(terminalId, rule.id);
       }
+      await refresh();
+    } catch (err) {
+      setError(toUserMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function beginEdit(rule: ForwardView) {
+    setError(null);
+    setEditing({
+      id: rule.id,
+      bindPort: String(rule.bindPort),
+      targetHost: rule.targetHost ?? "",
+      targetPort: rule.targetPort === null ? "" : String(rule.targetPort),
+    });
+  }
+
+  async function saveEdit(rule: ForwardView) {
+    const current = editing;
+    if (current === null) {
+      return;
+    }
+    const port = Number.parseInt(current.bindPort, 10);
+    if (!Number.isFinite(port) || port <= 0 || port > 65535) {
+      setError("监听端口必须是 1-65535");
+      return;
+    }
+    const needsTarget = rule.kind !== "dynamic";
+    const targetPortNumber = Number.parseInt(current.targetPort, 10);
+    if (needsTarget && (!current.targetHost.trim() || !Number.isFinite(targetPortNumber))) {
+      setError("目标主机/端口不能为空");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await updateForward(
+        rule.id,
+        port,
+        needsTarget ? current.targetHost.trim() : null,
+        needsTarget ? targetPortNumber : null,
+      );
+      setEditing(null);
       await refresh();
     } catch (err) {
       setError(toUserMessage(err));
@@ -171,26 +220,99 @@ export function ForwardPanel({ terminalId, sessionId, title }: ForwardPanelProps
             <li key={rule.id} className="forward__item">
               <span className={`forward__dot${rule.running ? " forward__dot--on" : ""}`} />
               <span className="forward__kindlabel">{KIND_LABEL[rule.kind] ?? rule.kind}</span>
-              <span className="forward__route">
-                {rule.bindHost}:{rule.bindPort}
-                {rule.kind !== "dynamic" ? ` → ${rule.targetHost}:${rule.targetPort}` : " → SOCKS5"}
-              </span>
-              <button
-                type="button"
-                className="button button--sm"
-                disabled={busy}
-                onClick={() => void toggle(rule)}
-              >
-                {rule.running ? "停止" : "启动"}
-              </button>
-              <button
-                type="button"
-                className="button button--ghost button--sm"
-                disabled={busy}
-                onClick={() => void remove(rule)}
-              >
-                删除
-              </button>
+              {editing?.id === rule.id ? (
+                <>
+                  <span className="forward__edit-fields">
+                    <input
+                      className="input forward__port"
+                      type="number"
+                      min={1}
+                      max={65535}
+                      step={1}
+                      value={editing.bindPort}
+                      onChange={(event) =>
+                        setEditing({ ...editing, bindPort: event.target.value })
+                      }
+                      aria-label="监听端口"
+                    />
+                    {rule.kind !== "dynamic" && (
+                      <>
+                        <span className="forward__colon">→</span>
+                        <input
+                          className="input forward__host"
+                          value={editing.targetHost}
+                          onChange={(event) =>
+                            setEditing({ ...editing, targetHost: event.target.value })
+                          }
+                          aria-label="目标主机"
+                        />
+                        <span className="forward__colon">:</span>
+                        <input
+                          className="input forward__port"
+                          type="number"
+                          min={1}
+                          max={65535}
+                          step={1}
+                          value={editing.targetPort}
+                          onChange={(event) =>
+                            setEditing({ ...editing, targetPort: event.target.value })
+                          }
+                          aria-label="目标端口"
+                        />
+                      </>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    className="button button--primary button--sm"
+                    disabled={busy}
+                    onClick={() => void saveEdit(rule)}
+                  >
+                    保存
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--ghost button--sm"
+                    disabled={busy}
+                    onClick={() => setEditing(null)}
+                  >
+                    取消
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="forward__route">
+                    {rule.bindHost}:{rule.bindPort}
+                    {rule.kind !== "dynamic" ? ` → ${rule.targetHost}:${rule.targetPort}` : " → SOCKS5"}
+                  </span>
+                  <button
+                    type="button"
+                    className="button button--sm"
+                    disabled={busy}
+                    onClick={() => void toggle(rule)}
+                  >
+                    {rule.running ? "停止" : "启动"}
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--ghost button--sm"
+                    disabled={busy || rule.running}
+                    title={rule.running ? "运行中的规则需要先停止才能修改" : "编辑规则"}
+                    onClick={() => beginEdit(rule)}
+                  >
+                    编辑
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--ghost button--sm"
+                    disabled={busy || rule.running}
+                    title={rule.running ? "运行中的规则需要先停止才能删除" : "删除规则"}
+                    onClick={() => void remove(rule)}
+                  >
+                    删除
+                  </button>
+                </>
+              )}
             </li>
           ))}
         </ul>

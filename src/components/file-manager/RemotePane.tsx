@@ -19,6 +19,7 @@ import {
 } from "../../lib/ipc/sftp";
 import { ConfirmDialog } from "../dialogs";
 import { FileContextMenu, type FileMenuItem } from "./FileContextMenu";
+import { baseName, collectDeletePlan } from "./deletePlan";
 import { FileTable } from "./FileTable";
 import { PathBar } from "./PathBar";
 import { PromptDialog } from "./PromptDialog";
@@ -368,6 +369,50 @@ function RemotePaneLoaded({
 
   const errorText = opError ?? pane.error;
 
+  /** Deletes the given entries one file at a time so progress really moves. */
+  const runDeletion = async (targets: PaneEntry[]): Promise<void> => {
+    setOpError(null);
+    setBatchProgress({ total: 0, done: 0, current: "正在统计文件…" });
+    try {
+      const plan = await collectDeletePlan(
+        targets.map((entry) => ({
+          path: entry.path,
+          // A symlinked folder is removed as a link, never expanded.
+          isDir: entry.isDir && !entry.isSymlink,
+        })),
+        (path) => listRemote(terminalId, path),
+        (found) =>
+          setBatchProgress({
+            total: 0,
+            done: 0,
+            current: `正在统计文件…（已发现 ${found} 项）`,
+          }),
+      );
+      const total = plan.items.length;
+      setBatchProgress({ total, done: 0, current: plan.items[0] !== undefined ? baseName(plan.items[0].path) : "" });
+      for (let index = 0; index < plan.items.length; index += 1) {
+        const item = plan.items[index];
+        flushSync(() =>
+          setBatchProgress({ total, done: index, current: baseName(item.path) }),
+        );
+        await nextFrame();
+        await removeRemote(terminalId, item.path, item.isDir);
+        flushSync(() =>
+          setBatchProgress({ total, done: index + 1, current: baseName(item.path) }),
+        );
+        await nextFrame();
+      }
+      setBatchProgress({ total, done: total, current: "删除完成" });
+      await new Promise((resolve) => window.setTimeout(resolve, 400));
+      await pane.refresh();
+    } catch (err) {
+      setOpError(toUserMessage(err));
+      await pane.refresh().catch(() => undefined);
+    } finally {
+      setBatchProgress(null);
+    }
+  };
+
   return (
     <section
       className={`fm-pane${dropActive === true ? " fm-pane--drop" : ""}`}
@@ -498,38 +543,7 @@ function RemotePaneLoaded({
                 onClick={() => {
                   const targets = batchDelete;
                   setBatchDelete(null);
-                  void (async () => {
-                    setOpError(null);
-                    setBatchProgress({ total: targets.length, done: 0, current: targets[0]?.name ?? "" });
-                    try {
-                      for (let index = 0; index < targets.length; index += 1) {
-                        const item = targets[index];
-                        // flushSync forces the commit now; the rAF below then
-                        // paints it even though the loop runs in one task.
-                        flushSync(() =>
-                          setBatchProgress({ total: targets.length, done: index, current: item.name }),
-                        );
-                        await nextFrame();
-                        await removeRemote(terminalId, item.path, item.isDir);
-                        flushSync(() =>
-                          setBatchProgress({ total: targets.length, done: index + 1, current: item.name }),
-                        );
-                        await nextFrame();
-                      }
-                      setBatchProgress({
-                        total: targets.length,
-                        done: targets.length,
-                        current: "删除完成",
-                      });
-                      await new Promise((resolve) => window.setTimeout(resolve, 400));
-                      await pane.refresh();
-                    } catch (err) {
-                      setOpError(toUserMessage(err));
-                      await pane.refresh().catch(() => undefined);
-                    } finally {
-                      setBatchProgress(null);
-                    }
-                  })();
+                  void runDeletion(targets);
                 }}
               >
                 删除
@@ -658,7 +672,11 @@ function RemotePaneLoaded({
           onConfirm={() => {
             const target = pendingDelete;
             setPendingDelete(null);
-            void run(() => removeRemote(terminalId, target.path, target.isDir));
+            if (target.isDir && !target.isSymlink) {
+              void runDeletion([target]);
+            } else {
+              void run(() => removeRemote(terminalId, target.path, target.isDir));
+            }
           }}
           onCancel={() => setPendingDelete(null)}
         />

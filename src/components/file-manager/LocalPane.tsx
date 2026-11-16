@@ -17,6 +17,7 @@ import { joinLocal, parentLocal } from "../../lib/fs/paths";
 import { toUserMessage } from "../../lib/ipc/errors";
 import { ConfirmDialog } from "../dialogs";
 import { FileContextMenu, type FileMenuItem } from "./FileContextMenu";
+import { baseName, collectDeletePlan } from "./deletePlan";
 import { FileTable } from "./FileTable";
 import { PathBar } from "./PathBar";
 import { PromptDialog } from "./PromptDialog";
@@ -192,6 +193,50 @@ export function LocalPane({
           ? "新建文件"
           : "重命名";
 
+  /** Deletes the given entries one file at a time so progress really moves. */
+  const runDeletion = async (targets: FileEntry[]): Promise<void> => {
+    setError(null);
+    setBatchProgress({ total: 0, done: 0, current: "正在统计文件…" });
+    try {
+      const plan = await collectDeletePlan(
+        targets.map((entry) => ({
+          path: entry.path,
+          // A symlinked folder is removed as a link, never expanded.
+          isDir: entry.isDir && !entry.isSymlink,
+        })),
+        listLocal,
+        (found) =>
+          setBatchProgress({
+            total: 0,
+            done: 0,
+            current: `正在统计文件…（已发现 ${found} 项）`,
+          }),
+      );
+      const total = plan.items.length;
+      setBatchProgress({ total, done: 0, current: plan.items[0] !== undefined ? baseName(plan.items[0].path) : "" });
+      for (let index = 0; index < plan.items.length; index += 1) {
+        const item = plan.items[index];
+        flushSync(() =>
+          setBatchProgress({ total, done: index, current: baseName(item.path) }),
+        );
+        await nextFrame();
+        await deleteLocal(item.path, item.isDir);
+        flushSync(() =>
+          setBatchProgress({ total, done: index + 1, current: baseName(item.path) }),
+        );
+        await nextFrame();
+      }
+      setBatchProgress({ total, done: total, current: "删除完成" });
+      await new Promise((resolve) => window.setTimeout(resolve, 400));
+      await pane.refresh();
+    } catch (err) {
+      setError(toUserMessage(err));
+      await pane.refresh().catch(() => undefined);
+    } finally {
+      setBatchProgress(null);
+    }
+  };
+
   return (
     <section className={`fm-pane${dropActive === true ? " fm-pane--drop" : ""}`} data-drop-local="true">
       <PathBar
@@ -271,7 +316,11 @@ persistKey={persistKey} onDropEntries={onRemoteDrop}
           onConfirm={() => {
             const target = pendingDelete;
             setPendingDelete(null);
-            void run(() => deleteLocal(target.path, target.isDir));
+            if (target.isDir && !target.isSymlink) {
+              void runDeletion([target]);
+            } else {
+              void run(() => deleteLocal(target.path, target.isDir));
+            }
           }}
           onCancel={() => setPendingDelete(null)}
         />
@@ -284,38 +333,7 @@ persistKey={persistKey} onDropEntries={onRemoteDrop}
           onConfirm={() => {
             const targets = batchDelete;
             setBatchDelete(null);
-            void (async () => {
-              setError(null);
-              setBatchProgress({ total: targets.length, done: 0, current: targets[0]?.name ?? "" });
-              try {
-                for (let index = 0; index < targets.length; index += 1) {
-                  const item = targets[index];
-                  // flushSync forces the commit now; the rAF below then paints it
-                  // even though the whole loop runs in the same task.
-                  flushSync(() =>
-                    setBatchProgress({ total: targets.length, done: index, current: item.name }),
-                  );
-                  await nextFrame();
-                  await deleteLocal(item.path, item.isDir);
-                  flushSync(() =>
-                    setBatchProgress({ total: targets.length, done: index + 1, current: item.name }),
-                  );
-                  await nextFrame();
-                }
-                setBatchProgress({
-                  total: targets.length,
-                  done: targets.length,
-                  current: "删除完成",
-                });
-                await new Promise((resolve) => window.setTimeout(resolve, 400));
-                await pane.refresh();
-              } catch (err) {
-                setError(toUserMessage(err));
-                await pane.refresh().catch(() => undefined);
-              } finally {
-                setBatchProgress(null);
-              }
-            })();
+            void runDeletion(targets);
           }}
           onCancel={() => setBatchDelete(null)}
         />
@@ -346,7 +364,7 @@ persistKey={persistKey} onDropEntries={onRemoteDrop}
               <div className="fm-progress__current" title={batchProgress.current}>
                 正在处理：{batchProgress.current}
               </div>
-              <p className="modal__hint">文件夹会递归删除，删除期间请不要关闭窗口。</p>
+              <p className="modal__hint">按文件逐个删除；文件夹在内部文件删除完后移除，符号链接只删除链接本身。</p>
             </div>
           </div>
         </div>

@@ -13,8 +13,10 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use crate::error::AppError;
 
 /// Fixed block size. Memory use per transfer is one buffer of this size,
-/// independent of the file length.
-pub const CHUNK_SIZE: usize = 256 * 1024;
+/// independent of the file length. Kept small (32 KiB, the common SFTP packet
+/// size) so an upload cannot queue hundreds of kilobytes ahead of interactive
+/// traffic: a 256 KiB chunk made terminal typing lag badly during big copies.
+pub const CHUNK_SIZE: usize = 32 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResumePlan {
@@ -81,6 +83,9 @@ where
         writer.write_all(&buffer[..read]).await.map_err(io_err)?;
         written += read as u64;
         progress(written);
+        // Give the runtime a chance to service the terminal channel between
+        // SFTP packets (russh multiplexes every channel over one socket).
+        tokio::task::yield_now().await;
     }
 
     writer.flush().await.map_err(io_err)?;

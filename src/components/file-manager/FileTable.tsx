@@ -57,6 +57,8 @@ export function FileTable({
   // Windowing keeps 8000-entry folders responsive: only the visible rows are
   // mounted, positioned inside a spacer that reserves the full scroll height.
   const bodyRef = useRef<HTMLDivElement | null>(null);
+  /** Manual double-click: native dblclick is unreliable in WebView2. */
+  const lastClick = useRef<{ name: string; at: number } | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(480);
   const scrollKey = persistKey !== undefined ? persistKey + ":scroll" : undefined;
@@ -325,13 +327,22 @@ export function FileTable({
             className={`fm-row${selectedSet.has(entry.name) ? " fm-row--selected" : ""}${
               showPermissions ? " fm-row--perm" : ""
             }`}
-            onClick={(event) =>
+            onClick={(event) => {
+              const now = Date.now();
+              const previous = lastClick.current;
+              // Two clicks on the same row within 500 ms count as a double click,
+              // even if the browser never fires a dblclick event.
+              if (previous !== null && previous.name === entry.name && now - previous.at < 500) {
+                lastClick.current = null;
+                onOpen(entry);
+                return;
+              }
+              lastClick.current = { name: entry.name, at: now };
               onSelect(
                 entry.name,
                 event.ctrlKey || event.metaKey ? "toggle" : event.shiftKey ? "range" : "single",
-              )
-            }
-            onDoubleClick={() => onOpen(entry)}
+              );
+            }}
             onContextMenu={(event) => {
               event.preventDefault();
               event.stopPropagation();

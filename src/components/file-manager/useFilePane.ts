@@ -2,6 +2,7 @@ import { memGet, memSet } from "../../lib/fs/fmMemory";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { FileEntry } from "../../lib/fs/types";
+import { invoke } from "@tauri-apps/api/core";
 import { toUserMessage } from "../../lib/ipc/errors";
 
 export type SelectionMode = "single" | "toggle" | "range";
@@ -128,10 +129,12 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string, persistK
   const anchorRef = useRef<string | null>(null);
   const lastGood = useRef<{ path: string; entries: FileEntry[] }>({ path: "", entries: [] });
   const requestRef = useRef(0);
+  /** Coalesces repeated navigations to the same folder (fast double-clicks). */
+  const pendingLoad = useRef<{ path: string; promise: Promise<void> } | null>(null);
 
-  const load = useCallback(
-    async (target: string) => {
-      const request = ++requestRef.current;
+  const runLoad = useCallback(
+    async (target: string, request: number): Promise<void> => {
+      const started = performance.now();
       setLoading(true);
       setError(null);
       try {
@@ -241,10 +244,40 @@ export function useFilePane(adapter: PaneAdapter, initialPath?: string, persistK
         if (request === requestRef.current) {
           setLoading(false);
         }
+        const elapsed = performance.now() - started;
+        if (elapsed > 800) {
+          // Slow drives (or huge folders) are the usual reason a double-click
+          // feels ignored; keep a breadcrumb in the app log.
+          void invoke("frontend_error", {
+            message: `folder-load slow ms=${Math.round(elapsed)} path=${target}`,
+          });
+        }
       }
     },
     [adapter],
   );
+
+  const load = useCallback(
+    (target: string): Promise<void> => {
+      // Repeated double-clicks on the same folder used to cancel the previous
+      // listing and start over; while one request is in flight, reuse it.
+      const inFlight = pendingLoad.current;
+      if (inFlight !== null && inFlight.path === target) {
+        return inFlight.promise;
+      }
+      const request = ++requestRef.current;
+      const promise = runLoad(target, request);
+      pendingLoad.current = { path: target, promise };
+      void promise.finally(() => {
+        if (pendingLoad.current?.promise === promise) {
+          pendingLoad.current = null;
+        }
+      });
+      return promise;
+    },
+    [runLoad],
+  );
+
 
   useEffect(() => {
     let cancelled = false;

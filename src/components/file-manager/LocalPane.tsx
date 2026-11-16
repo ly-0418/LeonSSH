@@ -20,6 +20,7 @@ import { FileTable } from "./FileTable";
 import { PathBar } from "./PathBar";
 import { PromptDialog } from "./PromptDialog";
 import { useFilePane, type PaneAdapter } from "./useFilePane";
+import { nextFrame } from "./nextFrame";
 
 interface LocalPaneProps {
   initialPath?: string;
@@ -289,9 +290,18 @@ persistKey={persistKey} onDropEntries={onRemoteDrop}
                 for (let index = 0; index < targets.length; index += 1) {
                   const item = targets[index];
                   setBatchProgress({ total: targets.length, done: index, current: item.name });
+                  // Let React paint the updated row before the delete call.
+                  await nextFrame();
                   await deleteLocal(item.path, item.isDir);
                   setBatchProgress({ total: targets.length, done: index + 1, current: item.name });
+                  await nextFrame();
                 }
+                setBatchProgress({
+                  total: targets.length,
+                  done: targets.length,
+                  current: "删除完成",
+                });
+                await new Promise((resolve) => window.setTimeout(resolve, 400));
                 await pane.refresh();
               } catch (err) {
                 setError(toUserMessage(err));

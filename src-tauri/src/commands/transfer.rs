@@ -325,3 +325,9 @@ mod tests {
         let _ = std::fs::remove_file(&file);
     }
 }
+
+/// Sets the global transfer throughput cap (bytes per second, 0 = unlimited).
+#[tauri::command]
+pub fn transfer_set_limit(bytes_per_second: u64) {
+    crate::transfer::stream::set_limit(bytes_per_second);
+}

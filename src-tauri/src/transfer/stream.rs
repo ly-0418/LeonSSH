@@ -6,7 +6,8 @@
 //! 3. call [`copy_stream`], which copies fixed 256 KiB chunks and checks the
 //!    cancellation flag between chunks.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -17,6 +18,19 @@ use crate::error::AppError;
 /// size) so an upload cannot queue hundreds of kilobytes ahead of interactive
 /// traffic: a 256 KiB chunk made terminal typing lag badly during big copies.
 pub const CHUNK_SIZE: usize = 32 * 1024;
+
+/// Optional throughput cap in bytes per second (0 = unlimited). A cap leaves
+/// bandwidth for the interactive SSH channels, so typing stays responsive even
+/// on saturated links.
+static LIMIT_BPS: AtomicU64 = AtomicU64::new(0);
+
+pub fn set_limit(bytes_per_second: u64) {
+    LIMIT_BPS.store(bytes_per_second, Ordering::Relaxed);
+}
+
+pub fn limit() -> u64 {
+    LIMIT_BPS.load(Ordering::Relaxed)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResumePlan {
@@ -80,9 +94,18 @@ where
         if read == 0 {
             break;
         }
+        let chunk_started = Instant::now();
         writer.write_all(&buffer[..read]).await.map_err(io_err)?;
         written += read as u64;
         progress(written);
+        // Optional throttle: sleep the remainder of the chunk's time budget.
+        let cap = limit();
+        if cap > 0 {
+            let budget = Duration::from_secs_f64(read as f64 / cap as f64);
+            if let Some(rest) = budget.checked_sub(chunk_started.elapsed()) {
+                tokio::time::sleep(rest).await;
+            }
+        }
         // Give the runtime a chance to service the terminal channel between
         // SFTP packets (russh multiplexes every channel over one socket).
         tokio::task::yield_now().await;

@@ -2701,3 +2701,15 @@ input[type="password"]::-ms-reveal {
 .forward__icon + .forward__icon {
   margin-left: -6px;
 }
+
+.setting-toggle--stack {
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.setting-number {
+  width: 84px;
+  padding: 4px 8px;
+  text-align: right;
+}

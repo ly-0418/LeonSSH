@@ -13,7 +13,7 @@ import { TerminalTab } from "./components/TerminalTab";
 import { ConfirmDialog } from "./components/dialogs";
 import { setBroadcastHandler } from "./lib/terminal/TerminalSession";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { listTransfers } from "./lib/ipc/transfers";
+import { listTransfers, setTransferLimit as setTransferLimitBytes } from "./lib/ipc/transfers";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { startAllForwards } from "./lib/ipc/forwards";
@@ -80,6 +80,18 @@ export default function App() {
   });
 
   // Smooth caret animations (IntelliJ-style); additive to the shape settings.
+  const [transferLimit, setTransferLimit] = useState<number>(() => {
+    const stored = Number.parseInt(localStorage.getItem("leonssh.transferLimitMBps") ?? "0", 10);
+    return Number.isFinite(stored) && stored > 0 ? stored : 0;
+  });
+
+  // Apply the saved cap once the backend is reachable.
+  useEffect(() => {
+    if (transferLimit > 0) {
+      void setTransferLimitBytes(transferLimit * 1024 * 1024);
+    }
+  }, [transferLimit]);
+
   const [completionEnabled, setCompletionEnabled] = useState<boolean>(
     () => localStorage.getItem("leonssh.completionEnabled") !== "0",
   );
@@ -1024,6 +1036,12 @@ export default function App() {
           onChangeCompletion={(value) => {
             setCompletionEnabled(value);
             localStorage.setItem("leonssh.completionEnabled", value ? "1" : "0");
+          }}
+          transferLimit={transferLimit}
+          onChangeTransferLimit={(value) => {
+            setTransferLimit(value);
+            localStorage.setItem("leonssh.transferLimitMBps", String(value));
+            void setTransferLimitBytes(value * 1024 * 1024);
           }}
           smoothBlink={smoothBlink}
           blinkRadius={blinkRadius}

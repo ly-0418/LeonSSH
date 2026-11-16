@@ -35,6 +35,10 @@ interface SettingsDrawerProps {
   completionEnabled: boolean;
   onChangeCompletion: (enabled: boolean) => void;
 
+  /** Transfer speed cap in MB/s (0 = unlimited). */
+  transferLimit: number;
+  onChangeTransferLimit: (limit: number) => void;
+
   showBroadcast: boolean;
   showForward: boolean;
   onChangeTabVisibility: (kind: "broadcast" | "forward", visible: boolean) => void;
@@ -73,6 +77,8 @@ export function SettingsDrawer({
   onChangeSmoothMove,
   completionEnabled,
   onChangeCompletion,
+  transferLimit,
+  onChangeTransferLimit,
   showBroadcast,
   showForward,
   onChangeTabVisibility,
@@ -455,6 +461,30 @@ export function SettingsDrawer({
 
             {tab === "config" && (
               <SnippetSettings enabled={completionEnabled} onChangeEnabled={onChangeCompletion} />
+            )}
+
+            {tab === "config" && (
+              <div className="setting-group">
+                <h3 className="setting-group__title">文件传输</h3>
+                <label className="setting-toggle setting-toggle--stack">
+                  <span>传输限速（MB/s，0 表示不限速）</span>
+                  <input
+                    className="input setting-number"
+                    type="number"
+                    min={0}
+                    max={1000}
+                    step={1}
+                    value={transferLimit}
+                    onChange={(event) => {
+                      const next = Number.parseInt(event.target.value, 10);
+                      onChangeTransferLimit(Number.isFinite(next) && next >= 0 ? next : 0);
+                    }}
+                  />
+                </label>
+                <p className="modal__hint">
+                  上传/下载大文件时给终端留出带宽：限速后键盘输入与命令回显更顺畅；0 表示不限制。
+                </p>
+              </div>
             )}
 
             {tab === "logs" && (

@@ -277,6 +277,7 @@ pub fn run() {
             commands::local::frontend_error,
             commands::local::open_external_url,
             commands::transfer::transfer_attach,
+            commands::transfer::transfer_set_limit,
             commands::transfer::transfer_list,
             commands::transfer::transfer_cancel,
             commands::transfer::transfer_upload,

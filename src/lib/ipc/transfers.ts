@@ -111,3 +111,11 @@ export async function startDownloadDir(
     throw normalizeError(error);
   }
 }
+/** Sets the transfer throughput cap (bytes per second, 0 = unlimited). */
+export async function setTransferLimit(bytesPerSecond: number): Promise<void> {
+  try {
+    await invoke<void>("transfer_set_limit", { bytesPerSecond });
+  } catch {
+    // A throttle is a nicety; never block the UI on it.
+  }
+}

@@ -151,8 +151,6 @@ export default function App() {
     target?.focus();
   }, [settingsOpen, sessionDialog, pendingDelete, view]);
 
-  /** Version whose installer already sits in %TEMP% (avoids re-downloading). */
-  const downloadedVersion = useRef<string | null>(null);
   /** Version currently being downloaded, so parallel checks cannot race. */
   const downloadInFlight = useRef<string | null>(null);
 
@@ -167,7 +165,6 @@ export default function App() {
     setUpdateProgress({ received: 0, total: null });
     try {
       const path = await downloadInstaller(info, setUpdateProgress);
-      downloadedVersion.current = info.version;
       setInstallerPath(path);
       setUpdatePhase("ready");
     } catch (error) {
@@ -209,15 +206,12 @@ export default function App() {
         if (result.kind === "update") {
           remember(result.info);
           setAvailableUpdate(result.info);
-          if (downloadedVersion.current !== result.info.version) {
-            void startUpdateDownload(result.info);
-          }
+          // Downloading starts only when the user asks for it.
           return;
         }
         if (result.kind === "current") {
           remember(null);
           setAvailableUpdate(null);
-          downloadedVersion.current = null;
           return;
         }
         // All endpoints failed (offline / rate limited): keep the badge from a
@@ -239,9 +233,6 @@ export default function App() {
         const info = JSON.parse(stored) as UpdateInfo;
         if (typeof info.version === "string" && info.version.length > 0) {
           setAvailableUpdate(info);
-          if (downloadedVersion.current !== info.version) {
-            void startUpdateDownload(info);
-          }
         }
       }
     } catch {
@@ -256,7 +247,7 @@ export default function App() {
       window.clearTimeout(retryTimer);
       window.clearInterval(interval);
     };
-  }, [startUpdateDownload]);
+  }, []);
 
   // The badge and the settings tab ask for the dialog explicitly.
   useEffect(() => {
@@ -266,13 +257,10 @@ export default function App() {
         return;
       }
       setUpdateNotice(info);
-      if (installerPath === null && updatePhase !== "downloading") {
-        void startUpdateDownload(info);
-      }
     };
     window.addEventListener("leonssh:open-update", open);
     return () => window.removeEventListener("leonssh:open-update", open);
-  }, [installerPath, updatePhase, startUpdateDownload]);
+  }, []);
 
   // Only live connections block the window close: closed/failed tabs do not.
   const liveSessionCount = tabs.filter(
@@ -888,6 +876,11 @@ export default function App() {
           <div className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <h2 className="modal__title">发现新版本 v{updateNotice.version}</h2>
 
+            {updatePhase === "idle" && (
+              <p className="modal__body">
+                新版本已就绪，点击「立即下载」获取安装包；下载完成前不会关闭当前窗口。
+              </p>
+            )}
             {updatePhase === "downloading" && (
               <p className="modal__body">
                 正在下载安装包
@@ -918,6 +911,15 @@ export default function App() {
 
             <pre className="update-notes">{updateNotice.notes}</pre>
             <div className="modal__actions">
+              {updatePhase === "idle" && (
+                <button
+                  type="button"
+                  className="button button--primary"
+                  onClick={() => void startUpdateDownload(updateNotice)}
+                >
+                  立即下载
+                </button>
+              )}
               {updatePhase === "error" && (
                 <button
                   type="button"

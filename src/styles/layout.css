@@ -2685,6 +2685,19 @@ input[type="password"]::-ms-reveal {
 
 /* Bigger glyphs inside the enlarged forwarding action buttons. */
 .forward__icon svg {
-  width: 20px;
-  height: 20px;
+  width: 21px;
+  height: 21px;
+}
+
+/* Play/stop are solid shapes and read smaller than the outline glyphs, so they
+   get a bigger drawing to match the others visually. */
+.forward__icon--start svg,
+.forward__icon--stop svg {
+  width: 27px;
+  height: 27px;
+}
+
+/* Tighter action cluster: neighbouring icon buttons sit closer together. */
+.forward__icon + .forward__icon {
+  margin-left: -6px;
 }

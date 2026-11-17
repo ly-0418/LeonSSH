@@ -1859,9 +1859,23 @@ input[type="password"]::-ms-reveal {
   cursor: pointer;
 }
 
-.setting-toggle input {
+.setting-toggle input[type="checkbox"] {
   width: 16px;
   height: 16px;
+}
+
+/* The number/select fields inside a toggle row must keep their own size: the
+   old wildcard rule above forced every input to 16px and made them unusable. */
+.setting-toggle .setting-number {
+  flex: 0 0 140px;
+  width: 140px;
+  height: auto;
+}
+
+.setting-toggle .setting-select {
+  flex: 0 0 auto;
+  min-width: 220px;
+  height: auto;
 }
 
 .logs-toolbar {
@@ -2755,6 +2769,7 @@ input[type="password"]::-ms-reveal {
 .setting-number {
   flex: 0 0 auto;
   width: 140px;
+  height: auto;
   padding: 5px 8px;
   font-size: 12.5px;
   text-align: right;

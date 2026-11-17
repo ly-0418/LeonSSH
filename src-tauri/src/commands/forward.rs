@@ -133,7 +133,8 @@ pub async fn forward_start(
     Ok(to_view(&state, record).await)
 }
 
-/// Starts every saved rule of a session (called once the terminal is ready).
+/// (Re)binds every saved rule of a session; called whenever a terminal becomes
+/// ready, including after a reconnect.
 #[tauri::command]
 pub async fn forward_start_all(
     state: State<'_, AppState>,
@@ -143,9 +144,9 @@ pub async fn forward_start_all(
     let records = forwards::list_for_session(state.db(), session_id).await?;
     let mut started = 0usize;
     for record in records {
-        if state.forward_manager().running_ids().await.contains(&record.id) {
-            continue;
-        }
+        // A reconnect creates a new terminal id; rules marked as running still
+        // belong to the dead connection, so rebind them from scratch.
+        state.forward_manager().stop(record.id).await;
         let Ok(handle) = state.connection(&terminal_id).await else {
             break;
         };

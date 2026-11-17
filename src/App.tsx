@@ -59,7 +59,6 @@ export default function App() {
   const [filesExiting, setFilesExiting] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   /** Tabs whose saved forward rules were already auto-started. */
-  const startedForwards = useRef<Set<string>>(new Set());
   const [forwardOpen, setForwardOpen] = useState(false);
   const [fontFamily, setFontFamily] = useState<string>(
     () => localStorage.getItem("leonssh.fontFamily") ?? "Cascadia Mono, Consolas, monospace",
@@ -533,10 +532,12 @@ export default function App() {
         const next = prev.map((tab) =>
           tab.key === key ? { ...tab, status: { ...tab.status, ...patch } } : tab,
         );
-        if (patch.state === "ready") {
+        // Re-arm forwarding on every transition into "ready": a reconnect
+        // produces a new terminal id, so the previous rebind is stale.
+        const wasReady = prev.find((item) => item.key === key)?.status.state === "ready";
+        if (patch.state === "ready" && !wasReady) {
           const tab = next.find((item) => item.key === key);
-          if (tab !== undefined && tab.status.terminalId !== null && !startedForwards.current.has(key)) {
-            startedForwards.current.add(key);
+          if (tab !== undefined && tab.status.terminalId !== null) {
             void startAllForwards(tab.status.terminalId, tab.sessionId).catch(() => undefined);
           }
         }

@@ -2713,3 +2713,55 @@ input[type="password"]::-ms-reveal {
   padding: 4px 8px;
   text-align: right;
 }
+
+/* ------------------------------------------ collapsible settings groups */
+.setting-group__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.setting-group__head:hover .setting-group__title {
+  color: var(--text);
+}
+
+.setting-group__chevron {
+  display: inline-flex;
+  color: var(--text-faint);
+  transition: transform 0.15s ease;
+}
+
+.setting-group--collapsed .setting-group__chevron {
+  transform: rotate(-90deg);
+}
+
+.setting-group__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* Wider numeric field: the old 84px box was too narrow to type into. */
+.setting-number {
+  flex: 0 0 auto;
+  width: 140px;
+  padding: 5px 8px;
+  font-size: 12.5px;
+  text-align: right;
+}
+
+.setting-select {
+  min-width: 220px;
+  padding: 5px 8px;
+  font-size: 12.5px;
+}

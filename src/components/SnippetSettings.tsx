@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { CollapsibleGroup } from "./CollapsibleGroup";
 import { ConfirmDialog } from "./dialogs";
 import { EyeIcon, EyeOffIcon } from "./icons";
 import {
@@ -133,8 +134,8 @@ export function SnippetSettings({ enabled, onChangeEnabled }: SnippetSettingsPro
   const hiddenCount = entries.filter((entry) => entry.deleted).length;
 
   return (
-    <div className="setting-group snippet-settings">
-      <h3 className="setting-group__title">命令联想</h3>
+    <CollapsibleGroup title="命令联想">
+      <div className="snippet-settings">
       <label className="setting-toggle">
         <input
           type="checkbox"
@@ -274,6 +275,8 @@ export function SnippetSettings({ enabled, onChangeEnabled }: SnippetSettingsPro
         })}
       </ul>
 
+      </div>
+
       {pendingDelete !== null && (
         <ConfirmDialog
           title="删除组合命令"
@@ -283,6 +286,6 @@ export function SnippetSettings({ enabled, onChangeEnabled }: SnippetSettingsPro
           onCancel={() => setPendingDelete(null)}
         />
       )}
-    </div>
+    </CollapsibleGroup>
   );
 }

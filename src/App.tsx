@@ -80,6 +80,13 @@ export default function App() {
   });
 
   // Smooth caret animations (IntelliJ-style); additive to the shape settings.
+  const [closeBehavior, setCloseBehavior] = useState<"ask" | "quit" | "tray">(() => {
+    const stored = localStorage.getItem("leonssh.closeBehavior");
+    return stored === "quit" || stored === "tray" ? stored : "ask";
+  });
+  const [closeChoice, setCloseChoice] = useState(false);
+  const [rememberCloseChoice, setRememberCloseChoice] = useState(false);
+
   const [transferLimit, setTransferLimit] = useState<number>(() => {
     const stored = Number.parseInt(localStorage.getItem("leonssh.transferLimitMBps") ?? "0", 10);
     return Number.isFinite(stored) && stored > 0 ? stored : 0;
@@ -279,28 +286,57 @@ export default function App() {
     (tab) => tab.status.state === "ready" || tab.status.state === "connecting",
   ).length;
 
-  // Closing the window with live sessions asks for confirmation first.
+  const persistCloseBehavior = useCallback((behavior: "ask" | "quit" | "tray") => {
+    setCloseBehavior(behavior);
+    localStorage.setItem("leonssh.closeBehavior", behavior);
+  }, []);
+
+  const hideToTray = useCallback(() => {
+    setCloseChoice(false);
+    setCloseRequested(false);
+    void invoke("hide_to_tray").catch(() => undefined);
+  }, []);
+
+  const executeQuit = useCallback(() => {
+    if (liveSessionCount === 0) {
+      forceClose.current = true;
+      void invoke("quit_app");
+      return;
+    }
+    setCloseReason("quit");
+    setCloseRequested(true);
+  }, [liveSessionCount]);
+
+  /** Window ✕: tray, quit, or ask, depending on the configured behavior. */
+  const handleCloseRequest = useCallback(() => {
+    if (closeBehavior === "tray") {
+      hideToTray();
+      return;
+    }
+    if (closeBehavior === "ask") {
+      setRememberCloseChoice(false);
+      setCloseChoice(true);
+      return;
+    }
+    executeQuit();
+  }, [closeBehavior, executeQuit, hideToTray]);
+
+  // Native close is always intercepted unless the app is already exiting.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     void getCurrentWindow()
       .onCloseRequested((event) => {
-        void invoke("frontend_error", { message: `close-requested force=${String(forceClose.current)}` });
         if (forceClose.current) {
           return;
         }
-        if (liveSessionCount === 0) {
-          return;
-        }
         event.preventDefault();
-        setCloseReason("quit");
-        setCloseRequested(true);
+        handleCloseRequest();
       })
       .then((dispose) => {
-        void invoke("frontend_error", { message: "close-listener registered" });
         unlisten = dispose;
       });
     return () => unlisten?.();
-  }, [liveSessionCount]);
+  }, [handleCloseRequest]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -423,15 +459,10 @@ export default function App() {
     void invoke("quit_app");
   }, [closeReason, installerPath]);
 
-  // The caption ✕ goes through here: no sessions => quit directly, sessions => ask.
+  // The caption ✕ goes through the configured close behavior.
   const requestClose = useCallback(() => {
-    setCloseReason("quit");
-    if (liveSessionCount === 0) {
-      void invoke("quit_app");
-      return;
-    }
-    setCloseRequested(true);
-  }, [liveSessionCount]);
+    handleCloseRequest();
+  }, [handleCloseRequest]);
 
   const closeTab = useCallback(
     (key: string) => {
@@ -854,6 +885,62 @@ export default function App() {
         />
       )}
 
+      {closeChoice && (
+        <div className="modal-backdrop" role="presentation">
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="close-choice-title">
+            <h2 className="modal__title" id="close-choice-title">
+              关闭窗口
+            </h2>
+            <p className="modal__body">
+              选择关闭窗口时的行为。最小化到系统托盘会保持当前连接与传输，程序继续在后台运行。
+            </p>
+            <label className="setting-toggle">
+              <input
+                type="checkbox"
+                checked={rememberCloseChoice}
+                onChange={(event) => setRememberCloseChoice(event.target.checked)}
+              />
+              <span>记住我的选择，下次不再询问</span>
+            </label>
+            <p className="modal__hint">之后可在 设置 → 配置参数 → 关闭方式 中修改。</p>
+            <div className="modal__actions">
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={() => {
+                  if (rememberCloseChoice) {
+                    persistCloseBehavior("tray");
+                  }
+                  hideToTray();
+                }}
+              >
+                最小化到系统托盘
+              </button>
+              <button
+                type="button"
+                className="button button--danger"
+                onClick={() => {
+                  if (rememberCloseChoice) {
+                    persistCloseBehavior("quit");
+                  }
+                  setCloseChoice(false);
+                  executeQuit();
+                }}
+              >
+                直接退出
+              </button>
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => setCloseChoice(false)}
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {closeRequested && (
         <ConfirmDialog
           title={closeReason === "install" ? "安装更新并关闭 LeonSSH" : "关闭 LeonSSH"}
@@ -1037,6 +1124,8 @@ export default function App() {
             setCompletionEnabled(value);
             localStorage.setItem("leonssh.completionEnabled", value ? "1" : "0");
           }}
+          closeBehavior={closeBehavior}
+          onChangeCloseBehavior={persistCloseBehavior}
           transferLimit={transferLimit}
           onChangeTransferLimit={(value) => {
             setTransferLimit(value);

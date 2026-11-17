@@ -49,7 +49,7 @@ fn focus_existing_instance() -> bool {
     use windows_sys::Win32::Foundation::{ERROR_ALREADY_EXISTS, GetLastError};
     use windows_sys::Win32::System::Threading::CreateMutexW;
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        FindWindowW, SetForegroundWindow, ShowWindow, SW_RESTORE,
+        FindWindowW, SetForegroundWindow, ShowWindow, SW_RESTORE, SW_SHOW,
     };
 
     fn wide(value: &str) -> Vec<u16> {
@@ -71,6 +71,9 @@ fn focus_existing_instance() -> bool {
         for _ in 0..20 {
             let hwnd = FindWindowW(std::ptr::null(), title.as_ptr());
             if !hwnd.is_null() {
+                // The previous instance may be hidden in the tray; SW_RESTORE
+                // alone does not reveal a hidden window.
+                ShowWindow(hwnd, SW_SHOW);
                 ShowWindow(hwnd, SW_RESTORE);
                 SetForegroundWindow(hwnd);
                 return true;
@@ -196,6 +199,56 @@ pub fn run() {
             .data_directory(webview_data_dir.clone())
             .build()?;
 
+            // Tray icon: closing the window may hide the app instead of exiting,
+            // so the sessions keep running until the user picks 退出 here.
+            #[cfg(desktop)]
+            {
+                use tauri::menu::{Menu, MenuItem};
+                use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+
+                let show = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
+                let quit = MenuItem::with_id(app, "quit", "退出 LeonSSH", true, None::<&str>)?;
+                let menu = Menu::with_items(app, &[&show, &quit])?;
+                let mut builder = TrayIconBuilder::with_id("main-tray")
+                    .tooltip("LeonSSH")
+                    .menu(&menu)
+                    .show_menu_on_left_click(false)
+                    .on_menu_event(|app, event| match event.id().as_ref() {
+                        "show" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.unminimize();
+                                let _ = window.set_focus();
+                            }
+                        }
+                        "quit" => app.exit(0),
+                        _ => {}
+                    })
+                    .on_tray_icon_event(|tray, event| {
+                        if let TrayIconEvent::Click {
+                            button: MouseButton::Left,
+                            button_state: MouseButtonState::Up,
+                            ..
+                        } = event
+                        {
+                            let app = tray.app_handle();
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.unminimize();
+                                let _ = window.set_focus();
+                            }
+                        }
+                    });
+                match app.default_window_icon() {
+                    Some(icon) => {
+                        builder = builder.icon(icon.clone());
+                        builder.build(app)?;
+                        tracing::info!("tray icon created");
+                    }
+                    None => tracing::warn!("window icon missing; tray disabled"),
+                }
+            }
+
             let handle = app.handle().clone();
             window.on_window_event(move |event| {
                 if let tauri::WindowEvent::Destroyed = event {
@@ -272,6 +325,8 @@ pub fn run() {
             commands::local::app_version,
             commands::local::shell_icon,
             commands::local::quit_app,
+            commands::local::hide_to_tray,
+            commands::local::show_main_window,
             commands::local::apply_update,
             commands::local::logs_tail,
             commands::local::frontend_error,

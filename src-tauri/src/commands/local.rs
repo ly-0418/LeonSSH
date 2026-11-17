@@ -4,6 +4,7 @@
 //! the drive list, widens the plugin's runtime scope, and opens files with the
 //! Windows default application.
 
+use tauri::Manager;
 use tauri::State;
 use crate::state::AppState;
 use std::path::Path;
@@ -422,6 +423,34 @@ pub fn quit_app(app: tauri::AppHandle) {
     tracing::info!("quit requested by the frontend");
     app.exit(0);
 }
+/// Hides the main window; the tray icon keeps the app (and its sessions) alive.
+#[tauri::command]
+pub fn hide_to_tray(app: tauri::AppHandle) -> Result<(), AppError> {
+    if let Some(window) = app.get_webview_window("main") {
+        if app.tray_by_id("main-tray").is_none() {
+            // Without a tray icon the window would be unreachable; minimize.
+            let _ = window.minimize();
+            tracing::warn!("tray unavailable; minimized instead of hiding");
+            return Ok(());
+        }
+        window
+            .hide()
+            .map_err(|err| AppError::Internal(format!("无法最小化到托盘: {err}")))?;
+        tracing::info!("window hidden to tray");
+    }
+    Ok(())
+}
+
+/// Brings the main window back from the tray.
+#[tauri::command]
+pub fn show_main_window(app: tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
 /// Last lines of the newest log file: shown in the settings drawer so users do
 /// not have to hunt through `data/logs`.
 #[tauri::command]

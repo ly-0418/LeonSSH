@@ -1,4 +1,5 @@
 import { SMOOTH_MOVE_OPTIONS, type SmoothMoveMode } from "../lib/terminal/cursor";
+import { CollapsibleGroup } from "./CollapsibleGroup";
 import { SnippetSettings } from "./SnippetSettings";
 import { UpdatePanel } from "./UpdatePanel";
 import { useEffect, useRef, useState } from "react";
@@ -38,6 +39,10 @@ interface SettingsDrawerProps {
   /** Transfer speed cap in MB/s (0 = unlimited). */
   transferLimit: number;
   onChangeTransferLimit: (limit: number) => void;
+
+  /** What the window close button does. */
+  closeBehavior: "ask" | "quit" | "tray";
+  onChangeCloseBehavior: (behavior: "ask" | "quit" | "tray") => void;
 
   showBroadcast: boolean;
   showForward: boolean;
@@ -79,6 +84,8 @@ export function SettingsDrawer({
   onChangeCompletion,
   transferLimit,
   onChangeTransferLimit,
+  closeBehavior,
+  onChangeCloseBehavior,
   showBroadcast,
   showForward,
   onChangeTabVisibility,
@@ -433,8 +440,7 @@ export function SettingsDrawer({
             )}
 
             {tab === "config" && (
-              <div className="setting-group">
-                <h3 className="setting-group__title">标签栏按钮</h3>
+              <CollapsibleGroup title="标签栏按钮">
                 <p className="modal__hint">
                   控制标签栏右侧按钮的显示。关闭后仍可从连接菜单使用对应能力。
                 </p>
@@ -456,7 +462,7 @@ export function SettingsDrawer({
                   <ForwardIcon size={16} />
                   显示「转发」按钮
                 </label>
-              </div>
+              </CollapsibleGroup>
             )}
 
             {tab === "config" && (
@@ -464,8 +470,7 @@ export function SettingsDrawer({
             )}
 
             {tab === "config" && (
-              <div className="setting-group">
-                <h3 className="setting-group__title">文件传输</h3>
+              <CollapsibleGroup title="文件传输">
                 <label className="setting-toggle setting-toggle--stack">
                   <span>传输限速（MB/s，0 表示不限速）</span>
                   <input
@@ -474,6 +479,7 @@ export function SettingsDrawer({
                     min={0}
                     max={1000}
                     step={1}
+                    inputMode="numeric"
                     value={transferLimit}
                     onChange={(event) => {
                       const next = Number.parseInt(event.target.value, 10);
@@ -484,7 +490,29 @@ export function SettingsDrawer({
                 <p className="modal__hint">
                   上传/下载大文件时给终端留出带宽：限速后键盘输入与命令回显更顺畅；0 表示不限制。
                 </p>
-              </div>
+              </CollapsibleGroup>
+            )}
+
+            {tab === "config" && (
+              <CollapsibleGroup title="关闭方式">
+                <label className="setting-toggle setting-toggle--stack">
+                  <span>点击窗口关闭按钮时</span>
+                  <select
+                    className="input setting-select"
+                    value={closeBehavior}
+                    onChange={(event) =>
+                      onChangeCloseBehavior(event.target.value as "ask" | "quit" | "tray")
+                    }
+                  >
+                    <option value="ask">每次询问</option>
+                    <option value="tray">最小化到系统托盘</option>
+                    <option value="quit">直接退出</option>
+                  </select>
+                </label>
+                <p className="modal__hint">
+                  选择「最小化到系统托盘」后，关闭窗口不会退出程序，已打开的会话会保持连接；可从托盘图标重新打开或彻底退出。
+                </p>
+              </CollapsibleGroup>
             )}
 
             {tab === "logs" && (
